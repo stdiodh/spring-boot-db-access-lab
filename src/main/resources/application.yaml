@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: spring-boot-db-access-lab
+  datasource:
+    url: jdbc:mysql://localhost:3306/idol_db
+    username: root
+    password: 1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
