@@ -1,13 +1,26 @@
 # Spring Boot DB Access Lab
 
-> Spring Data JPA를 이용해 메모리 저장을 실제 DB 저장 흐름으로 바꿔보는 실습 레포입니다.
+> 메모리 저장이 아니라 실제 DB 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 실습 레포입니다.
 
-## 브랜치 안내
+## 이 시퀀스에서 무엇을 배우나요
 
-- `implementation`: 학생 실습용 starter
-- `answer`: 수업 후 공개되는 완성본
+이번 실습은 시퀀스 01의 메모리 CRUD를 이어받아,
+영속 저장과 계층 분리를 가장 단순한 JPA CRUD로 익히는 단계입니다.
 
-학생은 반드시 `implementation` 브랜치에서 시작합니다.
+이번 레포에서는 아래 흐름에 집중합니다.
+
+1. `PostEntity`가 테이블과 연결됩니다.
+2. `PostRepository`가 DB 접근을 맡습니다.
+3. `PostService`가 메모리 저장 대신 Repository를 사용합니다.
+4. `POST /posts`, `GET /posts`, `GET /posts/{id}`, `PUT /posts/{id}`, `DELETE /posts/{id}` 흐름을 완성합니다.
+5. DB에 저장된 값이 재시작 후에도 남는지 확인합니다.
+
+## 브랜치 사용 방법
+
+- `implementation`: 학생 실습용 starter 브랜치
+- `answer`: 비교용 정답 브랜치
+
+학생은 반드시 `implementation`에서 시작합니다.
 
 ```bash
 git clone -b implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
@@ -15,56 +28,68 @@ cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
 
-## 이론 문서
+정답 비교가 필요할 때는 아래 흐름을 사용합니다.
 
-실습에 필요한 용어와 이론은 아래 문서에 정리합니다.
+```bash
+git fetch origin
+git diff implementation..answer
+```
 
-- [JPA Theory Notes](./docs/jpa-theory.md)
+## 문서 안내
 
-## 학습 목표
+- [이론 문서](./docs/theory.md)
+- [구현 안내](./docs/implementation.md)
+- [정답 가이드](./docs/answer-guide.md)
+- [체크리스트](./docs/checklist.md)
+- [제공 자료 안내](./docs/assets.md)
 
-- 메모리 저장과 DB 저장의 차이를 이해합니다.
-- Entity, Repository, Service가 어떻게 연결되는지 익힙니다.
-- JPA를 통해 CRUD 흐름이 어떻게 바뀌는지 직접 확인합니다.
+## 파일을 어떻게 보면 좋나요
 
-## 이번 실습 직접 구현 범위
+실습은 아래 순서로 보는 것을 권장합니다.
 
-- `Idol`을 JPA Entity로 다루는 감각 익히기
-- `IdolRepository` 사용
-- `findAll`, `findById`, `save`, `delete` 흐름 구현
-- Service가 메모리 리스트 대신 DB를 바라보도록 바꾸기
+1. `docs/theory.md`에서 왜 메모리 저장만으로는 부족한지 읽습니다.
+2. `docs/implementation.md`에서 오늘 구현 순서를 확인합니다.
+3. 아래 핵심 파일을 순서대로 엽니다.
 
-## 미리 제공된 코드
+- `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
+- `src/main/kotlin/com/andi/rest_crud/repository/PostRepository.kt`
+- `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
+- `src/main/kotlin/com/andi/rest_crud/controller/PostController.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/PostUpdateRequest.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/PostResponse.kt`
 
-- REST CRUD 기본 흐름
-- Controller 코드
-- DTO 구조
-- JPA 의존성 및 기본 datasource 설정
+`implementation` 브랜치에서는 `TODO(A&I)`를 채우며 실습하고,
+완료 후에는 `answer` 브랜치나 `docs/answer-guide.md`로 비교하면 됩니다.
 
-## TODO 위치
+## 미리 제공되는 것
 
-- `src/main/kotlin/com/andi/rest_crud/service/IdolService.kt`
+- Kotlin + Spring Boot + Spring Data JPA 프로젝트 기본 설정
+- Swagger UI 진입 설정
+- H2 file DB 실행 설정과 H2 console 설정
+- 테스트용 H2 in-memory 설정
+- 패키지 구조와 메인 애플리케이션 클래스
 
-코드에서 아래 키워드를 검색하면 빠르게 찾을 수 있습니다.
-
-- `TODO(A&I)`
-- `HINT(A&I)`
-- `CHECK(A&I)`
+학생은 영속 저장으로 바뀌는 핵심 흐름만 직접 구현합니다.
 
 ## 실행 방법
-
-먼저 로컬 MySQL을 준비합니다.
-
-예시 기준:
-
-- database: `idol_db`
-- username: `root`
-- password: `1234`
 
 애플리케이션 실행:
 
 ```bash
 ./gradlew bootRun
+```
+
+Swagger UI:
+
+```text
+http://localhost:8080/swagger
+```
+
+H2 Console:
+
+```text
+http://localhost:8080/h2-console
 ```
 
 테스트 실행:
@@ -73,19 +98,12 @@ git checkout -b feat/<이름>
 ./gradlew test
 ```
 
-## 체크 포인트
+## 이번 실습에서 직접 구현할 범위
 
-- 왜 메모리 저장으로는 부족한지 설명할 수 있는가
-- Repository가 어떤 역할을 맡는지 말할 수 있는가
-- `save`, `findById`, `findAll`, `delete` 흐름을 코드에서 찾을 수 있는가
+- `PostEntity` 핵심 필드와 JPA 어노테이션 이해
+- `PostRepository` 선언
+- `PostService`의 create / getAll / getById / update / delete 흐름을 Repository 기반으로 연결
+- `PostController`에서 수정 / 삭제 API 연결
+- DB 저장 결과 확인
 
-## 정답 브랜치 안내
-
-정답은 수업 종료 후 `answer` 브랜치로 공개됩니다.
-
-비교가 필요하면 아래 명령을 사용할 수 있습니다.
-
-```bash
-git fetch origin
-git diff implementation..answer
-```
+이번 시퀀스에서는 Validation, Exception Handling, Security, 연관관계 매핑을 넣지 않습니다.
