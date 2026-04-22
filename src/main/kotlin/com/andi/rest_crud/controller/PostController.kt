@@ -41,7 +41,7 @@ class PostController(
     // TODO(A&I) 2. Controller에서 DB 저장 로직을 직접 처리하지 마세요.
     @PutMapping("/{id}")
     fun update(@PathVariable id: Long, @RequestBody request: PostUpdateRequest): PostResponse {
-        TODO("postService.update(id, request)를 반환하세요.")
+        return postService.update(id, request)
     }
 
     // TODO(A&I) 1. DELETE /posts/{id}를 Service delete 흐름과 연결하세요.
@@ -49,6 +49,6 @@ class PostController(
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: Long) {
-        TODO("postService.delete(id)를 호출하세요.")
+        postService.delete(id)
     }
 }
