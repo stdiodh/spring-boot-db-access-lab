@@ -18,5 +18,11 @@ class User(
     var email: String,
 
     @Column(nullable = false)
-    var password: String
+    var password: String,
+
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'LOCAL'")
+    var authProvider: String = "LOCAL",
+
+    @Column
+    var providerId: String? = null
 )

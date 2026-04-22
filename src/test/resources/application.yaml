@@ -7,6 +7,16 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            scope:
+              - profile
+              - email
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -19,3 +29,6 @@ springdoc:
 jwt:
   secret: "change-this-secret-for-sequence-04-change-this-secret"
   expiration-ms: 3600000
+
+app:
+  frontend-url: "http://localhost:8080/auth-demo.html"
