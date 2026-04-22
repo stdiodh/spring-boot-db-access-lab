@@ -9,11 +9,10 @@ data class PostResponse(
     val author: String
 ) {
     companion object {
-        fun from(entity: PostEntity): PostResponse = PostResponse(
-            id = entity.id,
-            title = entity.title,
-            content = entity.content,
-            author = entity.author
-        )
+        // TODO 1. Entity를 그대로 응답으로 내보내지 마세요.
+        // TODO 2. Response DTO에 필요한 값만 담아 반환하세요.
+        fun from(entity: PostEntity): PostResponse {
+            TODO("PostEntity를 PostResponse로 변환하세요.")
+        }
     }
 }
