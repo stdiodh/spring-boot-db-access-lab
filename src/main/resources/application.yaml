@@ -1,6 +1,9 @@
 spring:
   application:
     name: spring-boot-db-access-lab
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     url: jdbc:h2:file:./data/postdb;MODE=MySQL;AUTO_SERVER=TRUE
     username: sa
@@ -24,3 +27,7 @@ springdoc:
     path: /swagger
     operations-sorter: method
   default-produces-media-type: application/json
+
+jwt:
+  secret: "change-this-secret-for-sequence-04-change-this-secret"
+  expiration-ms: 3600000

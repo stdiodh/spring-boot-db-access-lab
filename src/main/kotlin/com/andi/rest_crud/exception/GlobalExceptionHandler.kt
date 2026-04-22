@@ -30,4 +30,22 @@ class GlobalExceptionHandler {
             message = exception.message ?: "게시글을 찾을 수 없습니다."
         )
     }
+
+    @ExceptionHandler(UserAlreadyExistsException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun handleUserAlreadyExistsException(exception: UserAlreadyExistsException): ErrorResponse {
+        return ErrorResponse(
+            code = "USER_ALREADY_EXISTS",
+            message = exception.message ?: "이미 가입된 사용자입니다."
+        )
+    }
+
+    @ExceptionHandler(InvalidCredentialsException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun handleInvalidCredentialsException(exception: InvalidCredentialsException): ErrorResponse {
+        return ErrorResponse(
+            code = "INVALID_CREDENTIALS",
+            message = exception.message ?: "인증에 실패했습니다."
+        )
+    }
 }
