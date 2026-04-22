@@ -48,4 +48,5 @@ class GlobalExceptionHandler {
             message = exception.message ?: "인증에 실패했습니다."
         )
     }
+
 }

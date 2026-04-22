@@ -5,10 +5,10 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
-    url: jdbc:h2:file:./data/postdb;MODE=MySQL;AUTO_SERVER=TRUE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/aandi_lab?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,10 +17,16 @@ spring:
         format_sql: true
     defer-datasource-initialization: true
     open-in-view: false
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:demo-google-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:demo-google-client-secret}
+            scope:
+              - profile
+              - email
 
 springdoc:
   swagger-ui:
@@ -31,3 +37,6 @@ springdoc:
 jwt:
   secret: "change-this-secret-for-sequence-04-change-this-secret"
   expiration-ms: 3600000
+
+app:
+  frontend-url: "http://localhost:8080/auth-demo.html"
