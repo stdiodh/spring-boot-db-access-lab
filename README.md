@@ -1,110 +1,75 @@
-# Spring Boot Authentication And JWT Lab
+# Spring Boot DB Access Lab
 
-> 회원가입, 로그인, JWT 발급, 보호된 API 접근까지 가장 작은 인증 흐름으로 익히는 실습 레포입니다.
+이 레포는 A&I 백엔드 커리큘럼 중
+`02. 영속성 저장과 계층 분리`, `03. 안전한 요청 처리`, `04. 인증과 JWT`
+시퀀스를 담는 토픽 레포입니다.
 
-## 이 시퀀스에서 무엇을 배우나요
+`main` 브랜치는 학생이 바로 실습하는 브랜치가 아니라,
+이 레포가 어떤 주제를 담고 있고 어떤 브랜치에서 수업을 진행해야 하는지 안내하는 대표 브랜치입니다.
 
-이번 실습은 `03-answer`의 안전한 요청 처리 위에
-인증과 JWT 최소 흐름을 올리는 단계입니다.
+## 이 레포가 다루는 내용
 
-이번 레포에서는 아래 흐름에 집중합니다.
+- `02`: MySQL 기반 CRUD와 계층 분리
+- `03`: DTO 분리, Validation, 전역 예외 처리
+- `04`: 회원가입, 로그인, JWT, 보호된 API
 
-1. 회원가입 요청을 받아 사용자를 저장합니다.
-2. 비밀번호를 원문 그대로 저장하지 않고 `PasswordEncoder`로 인코딩합니다.
-3. 로그인 시 email과 password를 확인합니다.
-4. 로그인 성공 후 JWT를 발급합니다.
-5. `/auth/me`는 토큰이 있어야 접근되도록 보호합니다.
+즉 이 레포는 "DB 저장 -> 안전한 요청 처리 -> 인증과 JWT"로 이어지는
+초중반 백엔드 성장 흐름을 한 도메인 안에서 이어서 다룹니다.
 
 ## 브랜치 사용 방법
 
-- `main`: 이 레포의 주제, 문서, 브랜치 구조를 안내하는 대표 브랜치
-- `04-implementation`: 학생 실습용 starter 브랜치
-- `04-answer`: 비교용 정답 브랜치
+- `main`: 레포 소개와 브랜치 안내
+- `02-implementation`, `02-answer`
+- `03-implementation`, `03-answer`
+- `04-implementation`, `04-answer`
 
-학생은 반드시 `04-implementation`에서 시작합니다.
+학생은 항상 `NN-implementation`에서 시작하고,
+강사는 `NN-answer`에서 비교합니다.
+
+예:
 
 ```bash
 git clone -b 04-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
 cd spring-boot-db-access-lab
-git checkout -b feat/<이름>
-```
-
-정답 비교가 필요할 때는 아래 흐름을 사용합니다.
-
-```bash
-git fetch origin
-git diff origin/04-implementation..origin/04-answer
 ```
 
 ## 문서 안내
 
-- [이론 문서](./docs/theory.md)
-- [구현 안내](./docs/implementation.md)
-- [정답 가이드](./docs/answer-guide.md)
-- [체크리스트](./docs/checklist.md)
-- [제공 자료 안내](./docs/assets.md)
+- [레포 가이드](./docs/repo-guide.md)
+- [브랜치 가이드](./docs/branch-guide.md)
+- [시퀀스 맵](./docs/sequence-map.md)
 
-## 파일을 어떻게 보면 좋나요
+각 시퀀스의 실제 실습 문서는 해당 브랜치 안에서 확인합니다.
 
-실습은 아래 순서로 보는 것을 권장합니다.
+예:
+- `03-implementation`의 `docs/theory.md`, `docs/implementation.md`
+- `04-answer`의 `docs/answer-guide.md`
 
-1. `docs/theory.md`에서 왜 로그인 이후 요청을 구분해야 하는지 읽습니다.
-2. `docs/implementation.md`에서 오늘 손으로 칠 순서를 확인합니다.
-3. 아래 핵심 파일을 순서대로 엽니다.
+## 실행 기준
 
-- `src/main/kotlin/com/andi/rest_crud/dto/UserSignUpRequest.kt`
-- `src/main/kotlin/com/andi/rest_crud/dto/LoginRequest.kt`
-- `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/SecurityConfig.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/AuthController.kt`
+- 앱 런타임 DB: MySQL
+- 테스트 DB: H2 in-memory
+- Swagger UI 기본 경로: `http://localhost:8080/swagger`
 
-`04-implementation`에서는 TODO를 채우며 실습하고,
-완료 후에는 `04-answer`나 `docs/answer-guide.md`로 비교하면 됩니다.
+MySQL이 필요할 때는 각 시퀀스 브랜치의 `compose.yaml`을 사용합니다.
 
-## 미리 제공되는 것
+## 현재 정리 상태
 
-- Kotlin + Spring Boot + Spring Security + JWT 기본 설정
-- MySQL 실행 설정과 테스트용 H2 설정
-- Swagger UI 진입 설정
-- `User`, `UserRepository`, `TokenResponse`, `CurrentUserResponse`
-- `PasswordEncoder` Bean, JWT 필터 뼈대, 인증 실패 응답 기본 처리
+| Sequence | Starter | Answer | Status |
+| --- | --- | --- | --- |
+| 02 | `02-implementation` | `02-answer` | Ready |
+| 03 | `03-implementation` | `03-answer` | Ready |
+| 04 | `04-implementation` | `04-answer` | Ready |
 
-학생은 회원가입, 로그인, 토큰 발급, 보호된 API 흐름의 핵심만 직접 구현합니다.
+## 이 레포를 어떻게 보면 좋나요
 
-## 실행 방법
+1. 먼저 `main`에서 이 README와 `docs/branch-guide.md`를 읽습니다.
+2. 진행할 시퀀스의 `NN-implementation` 브랜치로 이동합니다.
+3. 그 브랜치의 `README.md`, `docs/theory.md`, `docs/implementation.md` 순서로 봅니다.
+4. 실습 후 `NN-answer` 브랜치와 비교합니다.
 
-먼저 MySQL을 준비합니다.
+## 운영 메모
 
-```bash
-docker compose up -d
-```
-
-애플리케이션 실행:
-
-```bash
-./gradlew bootRun
-```
-
-Swagger UI:
-
-```text
-http://localhost:8080/swagger
-```
-
-테스트 실행:
-
-```bash
-./gradlew test
-```
-
-## 이번 실습에서 직접 구현할 범위
-
-- 회원가입 요청 DTO 검증
-- 로그인 요청 DTO 검증
-- `AuthService`의 회원가입 / 로그인 / 현재 사용자 조회 흐름
-- `JwtTokenProvider`의 토큰 발급 / 사용자 식별 / 검증 메서드
-- `SecurityConfig`에서 보호할 API 지정과 JWT 필터 연결
-- `/auth/signup`, `/auth/login`, `/auth/me` 흐름 확인
-
-이번 시퀀스에서는 OAuth2, Email Verification, refresh token, 권한(Role) 확장, 복잡한 인가 정책은 넣지 않습니다.
+- 서로 다른 주제가 되면 같은 레포에서 선택형으로 섞지 않고 별도 레포로 분리합니다.
+- 이 레포의 `main` 브랜치는 실습 완료본이 아니라 안내 브랜치입니다.
+- 시퀀스별 문서는 각 브랜치 안에서 계속 바뀌어야 하며, 이전 시퀀스 문서를 그대로 재사용하면 안 됩니다.
