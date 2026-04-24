@@ -27,7 +27,7 @@ springdoc:
     enabled: false
 
 jwt:
-  secret: "change-this-secret-for-sequence-04-change-this-secret"
+  secret: "change-this-secret-for-sequence-05-change-this-secret"
   expiration-ms: 3600000
 
 app:
