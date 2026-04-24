@@ -14,6 +14,7 @@
 | 02 | `02-implementation` | `02-answer` | MySQL CRUD, Entity, Repository, Service | Ready |
 | 03 | `03-implementation` | `03-answer` | DTO, Validation, ErrorResponse, ExceptionHandler | Ready |
 | 04 | `04-implementation` | `04-answer` | 회원가입, 로그인, JWT, `/auth/me` 보호 | Ready |
+| 05 | `05-implementation` | `05-answer` | Google OAuth2 로그인, 사용자 연결, redirect 응답 | Ready |
 
 ## 학생용 이동 규칙
 

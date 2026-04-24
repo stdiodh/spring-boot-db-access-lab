@@ -1,7 +1,7 @@
 # Spring Boot DB Access Lab
 
 이 레포는 A&I 백엔드 커리큘럼 중
-`02. 영속성 저장과 계층 분리`, `03. 안전한 요청 처리`, `04. 인증과 JWT`
+`02. 영속성 저장과 계층 분리`, `03. 안전한 요청 처리`, `04. 인증과 JWT`, `05. Google OAuth2 로그인`
 시퀀스를 담는 토픽 레포입니다.
 
 `main` 브랜치는 학생이 바로 실습하는 브랜치가 아니라,
@@ -12,8 +12,9 @@
 - `02`: MySQL 기반 CRUD와 계층 분리
 - `03`: DTO 분리, Validation, 전역 예외 처리
 - `04`: 회원가입, 로그인, JWT, 보호된 API
+- `05`: Google OAuth2 로그인, 사용자 연결, redirect 응답 정리
 
-즉 이 레포는 "DB 저장 -> 안전한 요청 처리 -> 인증과 JWT"로 이어지는
+즉 이 레포는 "DB 저장 -> 안전한 요청 처리 -> 인증과 JWT -> Google OAuth2 로그인"으로 이어지는
 초중반 백엔드 성장 흐름을 한 도메인 안에서 이어서 다룹니다.
 
 ## 브랜치 사용 방법
@@ -22,6 +23,7 @@
 - `02-implementation`, `02-answer`
 - `03-implementation`, `03-answer`
 - `04-implementation`, `04-answer`
+- `05-implementation`, `05-answer`
 
 학생은 항상 `NN-implementation`에서 시작하고,
 강사는 `NN-answer`에서 비교합니다.
@@ -29,7 +31,7 @@
 예:
 
 ```bash
-git clone -b 04-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
+git clone -b 05-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
 cd spring-boot-db-access-lab
 ```
 
@@ -44,6 +46,7 @@ cd spring-boot-db-access-lab
 예:
 - `03-implementation`의 `docs/theory.md`, `docs/implementation.md`
 - `04-answer`의 `docs/answer-guide.md`
+- `05-implementation`의 `docs/implementation.md`
 
 ## 실행 기준
 
@@ -60,6 +63,7 @@ MySQL이 필요할 때는 각 시퀀스 브랜치의 `compose.yaml`을 사용합
 | 02 | `02-implementation` | `02-answer` | Ready |
 | 03 | `03-implementation` | `03-answer` | Ready |
 | 04 | `04-implementation` | `04-answer` | Ready |
+| 05 | `05-implementation` | `05-answer` | Ready |
 
 ## 이 레포를 어떻게 보면 좋나요
 
