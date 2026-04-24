@@ -9,6 +9,17 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:demo@example.com}
+    password: ${MAIL_PASSWORD:demo-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   jpa:
     hibernate:
       ddl-auto: update
@@ -40,3 +51,4 @@ jwt:
 
 app:
   frontend-url: "http://localhost:8080/auth-demo.html"
+  password-reset-url: "http://localhost:8080/auth-demo.html"
