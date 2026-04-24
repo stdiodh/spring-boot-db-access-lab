@@ -1,159 +1,169 @@
-# 영속성 저장과 계층 분리 정답 가이드
+# 안전한 요청 처리 정답 가이드
 
 ## 빠른 흐름 정리
 
-1. `PostController`가 요청을 받습니다.
-2. `PostService`가 DTO를 `PostEntity`로 바꿉니다.
-3. `PostRepository`가 DB에 저장하거나 조회합니다.
-4. `PostResponse`로 다시 감싸 응답합니다.
+1. 요청 DTO에 `@NotBlank`를 붙입니다.
+2. Controller의 `@Valid`가 검증을 실행합니다.
+3. Service는 없는 게시글을 `PostNotFoundException`으로 분리합니다.
+4. `GlobalExceptionHandler`가 실패를 `ErrorResponse`로 통일합니다.
 
 ## 각 파일의 최종 형태 설명
 
-### `PostEntity.kt`
+### `PostCreateRequest.kt`, `PostUpdateRequest.kt`
 
-- `@Entity`, `@Table(name = "posts")`
-- `@Id`, `@GeneratedValue(strategy = GenerationType.IDENTITY)`
-- `id`, `title`, `content`, `author`
+- `title`, `content`, `author`에 `@field:NotBlank`
+- 메시지는 학생이 바로 읽고 이해할 수 있는 수준으로 유지
 
-### `PostRepository.kt`
+### `PostResponse.kt`
 
-- `JpaRepository<PostEntity, Long>` 상속
-- 구현 클래스 없이 기본 CRUD 메서드 사용
+- `from(entity)`에서 `id`, `title`, `content`, `author`를 꺼내 응답 DTO 생성
 
 ### `PostService.kt`
 
-- `create`: DTO -> Entity -> `save` -> Response
-- `getAll`: `findAll` -> Response list
-- `getById`: `findById` -> Response
-- `update`: 조회 -> 값 변경 -> `save`
-- `delete`: `deleteById`
+- `findPostById(...)`가 `PostNotFoundException(id)`를 던지도록 변경
+- 나머지 CRUD 흐름은 `02` 구조를 유지
 
-### `PostController.kt`
+### `ErrorResponse.kt`
 
-- `POST /posts`
-- `GET /posts`
-- `GET /posts/{id}`
-- `PUT /posts/{id}`
-- `DELETE /posts/{id}`
+- `code`, `message`, `errors` 세 필드 유지
+- `errors`는 기본값 `emptyMap()`
 
-## Entity 핵심 정답 코드
+### `GlobalExceptionHandler.kt`
+
+- `MethodArgumentNotValidException` -> `VALIDATION_ERROR`
+- `PostNotFoundException` -> `POST_NOT_FOUND`
+
+## 요청 DTO 검증 정답 코드
 
 ```kotlin
-@Entity
-@Table(name = "posts")
-class PostEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0L,
-    var title: String,
-    var content: String,
-    var author: String
+data class PostCreateRequest(
+    @field:NotBlank(message = "title은 비어 있을 수 없습니다.")
+    val title: String,
+    @field:NotBlank(message = "content는 비어 있을 수 없습니다.")
+    val content: String,
+    @field:NotBlank(message = "author는 비어 있을 수 없습니다.")
+    val author: String
 )
 ```
 
-## Repository 선언 정답 코드
+수정 요청 DTO도 같은 기준으로 작성합니다.
+
+## 응답 DTO 변환 정답 코드
 
 ```kotlin
-interface PostRepository : JpaRepository<PostEntity, Long>
-```
-
-## Service 정답 흐름
-
-### create
-
-```kotlin
-fun create(request: PostCreateRequest): PostResponse {
-    val entity = PostEntity(
-        title = request.title,
-        content = request.content,
-        author = request.author
+companion object {
+    fun from(entity: PostEntity): PostResponse = PostResponse(
+        id = entity.id,
+        title = entity.title,
+        content = entity.content,
+        author = entity.author
     )
-    val saved = postRepository.save(entity)
-    return PostResponse.from(saved)
 }
 ```
 
-### findAll
+## 비즈니스 예외 정답 코드
 
 ```kotlin
-fun getAll(): List<PostResponse> {
-    return postRepository.findAll()
-        .map(PostResponse::from)
+private fun findPostById(id: Long): PostEntity {
+    return postRepository.findById(id)
+        .orElseThrow { PostNotFoundException(id) }
 }
 ```
 
-### findById
+핵심은 `NoSuchElementException` 같은 일반 예외 대신
+서비스 의미가 드러나는 예외를 쓰는 것입니다.
+
+## 검증 실패 응답 정답 코드
 
 ```kotlin
-fun getById(id: Long): PostResponse {
-    val entity = postRepository.findById(id)
-        .orElseThrow { NoSuchElementException("ID $id 에 해당하는 글이 없습니다.") }
-    return PostResponse.from(entity)
+@ExceptionHandler(MethodArgumentNotValidException::class)
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+fun handleValidationException(exception: MethodArgumentNotValidException): ErrorResponse {
+    val errors = exception.bindingResult.fieldErrors
+        .associate { fieldError ->
+            fieldError.field to (fieldError.defaultMessage ?: "잘못된 요청입니다.")
+        }
+
+    return ErrorResponse(
+        code = "VALIDATION_ERROR",
+        message = "입력값 검증에 실패했습니다.",
+        errors = errors
+    )
 }
 ```
 
-### update
+## 게시글 없음 응답 정답 코드
 
 ```kotlin
-fun update(id: Long, request: PostUpdateRequest): PostResponse {
-    val entity = postRepository.findById(id)
-        .orElseThrow { NoSuchElementException("ID $id 에 해당하는 글이 없습니다.") }
-    entity.title = request.title
-    entity.content = request.content
-    entity.author = request.author
-    val saved = postRepository.save(entity)
-    return PostResponse.from(saved)
+@ExceptionHandler(PostNotFoundException::class)
+@ResponseStatus(HttpStatus.NOT_FOUND)
+fun handlePostNotFoundException(exception: PostNotFoundException): ErrorResponse {
+    return ErrorResponse(
+        code = "POST_NOT_FOUND",
+        message = exception.message ?: "게시글을 찾을 수 없습니다."
+    )
 }
 ```
 
-### delete
+## 실행 확인 예시
 
-```kotlin
-fun delete(id: Long) {
-    postRepository.deleteById(id)
+### 1. 정상 생성 요청
+
+```json
+{
+  "title": "A&I",
+  "content": "03 sequence",
+  "author": "dh"
 }
 ```
 
-## Controller 수정 / 삭제 API 정답 코드
+- 결과: `201 Created`
 
-```kotlin
-@PutMapping("/{id}")
-fun update(@PathVariable id: Long, @RequestBody request: PostUpdateRequest): PostResponse {
-    return postService.update(id, request)
-}
+### 2. 검증 실패 요청
 
-@DeleteMapping("/{id}")
-@ResponseStatus(HttpStatus.NO_CONTENT)
-fun delete(@PathVariable id: Long) {
-    postService.delete(id)
+```json
+{
+  "title": "",
+  "content": "03 sequence",
+  "author": "dh"
 }
 ```
 
-## DB 저장 결과 확인 예시
+- 결과: `400 Bad Request`
+- 예시 응답:
 
-1. `POST /posts`로 글을 생성합니다.
-2. `GET /posts`로 목록을 확인합니다.
-3. `http://localhost:8080/h2-console`에서 `select * from posts;`를 실행합니다.
-4. 앱 재시작 후 다시 조회해도 데이터가 남는지 확인합니다.
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "입력값 검증에 실패했습니다.",
+  "errors": {
+    "title": "title은 비어 있을 수 없습니다."
+  }
+}
+```
+
+### 3. 없는 게시글 조회 요청
+
+- `GET /posts/9999`
+- 결과: `404 Not Found`
+
+```json
+{
+  "code": "POST_NOT_FOUND",
+  "message": "id=9999 에 해당하는 게시글이 없습니다.",
+  "errors": {}
+}
+```
 
 ## 학생이 자주 틀리는 포인트
 
-- Entity와 Response DTO를 같은 역할로 생각하는 경우
-- Controller에서 Repository를 직접 호출하려는 경우
-- 수정 로직에서 조회 없이 새 Entity를 만들어 덮어쓰려는 경우
-- 메모리 저장 때처럼 id를 직접 만들려고 하는 경우
+- DTO에 검증을 붙이지 않고 Service에서 뒤늦게 확인하는 경우
+- `PostResponse.from(...)` 대신 Entity를 그대로 반환하는 경우
+- 검증 실패와 비즈니스 예외를 같은 코드로 내려주는 경우
+- `errors` 맵을 만들지 않고 검증 실패 이유를 잃어버리는 경우
 
-## 왜 Repository가 필요한가
+## 왜 지금 이 흐름이 중요한가
 
-Repository가 생기면 Service는 DB 세부 접근보다 처리 흐름에 집중할 수 있습니다.
-즉, "어떻게 저장하느냐"보다 "무엇을 처리하느냐"가 더 잘 보이게 됩니다.
-
-## 왜 계층 분리가 읽기 쉬운 구조를 만드는가
-
-Controller는 입구, Service는 흐름, Repository는 DB 접근으로 역할이 나뉘면 파일을 읽을 때도 시선이 덜 섞입니다.
-학생 입장에서는 어디서 요청을 받고, 어디서 저장하고, 어디서 DB와 연결되는지 더 빨리 찾을 수 있습니다.
-
-## 다음 시퀀스 연결
-
-다음 시퀀스에서는 지금 만든 CRUD 흐름에 DTO, Validation, Exception Handling이 붙습니다.
-즉, 저장 흐름이 잡힌 뒤에야 "잘못된 입력을 어떻게 막을까"를 자연스럽게 다룰 수 있습니다.
+이번 시퀀스는 단순히 어노테이션을 붙이는 연습이 아닙니다.
+"요청을 어디까지 믿을 수 있는가"와 "실패도 응답 계약인가"를 함께 익히는 단계입니다.
+이 감각이 있어야 다음 인증/JWT 시퀀스에서도 회원가입, 로그인, 인증 실패를 더 자연스럽게 다룰 수 있습니다.
