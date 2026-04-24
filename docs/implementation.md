@@ -1,150 +1,142 @@
-# 영속성 저장과 계층 분리 구현 안내
+# 안전한 요청 처리 구현 안내
 
-## 오늘 학생이 완성할 최종 흐름
+## 이 도메인이 필요한 이유
+
+`02`까지의 CRUD는 동작하지만,
+아직은 잘못된 입력과 실패 응답을 체계적으로 다루지 못합니다.
+이번 시퀀스에서는 같은 CRUD를 더 안전하게 만드는 쪽에 집중합니다.
+
+## 학생이 완성할 최종 흐름
 
 오늘 실습이 끝나면 학생은 아래 흐름을 직접 보여줄 수 있어야 합니다.
 
-1. `PostEntity`를 만들어 테이블과 연결합니다.
-2. `PostRepository`를 선언해 DB 접근을 맡깁니다.
-3. `PostService`가 메모리 저장 대신 Repository를 사용하게 만듭니다.
-4. `POST`, `GET`, `PUT`, `DELETE` 흐름을 DB 기반 CRUD로 연결합니다.
-5. Swagger와 H2 console에서 저장 결과를 확인합니다.
+1. 요청 DTO와 응답 DTO를 분리합니다.
+2. `@Valid`와 `@NotBlank`로 잘못된 입력을 초입에서 막습니다.
+3. 없는 게시글은 `PostNotFoundException`으로 구분합니다.
+4. `GlobalExceptionHandler`가 실패를 `ErrorResponse`로 통일합니다.
+5. 정상 요청과 실패 요청을 Swagger에서 직접 비교합니다.
 
 ## 학생이 직접 구현할 순서
 
-1. `Entity` 핵심 필드와 어노테이션 작성
-2. `Repository 인터페이스` 선언
-3. `Service` 저장 흐름을 메모리 저장에서 DB 저장으로 변경
-4. `findAll()` 연결
-5. `findById()` 연결
-6. `deleteById()` 연결
-7. `update()` 핵심 로직 작성
-8. Controller에서 수정 / 삭제 API 연결
-9. DB 저장 결과 확인
+1. `PostCreateRequest`, `PostUpdateRequest`에 기본 검증을 붙입니다.
+2. `PostResponse`에서 Entity -> Response DTO 변환을 완성합니다.
+3. `PostService`에서 없는 게시글 조회를 비즈니스 예외로 바꿉니다.
+4. `ErrorResponse` 구조를 확인합니다.
+5. `GlobalExceptionHandler`에서 검증 실패 응답을 만듭니다.
+6. `GlobalExceptionHandler`에서 게시글 조회 실패 응답을 만듭니다.
+7. Swagger에서 성공 / 검증 실패 / 게시글 없음 요청을 각각 확인합니다.
 
 ## TODO를 넣을 파일
 
-- `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
-- `src/main/kotlin/com/andi/rest_crud/repository/PostRepository.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/PostUpdateRequest.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/PostResponse.kt`
 - `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/PostController.kt`
+- `src/main/kotlin/com/andi/rest_crud/exception/ErrorResponse.kt`
+- `src/main/kotlin/com/andi/rest_crud/exception/GlobalExceptionHandler.kt`
+
+## 미리 제공할 것
+
+- `02-answer` 기반 CRUD 구조
+- MySQL 실행 설정과 테스트용 H2 설정
+- Swagger UI 진입 설정
+- `PostController`의 `@Valid` 연결
+- `PostNotFoundException` 기본 틀
+- `ErrorResponse` 기본 틀
+- 실행 가능한 starter 환경
 
 ## 파일별 역할 설명
 
-- `PostEntity.kt`: DB 테이블과 연결되는 핵심 데이터 구조
-- `PostRepository.kt`: DB 접근을 맡는 기본 JPA Repository
-- `PostService.kt`: Entity 생성, 조회, 수정, 삭제 흐름을 조립하는 곳
-- `PostController.kt`: 요청을 받아 Service에 전달하고 응답을 돌려주는 입구
-- `PostCreateRequest.kt`: 글 생성 요청 값
-- `PostUpdateRequest.kt`: 글 수정 요청 값
-- `PostResponse.kt`: 바깥으로 내보낼 응답 모양
+- `PostCreateRequest.kt`: 글 생성 요청의 입력 검증 기준
+- `PostUpdateRequest.kt`: 글 수정 요청의 입력 검증 기준
+- `PostResponse.kt`: 바깥으로 내려줄 응답 DTO
+- `PostService.kt`: DTO -> Entity 흐름과 비즈니스 예외 분기
+- `ErrorResponse.kt`: 실패 응답의 공통 모양
+- `GlobalExceptionHandler.kt`: 검증 실패 / 비즈니스 예외를 응답으로 정리하는 곳
 
 ## 단계별 구현 안내
 
-### Step 1. Entity 만들기
+### Step 1. 요청 DTO에 검증 붙이기
 
-- `PostEntity.kt`를 엽니다.
-- `@Entity`, `@Table`, `@Id`, `@GeneratedValue`를 연결합니다.
-- title, content, author 핵심 필드를 확인합니다.
+- `PostCreateRequest.kt`를 엽니다.
+- `title`, `content`, `author`에 `@NotBlank`를 붙입니다.
+- 같은 기준을 `PostUpdateRequest.kt`에도 적용합니다.
 
-실습 힌트:
-- 이번 실습에서는 단일 테이블 기준으로 단순하게 갑니다.
-- 연관관계나 복잡한 매핑은 넣지 않습니다.
+확인 포인트:
+- 빈 문자열 요청이 Service까지 들어가기 전에 막힐 준비가 되었는가
 
-### Step 2. Repository 선언하기
+### Step 2. 응답 DTO 변환 완성하기
 
-- `PostRepository.kt`를 엽니다.
-- `JpaRepository<PostEntity, Long>`를 상속하도록 연결합니다.
+- `PostResponse.kt`를 엽니다.
+- `from(entity)`에서 필요한 필드만 꺼내 응답 DTO를 만듭니다.
 
-실습 힌트:
-- 구현 클래스를 직접 만들지 않아도 기본 CRUD 메서드를 바로 쓸 수 있습니다.
+확인 포인트:
+- Entity를 그대로 반환하지 않고 `PostResponse`로 감싸는가
 
-### Step 3. Service 저장 흐름 바꾸기
+### Step 3. 비즈니스 예외 연결하기
 
-- `create()`에서 요청 DTO를 `PostEntity`로 만듭니다.
-- `postRepository.save(...)`를 호출합니다.
-- 저장 결과를 `PostResponse`로 바꿉니다.
+- `PostService.kt`를 엽니다.
+- `findPostById(...)`가 `NoSuchElementException` 대신 `PostNotFoundException`을 던지게 바꿉니다.
 
-실습 힌트:
-- 이제 id를 직접 증가시키지 않습니다.
-- DB가 생성한 id를 저장 결과에서 받아옵니다.
+확인 포인트:
+- 없는 게시글 상황을 서비스 의미가 있는 예외로 설명할 수 있는가
 
-### Step 4. 전체 조회 연결하기
+### Step 4. 실패 응답 구조 보기
 
-- `findAll()`로 전체 목록을 가져옵니다.
-- `PostResponse` 리스트로 바꿉니다.
+- `ErrorResponse.kt`를 엽니다.
+- `code`, `message`, `errors` 세 칸이 어떤 역할인지 먼저 읽습니다.
 
-실습 힌트:
-- Entity를 그대로 응답하지 말고 응답 DTO로 변환하세요.
+확인 포인트:
+- 검증 실패와 게시글 없음 실패를 같은 틀로 담을 수 있는가
 
-### Step 5. 단건 조회 연결하기
+### Step 5. 검증 실패 응답 만들기
 
-- `findById(id)`로 하나를 찾습니다.
-- `PostResponse`로 바꿔 반환합니다.
+- `GlobalExceptionHandler.kt`를 엽니다.
+- `MethodArgumentNotValidException`에서 `fieldErrors`를 읽습니다.
+- `VALIDATION_ERROR` 코드와 `errors` 맵을 담아 반환합니다.
 
-실습 힌트:
-- 이번 시퀀스는 예외 처리를 깊게 다루지 않으므로, 먼저 정상 흐름이 분명하게 보이게 만드는 데 집중하세요.
+확인 포인트:
+- 어떤 필드가 왜 실패했는지 응답에서 바로 보이는가
 
-### Step 6. 삭제 연결하기
+### Step 6. 게시글 없음 응답 만들기
 
-- `deleteById(id)` 또는 조회 후 삭제 흐름을 만듭니다.
+- `GlobalExceptionHandler.kt`에서 `PostNotFoundException` 핸들러를 완성합니다.
+- `POST_NOT_FOUND` 코드와 메시지를 담아 반환합니다.
 
-실습 힌트:
-- 삭제 후 다시 전체 조회했을 때 목록에서 빠지는지 확인하면 됩니다.
+확인 포인트:
+- 검증 실패와 다른 응답 코드로 내려가는가
 
-### Step 7. 수정 로직 만들기
+### Step 7. Swagger로 결과 확인하기
 
-- id로 기존 Entity를 조회합니다.
-- title, content, author 값을 바꿉니다.
-- 저장 후 응답 DTO로 돌려줍니다.
-
-실습 힌트:
-- 수정도 결국 조회 -> 값 변경 -> 저장 흐름이라는 점을 먼저 보세요.
-
-### Step 8. Controller 수정/삭제 API 연결
-
-- `PUT /posts/{id}`
-- `DELETE /posts/{id}`
-
-실습 힌트:
-- Controller에서 Repository를 직접 부르지 말고 Service를 통해 흐름을 유지하세요.
-
-### Step 9. DB 저장 결과 확인
-
+- `docker compose up -d`로 MySQL을 실행합니다.
 - `./gradlew bootRun`으로 앱을 실행합니다.
-- `http://localhost:8080/swagger`에서 API를 호출합니다.
-- `http://localhost:8080/h2-console`에서 `posts` 테이블을 확인합니다.
+- Swagger에서 아래 세 요청을 비교합니다.
 
-실습 힌트:
-- 서버를 껐다 켠 뒤에도 데이터가 남는지 보면 메모리 저장과 차이가 더 선명해집니다.
+1. 정상 생성 요청
+2. 빈 제목 생성 요청
+3. 존재하지 않는 게시글 조회 요청
 
-## 각 단계의 확인 포인트
+확인 포인트:
+- 성공 응답과 실패 응답의 모양 차이를 설명할 수 있는가
 
-- Step 1: Entity가 테이블과 연결되는 어노테이션이 보이는가
-- Step 2: Repository가 기본 CRUD 메서드를 사용할 수 있는 구조인가
-- Step 3: create가 `save(...)`를 호출하는가
-- Step 4: 전체 조회가 DB 값을 기준으로 동작하는가
-- Step 5: 단건 조회가 id 기준으로 연결되는가
-- Step 6: 삭제 후 목록에서 데이터가 빠지는가
-- Step 7: 수정 후 다시 조회했을 때 값이 바뀌는가
-- Step 8: 수정 / 삭제 API가 Controller에 연결되어 있는가
-- Step 9: Swagger와 H2 console에서 결과를 눈으로 확인했는가
+## 학생 체크리스트
 
-## 학생 체크 질문
+- [ ] `PostCreateRequest`, `PostUpdateRequest`에 기본 검증을 붙일 수 있습니다.
+- [ ] `PostResponse.from(...)`가 왜 필요한지 설명할 수 있습니다.
+- [ ] 없는 게시글 조회를 `PostNotFoundException`으로 분리할 수 있습니다.
+- [ ] 검증 실패 응답과 게시글 없음 응답을 Swagger에서 직접 확인할 수 있습니다.
+- [ ] 실패 응답을 왜 통일하는지 설명할 수 있습니다.
 
-- 왜 메모리 저장 대신 DB 저장이 필요한가요?
-- `PostEntity`와 `PostResponse`는 무엇이 다른가요?
-- Repository가 생기면 Service는 어떤 점이 더 읽기 쉬워지나요?
-- 수정 흐름은 어떤 순서로 동작하나요?
+## 강사 / PPT 체크리스트
 
-## 강사용 확인 포인트
+- [ ] 요청 DTO -> Validation -> Service -> ExceptionHandler 흐름 그림이 있는가
+- [ ] 빈 값 요청과 없는 게시글 요청을 각각 시연할 수 있는가
+- [ ] `@Valid`, `@NotBlank`, `ErrorResponse` 역할을 코드와 함께 설명할 수 있는가
+- [ ] 검증 실패와 비즈니스 예외 차이를 학생이 말로 설명하게 만들 수 있는가
+- [ ] 다음 시퀀스의 인증/JWT에서도 같은 입력 안전성 감각이 이어진다는 점을 연결할 수 있는가
 
-- 학생이 Entity와 DTO 역할을 구분해서 설명하는지 확인합니다.
-- 학생이 Service에서 Repository를 호출하는 이유를 말할 수 있는지 확인합니다.
-- 학생이 DB 저장 결과를 Swagger와 H2 console에서 함께 확인했는지 확인합니다.
-- 학생이 수정과 삭제도 같은 계층 흐름으로 설명할 수 있는지 확인합니다.
+## 다음 도메인 연결 포인트
 
-## 다음 시퀀스 연결 포인트
-
-다음 시퀀스에서는 지금 만든 CRUD 흐름에 입력값 검증과 실패 응답 처리가 붙습니다.
-이번 시퀀스에서 계층 분리와 DB 저장 흐름이 선명해야, 다음에는 DTO와 Validation이 왜 필요한지 자연스럽게 이어집니다.
+다음 시퀀스에서는 사용자 인증과 JWT를 다룹니다.
+이번에 입력 검증과 실패 응답 감각이 잡혀 있어야,
+회원가입과 로그인처럼 더 민감한 요청도 같은 기준으로 설계할 수 있습니다.
