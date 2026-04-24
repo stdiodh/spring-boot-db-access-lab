@@ -1,159 +1,188 @@
-# 영속성 저장과 계층 분리 정답 가이드
+# 인증과 JWT 정답 가이드
 
-## 빠른 흐름 정리
+## 정답을 보기 전에 먼저 확인할 것
 
-1. `PostController`가 요청을 받습니다.
-2. `PostService`가 DTO를 `PostEntity`로 바꿉니다.
-3. `PostRepository`가 DB에 저장하거나 조회합니다.
-4. `PostResponse`로 다시 감싸 응답합니다.
+- `04-implementation`에서 직접 손으로 끝까지 작성했는지 먼저 확인합니다.
+- 정답은 복붙용이 아니라 흐름 비교용으로 사용합니다.
+- 이번 시퀀스의 핵심은 "회원가입 -> 로그인 -> JWT -> 보호된 API"가 한 흐름으로 이어지는지 보는 것입니다.
 
-## 각 파일의 최종 형태 설명
+## Step 1. `UserSignUpRequest` 정답 포인트
 
-### `PostEntity.kt`
-
-- `@Entity`, `@Table(name = "posts")`
-- `@Id`, `@GeneratedValue(strategy = GenerationType.IDENTITY)`
-- `id`, `title`, `content`, `author`
-
-### `PostRepository.kt`
-
-- `JpaRepository<PostEntity, Long>` 상속
-- 구현 클래스 없이 기본 CRUD 메서드 사용
-
-### `PostService.kt`
-
-- `create`: DTO -> Entity -> `save` -> Response
-- `getAll`: `findAll` -> Response list
-- `getById`: `findById` -> Response
-- `update`: 조회 -> 값 변경 -> `save`
-- `delete`: `deleteById`
-
-### `PostController.kt`
-
-- `POST /posts`
-- `GET /posts`
-- `GET /posts/{id}`
-- `PUT /posts/{id}`
-- `DELETE /posts/{id}`
-
-## Entity 핵심 정답 코드
+회원가입 DTO는 email, password만 받고 기본 검증을 붙이면 충분합니다.
 
 ```kotlin
-@Entity
-@Table(name = "posts")
-class PostEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0L,
-    var title: String,
-    var content: String,
-    var author: String
+data class UserSignUpRequest(
+    @field:Email(message = "email 형식이 올바르지 않습니다.")
+    @field:NotBlank(message = "email은 비어 있을 수 없습니다.")
+    val email: String,
+
+    @field:NotBlank(message = "password는 비어 있을 수 없습니다.")
+    val password: String
 )
 ```
 
-## Repository 선언 정답 코드
+확인 포인트:
+- email 형식 검증이 있는가
+- email, password 빈값 검증이 있는가
+- 요청 DTO에 id 같은 서버 관리 값이 없는가
+
+## Step 2. `LoginRequest` 정답 포인트
+
+로그인 DTO도 같은 방식으로 email, password만 유지합니다.
 
 ```kotlin
-interface PostRepository : JpaRepository<PostEntity, Long>
+data class LoginRequest(
+    @field:Email(message = "email 형식이 올바르지 않습니다.")
+    @field:NotBlank(message = "email은 비어 있을 수 없습니다.")
+    val email: String,
+
+    @field:NotBlank(message = "password는 비어 있을 수 없습니다.")
+    val password: String
+)
 ```
 
-## Service 정답 흐름
+핵심은 "로그인도 입력 검증을 초입에서 막는다"는 점입니다.
 
-### create
+## Step 3. `AuthService.signUp()` 정답 포인트
+
+회원가입의 핵심은 아래 세 줄입니다.
+
+1. 같은 email 존재 여부 확인
+2. 비밀번호 인코딩
+3. `User` 저장
 
 ```kotlin
-fun create(request: PostCreateRequest): PostResponse {
-    val entity = PostEntity(
-        title = request.title,
-        content = request.content,
-        author = request.author
+fun signUp(request: UserSignUpRequest) {
+    val email = request.email
+    val rawPassword = request.password
+
+    if (userRepository.existsByEmail(email)) {
+        throw UserAlreadyExistsException(email)
+    }
+
+    userRepository.save(
+        User(
+            email = email,
+            password = passwordEncoder.encode(rawPassword)
+        )
     )
-    val saved = postRepository.save(entity)
-    return PostResponse.from(saved)
 }
 ```
 
-### findAll
+확인 포인트:
+- `existsByEmail(...)`가 있는가
+- `encode(...)`를 거치는가
+- Controller가 아니라 Service에서 저장하는가
+
+## Step 4. `AuthService.login()` 정답 포인트
+
+로그인의 핵심은 아래 흐름입니다.
+
+1. email로 사용자 조회
+2. `matches(...)`로 비밀번호 비교
+3. JWT 발급
 
 ```kotlin
-fun getAll(): List<PostResponse> {
-    return postRepository.findAll()
-        .map(PostResponse::from)
+fun login(request: LoginRequest): TokenResponse {
+    val user = userRepository.findByEmail(request.email)
+        .orElseThrow { InvalidCredentialsException() }
+
+    if (!passwordEncoder.matches(request.password, user.password)) {
+        throw InvalidCredentialsException()
+    }
+
+    return TokenResponse(
+        accessToken = jwtTokenProvider.createToken(user.email)
+    )
 }
 ```
 
-### findById
+확인 포인트:
+- 조회 실패와 비밀번호 실패를 같은 예외로 정리했는가
+- 직접 문자열 비교가 아니라 `matches(...)`를 썼는가
+- 응답이 `TokenResponse`인가
+
+## Step 5. `JwtTokenProvider` 정답 포인트
+
+이번 시퀀스에서는 아래 세 메서드가 핵심입니다.
 
 ```kotlin
-fun getById(id: Long): PostResponse {
-    val entity = postRepository.findById(id)
-        .orElseThrow { NoSuchElementException("ID $id 에 해당하는 글이 없습니다.") }
-    return PostResponse.from(entity)
-}
+fun createToken(email: String): String
+fun getEmail(token: String): String
+fun validateToken(token: String): Boolean
 ```
 
-### update
+핵심은 subject에 email을 넣고,
+다음 요청에서 그 값을 다시 읽어오는 흐름입니다.
+
+예시:
 
 ```kotlin
-fun update(id: Long, request: PostUpdateRequest): PostResponse {
-    val entity = postRepository.findById(id)
-        .orElseThrow { NoSuchElementException("ID $id 에 해당하는 글이 없습니다.") }
-    entity.title = request.title
-    entity.content = request.content
-    entity.author = request.author
-    val saved = postRepository.save(entity)
-    return PostResponse.from(saved)
+fun createToken(email: String): String {
+    return Jwts.builder()
+        .subject(email)
+        .issuedAt(Date())
+        .expiration(Date(System.currentTimeMillis() + expirationMs))
+        .signWith(signingKey)
+        .compact()
 }
 ```
 
-### delete
+## Step 6. `SecurityConfig` 정답 포인트
+
+이번 시퀀스에서 설정의 핵심은 두 가지입니다.
+
+1. `/auth/signup`, `/auth/login`은 공개
+2. `/auth/me`는 보호
 
 ```kotlin
-fun delete(id: Long) {
-    postRepository.deleteById(id)
+.authorizeHttpRequests { auth ->
+    auth
+        .requestMatchers("/swagger/**", "/v3/api-docs/**", "/auth/signup", "/auth/login")
+        .permitAll()
+        .requestMatchers("/auth/me").authenticated()
+        .anyRequest().permitAll()
 }
+.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 ```
 
-## Controller 수정 / 삭제 API 정답 코드
+확인 포인트:
+- 보호된 API가 분명히 보이는가
+- JWT 필터가 Security 체인에 연결되어 있는가
+
+## Step 7. `AuthController` 정답 포인트
+
+Controller는 인증 로직을 직접 계산하지 않고 Service에 위임하면 됩니다.
 
 ```kotlin
-@PutMapping("/{id}")
-fun update(@PathVariable id: Long, @RequestBody request: PostUpdateRequest): PostResponse {
-    return postService.update(id, request)
+@PostMapping("/signup")
+@ResponseStatus(HttpStatus.CREATED)
+fun signUp(@Valid @RequestBody request: UserSignUpRequest) {
+    authService.signUp(request)
 }
 
-@DeleteMapping("/{id}")
-@ResponseStatus(HttpStatus.NO_CONTENT)
-fun delete(@PathVariable id: Long) {
-    postService.delete(id)
+@PostMapping("/login")
+fun login(@Valid @RequestBody request: LoginRequest): TokenResponse {
+    return authService.login(request)
+}
+
+@GetMapping("/me")
+fun me(authentication: Principal): CurrentUserResponse {
+    return authService.getCurrentUser(authentication.name)
 }
 ```
 
-## DB 저장 결과 확인 예시
+핵심은 `Principal.name`을 Service에 넘겨 현재 사용자 조회 흐름을 유지하는 것입니다.
 
-1. `POST /posts`로 글을 생성합니다.
-2. `GET /posts`로 목록을 확인합니다.
-3. `http://localhost:8080/h2-console`에서 `select * from posts;`를 실행합니다.
-4. 앱 재시작 후 다시 조회해도 데이터가 남는지 확인합니다.
+## 빠른 비교 포인트
 
-## 학생이 자주 틀리는 포인트
+- 회원가입 DTO와 로그인 DTO에 검증이 붙어 있는가
+- 회원가입 시 `encode(...)`가 있는가
+- 로그인 시 `matches(...)`와 `createToken(...)`가 이어지는가
+- `/auth/me`가 `authenticated()`로 보호되는가
+- 토큰에서 읽은 email이 현재 사용자 조회로 이어지는가
 
-- Entity와 Response DTO를 같은 역할로 생각하는 경우
-- Controller에서 Repository를 직접 호출하려는 경우
-- 수정 로직에서 조회 없이 새 Entity를 만들어 덮어쓰려는 경우
-- 메모리 저장 때처럼 id를 직접 만들려고 하는 경우
+## 강사용 한 줄 요약
 
-## 왜 Repository가 필요한가
-
-Repository가 생기면 Service는 DB 세부 접근보다 처리 흐름에 집중할 수 있습니다.
-즉, "어떻게 저장하느냐"보다 "무엇을 처리하느냐"가 더 잘 보이게 됩니다.
-
-## 왜 계층 분리가 읽기 쉬운 구조를 만드는가
-
-Controller는 입구, Service는 흐름, Repository는 DB 접근으로 역할이 나뉘면 파일을 읽을 때도 시선이 덜 섞입니다.
-학생 입장에서는 어디서 요청을 받고, 어디서 저장하고, 어디서 DB와 연결되는지 더 빨리 찾을 수 있습니다.
-
-## 다음 시퀀스 연결
-
-다음 시퀀스에서는 지금 만든 CRUD 흐름에 DTO, Validation, Exception Handling이 붙습니다.
-즉, 저장 흐름이 잡힌 뒤에야 "잘못된 입력을 어떻게 막을까"를 자연스럽게 다룰 수 있습니다.
+이번 시퀀스의 정답 핵심은  
+**회원가입으로 저장하고, 로그인으로 확인하고, JWT로 다음 요청을 구분하는 흐름이 보이는가** 입니다.
