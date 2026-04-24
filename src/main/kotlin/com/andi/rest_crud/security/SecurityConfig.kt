@@ -20,7 +20,6 @@ class SecurityConfig(
         http
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .headers { headers -> headers.frameOptions { it.disable() } }
             .exceptionHandling { it.authenticationEntryPoint(customAuthenticationEntryPoint) }
             .authorizeHttpRequests { auth ->
                 auth
@@ -30,7 +29,6 @@ class SecurityConfig(
                         "/auth-demo.html",
                         "/swagger/**",
                         "/v3/api-docs/**",
-                        "/h2-console/**",
                         "/auth/signup",
                         "/auth/login",
                         "/oauth2/**",

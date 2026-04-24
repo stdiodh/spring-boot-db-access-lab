@@ -1,150 +1,117 @@
-# 영속성 저장과 계층 분리 구현 안내
+# Google OAuth2 로그인 구현 안내
+
+## 이 도메인이 필요한 이유
+
+04 시퀀스에서는 우리 서비스가 직접 회원가입과 로그인을 처리했습니다.
+이제는 같은 인증 도메인 안에서 "외부 로그인"이 어떻게 붙는지 볼 차례입니다.
+이번 실습은 Google OAuth2 로그인 성공 후 사용자 정보를 읽고, 우리 서비스 사용자와 연결하는 가장 작은 확장 흐름을 만듭니다.
 
 ## 오늘 학생이 완성할 최종 흐름
 
-오늘 실습이 끝나면 학생은 아래 흐름을 직접 보여줄 수 있어야 합니다.
-
-1. `PostEntity`를 만들어 테이블과 연결합니다.
-2. `PostRepository`를 선언해 DB 접근을 맡깁니다.
-3. `PostService`가 메모리 저장 대신 Repository를 사용하게 만듭니다.
-4. `POST`, `GET`, `PUT`, `DELETE` 흐름을 DB 기반 CRUD로 연결합니다.
-5. Swagger와 H2 console에서 저장 결과를 확인합니다.
+1. Google provider 설정을 확인합니다.
+2. Google 사용자 정보에서 `email`, `sub`를 읽습니다.
+3. 기존 사용자와 신규 사용자를 분기합니다.
+4. 우리 서비스 사용자와 연결합니다.
+5. 성공 후 JWT와 사용자 정보를 프론트 redirect로 정리합니다.
 
 ## 학생이 직접 구현할 순서
 
-1. `Entity` 핵심 필드와 어노테이션 작성
-2. `Repository 인터페이스` 선언
-3. `Service` 저장 흐름을 메모리 저장에서 DB 저장으로 변경
-4. `findAll()` 연결
-5. `findById()` 연결
-6. `deleteById()` 연결
-7. `update()` 핵심 로직 작성
-8. Controller에서 수정 / 삭제 API 연결
-9. DB 저장 결과 확인
+1. provider 설정을 확인합니다.
+2. 로그인 성공 후 사용자 정보를 읽습니다.
+3. 신규/기존 사용자를 분기합니다.
+4. 우리 서비스 사용자와 연결합니다.
+5. 성공 응답을 만듭니다.
 
 ## TODO를 넣을 파일
 
-- `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
-- `src/main/kotlin/com/andi/rest_crud/repository/PostRepository.kt`
-- `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/PostController.kt`
+- `src/main/kotlin/com/andi/rest_crud/security/CustomOAuthUserService.kt`
+- `src/main/kotlin/com/andi/rest_crud/security/OAuthLoginSuccessHandler.kt`
+- `src/main/kotlin/com/andi/rest_crud/service/OAuthAccountService.kt`
 
 ## 파일별 역할 설명
 
-- `PostEntity.kt`: DB 테이블과 연결되는 핵심 데이터 구조
-- `PostRepository.kt`: DB 접근을 맡는 기본 JPA Repository
-- `PostService.kt`: Entity 생성, 조회, 수정, 삭제 흐름을 조립하는 곳
-- `PostController.kt`: 요청을 받아 Service에 전달하고 응답을 돌려주는 입구
-- `PostCreateRequest.kt`: 글 생성 요청 값
-- `PostUpdateRequest.kt`: 글 수정 요청 값
-- `PostResponse.kt`: 바깥으로 내보낼 응답 모양
+- `CustomOAuthUserService.kt`: Google 응답에서 필요한 속성을 읽어 우리 쪽 속성으로 다시 담는 곳
+- `OAuthLoginSuccessHandler.kt`: OAuth 성공 후 Service에 연결을 맡기고 프론트 redirect를 만드는 곳
+- `OAuthAccountService.kt`: 기존 OAuth 사용자, 기존 로컬 사용자, 신규 사용자를 분기하는 핵심 서비스
+- `SecurityConfig.kt`: OAuth login entry와 success handler를 연결하는 설정
+- `auth-demo.html`: OAuth 버튼과 성공 결과를 확인하는 간단 프론트
+
+## 미리 제공할 것
+
+- `04-answer` 기반 자체 로그인 + JWT
+- Google OAuth2 client 설정 값 자리
+- `User`의 `authProvider`, `providerId`
+- `OAuthUserProfile`, `OAuthLoginResponse`
+- `auth-demo.html`과 redirect 흐름 기본 화면
 
 ## 단계별 구현 안내
 
-### Step 1. Entity 만들기
+### Step 1. provider 설정 확인
 
-- `PostEntity.kt`를 엽니다.
-- `@Entity`, `@Table`, `@Id`, `@GeneratedValue`를 연결합니다.
-- title, content, author 핵심 필드를 확인합니다.
-
-실습 힌트:
-- 이번 실습에서는 단일 테이블 기준으로 단순하게 갑니다.
-- 연관관계나 복잡한 매핑은 넣지 않습니다.
-
-### Step 2. Repository 선언하기
-
-- `PostRepository.kt`를 엽니다.
-- `JpaRepository<PostEntity, Long>`를 상속하도록 연결합니다.
+- `application.yaml`을 엽니다.
+- `spring.security.oauth2.client.registration.google` 설정을 확인합니다.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` 자리가 들어 있는지 봅니다.
 
 실습 힌트:
-- 구현 클래스를 직접 만들지 않아도 기본 CRUD 메서드를 바로 쓸 수 있습니다.
+- 이번 실습은 Google 하나만 사용합니다.
+- 여러 provider를 한 번에 확장하지 않습니다.
 
-### Step 3. Service 저장 흐름 바꾸기
+### Step 2. 로그인 성공 후 사용자 정보 읽기
 
-- `create()`에서 요청 DTO를 `PostEntity`로 만듭니다.
-- `postRepository.save(...)`를 호출합니다.
-- 저장 결과를 `PostResponse`로 바꿉니다.
-
-실습 힌트:
-- 이제 id를 직접 증가시키지 않습니다.
-- DB가 생성한 id를 저장 결과에서 받아옵니다.
-
-### Step 4. 전체 조회 연결하기
-
-- `findAll()`로 전체 목록을 가져옵니다.
-- `PostResponse` 리스트로 바꿉니다.
+- `CustomOAuthUserService.kt`를 엽니다.
+- 기본 `DefaultOAuth2UserService`로 사용자 정보를 읽습니다.
+- Google 응답에서 `email`, `sub`를 꺼냅니다.
 
 실습 힌트:
-- Entity를 그대로 응답하지 말고 응답 DTO로 변환하세요.
+- `sub`는 provider id로 사용합니다.
+- 우리 코드에서 다시 쓰기 쉽게 `provider`, `providerId`, `email` 속성을 새로 담아 주세요.
 
-### Step 5. 단건 조회 연결하기
+### Step 3. 신규/기존 사용자 분기
 
-- `findById(id)`로 하나를 찾습니다.
-- `PostResponse`로 바꿔 반환합니다.
-
-실습 힌트:
-- 이번 시퀀스는 예외 처리를 깊게 다루지 않으므로, 먼저 정상 흐름이 분명하게 보이게 만드는 데 집중하세요.
-
-### Step 6. 삭제 연결하기
-
-- `deleteById(id)` 또는 조회 후 삭제 흐름을 만듭니다.
+- `OAuthAccountService.kt`를 엽니다.
+- 먼저 `provider + providerId` 기준으로 기존 OAuth 사용자를 찾습니다.
+- 없으면 `email` 기준으로 기존 로컬 사용자를 확인합니다.
 
 실습 힌트:
-- 삭제 후 다시 전체 조회했을 때 목록에서 빠지는지 확인하면 됩니다.
+- 외부 로그인 사용자를 찾는 기준과 로컬 사용자를 찾는 기준이 다르다는 점을 먼저 보세요.
 
-### Step 7. 수정 로직 만들기
+### Step 4. 우리 서비스 사용자와 연결
 
-- id로 기존 Entity를 조회합니다.
-- title, content, author 값을 바꿉니다.
-- 저장 후 응답 DTO로 돌려줍니다.
-
-실습 힌트:
-- 수정도 결국 조회 -> 값 변경 -> 저장 흐름이라는 점을 먼저 보세요.
-
-### Step 8. Controller 수정/삭제 API 연결
-
-- `PUT /posts/{id}`
-- `DELETE /posts/{id}`
+- 기존 OAuth 사용자가 있으면 그대로 사용합니다.
+- 기존 로컬 사용자만 있으면 그 사용자에 `authProvider`, `providerId`를 연결합니다.
+- 둘 다 없으면 새 사용자를 생성합니다.
 
 실습 힌트:
-- Controller에서 Repository를 직접 부르지 말고 Service를 통해 흐름을 유지하세요.
+- 새 사용자를 만들 때는 로컬 비밀번호 대신 임의 문자열을 인코딩해 넣어도 됩니다.
+- 이번 시퀀스의 핵심은 계정 연결 흐름이지 비밀번호 재설정이 아닙니다.
 
-### Step 9. DB 저장 결과 확인
+### Step 5. 성공 응답 만들기
 
-- `./gradlew bootRun`으로 앱을 실행합니다.
-- `http://localhost:8080/swagger`에서 API를 호출합니다.
-- `http://localhost:8080/h2-console`에서 `posts` 테이블을 확인합니다.
+- `OAuthLoginSuccessHandler.kt`를 엽니다.
+- OAuth 성공 후 profile을 만들고 `OAuthAccountService`에 넘깁니다.
+- 성공 결과를 `auth-demo.html`로 redirect 파라미터에 담아 보냅니다.
 
 실습 힌트:
-- 서버를 껐다 켠 뒤에도 데이터가 남는지 보면 메모리 저장과 차이가 더 선명해집니다.
+- 이번 시퀀스에서는 별도 JSON 응답 컨트롤러를 만들지 않습니다.
+- `oauth=success`, `email`, `provider`, `token`, `isNewUser` 정도만 넘겨도 충분합니다.
 
-## 각 단계의 확인 포인트
+## 학생 체크리스트
 
-- Step 1: Entity가 테이블과 연결되는 어노테이션이 보이는가
-- Step 2: Repository가 기본 CRUD 메서드를 사용할 수 있는 구조인가
-- Step 3: create가 `save(...)`를 호출하는가
-- Step 4: 전체 조회가 DB 값을 기준으로 동작하는가
-- Step 5: 단건 조회가 id 기준으로 연결되는가
-- Step 6: 삭제 후 목록에서 데이터가 빠지는가
-- Step 7: 수정 후 다시 조회했을 때 값이 바뀌는가
-- Step 8: 수정 / 삭제 API가 Controller에 연결되어 있는가
-- Step 9: Swagger와 H2 console에서 결과를 눈으로 확인했는가
+- [ ] Google 응답에서 어떤 값을 읽는지 설명할 수 있습니다.
+- [ ] 기존 OAuth 사용자와 기존 로컬 사용자를 어떤 기준으로 나누는지 설명할 수 있습니다.
+- [ ] OAuth 성공 후 우리 서비스 사용자 연결 단계가 왜 필요한지 설명할 수 있습니다.
+- [ ] Google 로그인 후 `auth-demo.html`로 redirect 되는 흐름을 직접 확인했습니다.
+- [ ] redirect 결과에 JWT와 사용자 정보가 담기는 이유를 설명할 수 있습니다.
 
-## 학생 체크 질문
+## 강사 / PPT 체크리스트
 
-- 왜 메모리 저장 대신 DB 저장이 필요한가요?
-- `PostEntity`와 `PostResponse`는 무엇이 다른가요?
-- Repository가 생기면 Service는 어떤 점이 더 읽기 쉬워지나요?
-- 수정 흐름은 어떤 순서로 동작하나요?
+- [ ] Google 로그인 -> 사용자 정보 읽기 -> 사용자 연결 -> redirect 흐름 그림이 있는가
+- [ ] 자체 로그인과 OAuth 로그인 차이를 한 화면에서 비교할 수 있는가
+- [ ] provider id와 email 기준 분기를 코드와 함께 설명할 수 있는가
+- [ ] 신규 사용자 / 기존 사용자 분기를 시연할 수 있는가
+- [ ] SMTP 기반 계정 복구는 이번 시퀀스 범위가 아니라는 점을 분명히 말할 수 있는가
 
-## 강사용 확인 포인트
+## 다음 도메인 연결 포인트
 
-- 학생이 Entity와 DTO 역할을 구분해서 설명하는지 확인합니다.
-- 학생이 Service에서 Repository를 호출하는 이유를 말할 수 있는지 확인합니다.
-- 학생이 DB 저장 결과를 Swagger와 H2 console에서 함께 확인했는지 확인합니다.
-- 학생이 수정과 삭제도 같은 계층 흐름으로 설명할 수 있는지 확인합니다.
-
-## 다음 시퀀스 연결 포인트
-
-다음 시퀀스에서는 지금 만든 CRUD 흐름에 입력값 검증과 실패 응답 처리가 붙습니다.
-이번 시퀀스에서 계층 분리와 DB 저장 흐름이 선명해야, 다음에는 DTO와 Validation이 왜 필요한지 자연스럽게 이어집니다.
+다음 시퀀스에서는 지금 만든 OAuth 확장 흐름도
+테스트와 검증 관점에서 어떻게 확인할지로 이어질 수 있습니다.

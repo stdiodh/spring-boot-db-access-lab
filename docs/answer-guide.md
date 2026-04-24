@@ -1,159 +1,99 @@
-# 영속성 저장과 계층 분리 정답 가이드
+# Google OAuth2 로그인 정답 가이드
 
-## 빠른 흐름 정리
+## 정답을 보기 전에 먼저 확인할 것
 
-1. `PostController`가 요청을 받습니다.
-2. `PostService`가 DTO를 `PostEntity`로 바꿉니다.
-3. `PostRepository`가 DB에 저장하거나 조회합니다.
-4. `PostResponse`로 다시 감싸 응답합니다.
+- `05-implementation`에서 직접 손으로 끝까지 작성했는지 먼저 확인합니다.
+- 정답은 복붙용이 아니라 흐름 비교용으로 사용합니다.
+- 이번 시퀀스의 핵심은 "Google 로그인 성공 후 우리 서비스 사용자를 어떻게 연결하는가"입니다.
 
-## 각 파일의 최종 형태 설명
+## Step 1. `CustomOAuthUserService` 정답 포인트
 
-### `PostEntity.kt`
+핵심은 아래 세 단계입니다.
 
-- `@Entity`, `@Table(name = "posts")`
-- `@Id`, `@GeneratedValue(strategy = GenerationType.IDENTITY)`
-- `id`, `title`, `content`, `author`
-
-### `PostRepository.kt`
-
-- `JpaRepository<PostEntity, Long>` 상속
-- 구현 클래스 없이 기본 CRUD 메서드 사용
-
-### `PostService.kt`
-
-- `create`: DTO -> Entity -> `save` -> Response
-- `getAll`: `findAll` -> Response list
-- `getById`: `findById` -> Response
-- `update`: 조회 -> 값 변경 -> `save`
-- `delete`: `deleteById`
-
-### `PostController.kt`
-
-- `POST /posts`
-- `GET /posts`
-- `GET /posts/{id}`
-- `PUT /posts/{id}`
-- `DELETE /posts/{id}`
-
-## Entity 핵심 정답 코드
+1. 기본 `DefaultOAuth2UserService`로 사용자 정보를 읽기
+2. Google 응답에서 `email`, `sub` 꺼내기
+3. 우리 쪽에서 쓰기 쉬운 속성으로 다시 담기
 
 ```kotlin
-@Entity
-@Table(name = "posts")
-class PostEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0L,
-    var title: String,
-    var content: String,
-    var author: String
+override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
+    val oauthUser = delegate.loadUser(userRequest)
+    val provider = userRequest.clientRegistration.registrationId.uppercase()
+    val email = oauthUser.getAttribute<String>("email")
+        ?: throw IllegalStateException("OAuth 응답에서 email을 찾을 수 없습니다.")
+    val providerId = oauthUser.getAttribute<String>("sub")
+        ?: throw IllegalStateException("OAuth 응답에서 provider id를 찾을 수 없습니다.")
+
+    val attributes = oauthUser.attributes.toMutableMap().apply {
+        put("provider", provider)
+        put("providerId", providerId)
+        put("email", email)
+    }
+
+    return DefaultOAuth2User(oauthUser.authorities, attributes, "email")
+}
+```
+
+## Step 2. `OAuthAccountService` 정답 포인트
+
+핵심 분기는 아래 순서입니다.
+
+1. `provider + providerId` 기준으로 기존 OAuth 사용자 찾기
+2. 없으면 `email` 기준 기존 로컬 사용자 찾기
+3. 둘 다 없으면 새 사용자 만들기
+
+```kotlin
+fun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {
+    val linkResult = linkOrCreateUser(profile)
+    return createSuccessResponse(linkResult.user, linkResult.isNewUser)
+}
+```
+
+세부 포인트:
+- 기존 OAuth 사용자가 있으면 email을 최신 값으로 맞추고 저장할 수 있습니다.
+- 기존 로컬 사용자가 있으면 `authProvider`, `providerId`를 연결합니다.
+- 신규 사용자는 임의 비밀번호를 인코딩해 저장해도 충분합니다.
+
+## Step 3. `OAuthLoginSuccessHandler` 정답 포인트
+
+OAuth 성공 후에는 아래 순서로 처리하면 됩니다.
+
+1. `OAuth2AuthenticationToken` 읽기
+2. principal에서 `providerId`, `email` 꺼내기
+3. `OAuthAccountService` 호출
+4. redirect URL 만들기
+
+```kotlin
+val profile = OAuthUserProfile(
+    provider = oauthAuthentication.authorizedClientRegistrationId.uppercase(),
+    providerId = oauthUser.getAttribute<String>("providerId")
+        ?: throw IllegalStateException("OAuth provider id를 읽을 수 없습니다."),
+    email = oauthUser.getAttribute<String>("email")
+        ?: throw IllegalStateException("OAuth email을 읽을 수 없습니다.")
 )
+
+val loginResponse = oAuthAccountService.handleOAuthLogin(profile)
 ```
 
-## Repository 선언 정답 코드
+이후에는 `token`, `email`, `provider`, `isNewUser`를 query parameter로 붙여 `auth-demo.html`로 redirect 하면 됩니다.
 
-```kotlin
-interface PostRepository : JpaRepository<PostEntity, Long>
-```
+## Step 4. `SecurityConfig` 확인 포인트
 
-## Service 정답 흐름
+이번 시퀀스에서 설정의 핵심은 아래입니다.
 
-### create
+- `/oauth2/**`, `/login/oauth2/**` 공개
+- `.oauth2Login { ... }` 연결
+- `loginPage("/auth-demo.html")`
+- `successHandler(oAuthLoginSuccessHandler)`
+- `userInfoEndpoint { userService(customOAuthUserService) }`
 
-```kotlin
-fun create(request: PostCreateRequest): PostResponse {
-    val entity = PostEntity(
-        title = request.title,
-        content = request.content,
-        author = request.author
-    )
-    val saved = postRepository.save(entity)
-    return PostResponse.from(saved)
-}
-```
+## 빠른 비교 포인트
 
-### findAll
+- `CustomOAuthUserService`가 `email`, `sub`를 읽는가
+- `OAuthAccountService`가 세 갈래 분기를 가지는가
+- `OAuthLoginSuccessHandler`가 redirect 파라미터를 만드는가
+- OAuth 성공 후에도 우리 서비스 JWT를 발급하는가
 
-```kotlin
-fun getAll(): List<PostResponse> {
-    return postRepository.findAll()
-        .map(PostResponse::from)
-}
-```
+## 강사용 한 줄 요약
 
-### findById
-
-```kotlin
-fun getById(id: Long): PostResponse {
-    val entity = postRepository.findById(id)
-        .orElseThrow { NoSuchElementException("ID $id 에 해당하는 글이 없습니다.") }
-    return PostResponse.from(entity)
-}
-```
-
-### update
-
-```kotlin
-fun update(id: Long, request: PostUpdateRequest): PostResponse {
-    val entity = postRepository.findById(id)
-        .orElseThrow { NoSuchElementException("ID $id 에 해당하는 글이 없습니다.") }
-    entity.title = request.title
-    entity.content = request.content
-    entity.author = request.author
-    val saved = postRepository.save(entity)
-    return PostResponse.from(saved)
-}
-```
-
-### delete
-
-```kotlin
-fun delete(id: Long) {
-    postRepository.deleteById(id)
-}
-```
-
-## Controller 수정 / 삭제 API 정답 코드
-
-```kotlin
-@PutMapping("/{id}")
-fun update(@PathVariable id: Long, @RequestBody request: PostUpdateRequest): PostResponse {
-    return postService.update(id, request)
-}
-
-@DeleteMapping("/{id}")
-@ResponseStatus(HttpStatus.NO_CONTENT)
-fun delete(@PathVariable id: Long) {
-    postService.delete(id)
-}
-```
-
-## DB 저장 결과 확인 예시
-
-1. `POST /posts`로 글을 생성합니다.
-2. `GET /posts`로 목록을 확인합니다.
-3. `http://localhost:8080/h2-console`에서 `select * from posts;`를 실행합니다.
-4. 앱 재시작 후 다시 조회해도 데이터가 남는지 확인합니다.
-
-## 학생이 자주 틀리는 포인트
-
-- Entity와 Response DTO를 같은 역할로 생각하는 경우
-- Controller에서 Repository를 직접 호출하려는 경우
-- 수정 로직에서 조회 없이 새 Entity를 만들어 덮어쓰려는 경우
-- 메모리 저장 때처럼 id를 직접 만들려고 하는 경우
-
-## 왜 Repository가 필요한가
-
-Repository가 생기면 Service는 DB 세부 접근보다 처리 흐름에 집중할 수 있습니다.
-즉, "어떻게 저장하느냐"보다 "무엇을 처리하느냐"가 더 잘 보이게 됩니다.
-
-## 왜 계층 분리가 읽기 쉬운 구조를 만드는가
-
-Controller는 입구, Service는 흐름, Repository는 DB 접근으로 역할이 나뉘면 파일을 읽을 때도 시선이 덜 섞입니다.
-학생 입장에서는 어디서 요청을 받고, 어디서 저장하고, 어디서 DB와 연결되는지 더 빨리 찾을 수 있습니다.
-
-## 다음 시퀀스 연결
-
-다음 시퀀스에서는 지금 만든 CRUD 흐름에 DTO, Validation, Exception Handling이 붙습니다.
-즉, 저장 흐름이 잡힌 뒤에야 "잘못된 입력을 어떻게 막을까"를 자연스럽게 다룰 수 있습니다.
+이번 시퀀스의 정답 핵심은  
+**Google이 인증한 사용자를 우리 서비스 사용자로 다시 정리하는 흐름이 보이는가** 입니다.
