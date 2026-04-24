@@ -20,8 +20,8 @@ class AuthService(
 ) {
 
     fun signUp(request: UserSignUpRequest) {
-        val email = requireNotNull(request.email)
-        val rawPassword = requireNotNull(request.password)
+        val email = request.email
+        val rawPassword = request.password
         val encodedPassword = requireNotNull(passwordEncoder.encode(rawPassword))
 
         if (userRepository.existsByEmail(email)) {
@@ -37,8 +37,8 @@ class AuthService(
     }
 
     fun login(request: LoginRequest): TokenResponse {
-        val email = requireNotNull(request.email)
-        val rawPassword = requireNotNull(request.password)
+        val email = request.email
+        val rawPassword = request.password
         val user = userRepository.findByEmail(email)
             .orElseThrow { InvalidCredentialsException() }
 

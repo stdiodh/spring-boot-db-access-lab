@@ -1,29 +1,30 @@
-# Spring Boot DB Access Lab
+# Spring Boot Authentication And JWT Lab
 
-> 메모리 저장이 아니라 실제 DB 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 실습 레포입니다.
+> 회원가입, 로그인, JWT 발급, 보호된 API 접근까지 가장 작은 인증 흐름으로 익히는 실습 레포입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
-이번 실습은 시퀀스 01의 메모리 CRUD를 이어받아,
-영속 저장과 계층 분리를 가장 단순한 JPA CRUD로 익히는 단계입니다.
+이번 실습은 `03-answer`의 안전한 요청 처리 위에
+인증과 JWT 최소 흐름을 올리는 단계입니다.
 
 이번 레포에서는 아래 흐름에 집중합니다.
 
-1. `PostEntity`가 테이블과 연결됩니다.
-2. `PostRepository`가 DB 접근을 맡습니다.
-3. `PostService`가 메모리 저장 대신 Repository를 사용합니다.
-4. `POST /posts`, `GET /posts`, `GET /posts/{id}`, `PUT /posts/{id}`, `DELETE /posts/{id}` 흐름을 완성합니다.
-5. DB에 저장된 값이 재시작 후에도 남는지 확인합니다.
+1. 회원가입 요청을 받아 사용자를 저장합니다.
+2. 비밀번호를 원문 그대로 저장하지 않고 `PasswordEncoder`로 인코딩합니다.
+3. 로그인 시 email과 password를 확인합니다.
+4. 로그인 성공 후 JWT를 발급합니다.
+5. `/auth/me`는 토큰이 있어야 접근되도록 보호합니다.
 
 ## 브랜치 사용 방법
 
-- `implementation`: 학생 실습용 starter 브랜치
-- `answer`: 비교용 정답 브랜치
+- `main`: 이 레포의 주제, 문서, 브랜치 구조를 안내하는 대표 브랜치
+- `04-implementation`: 학생 실습용 starter 브랜치
+- `04-answer`: 비교용 정답 브랜치
 
-학생은 반드시 `implementation`에서 시작합니다.
+학생은 반드시 `04-implementation`에서 시작합니다.
 
 ```bash
-git clone -b implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
+git clone -b 04-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
 cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
@@ -32,7 +33,7 @@ git checkout -b feat/<이름>
 
 ```bash
 git fetch origin
-git diff implementation..answer
+git diff origin/04-implementation..origin/04-answer
 ```
 
 ## 문서 안내
@@ -47,32 +48,37 @@ git diff implementation..answer
 
 실습은 아래 순서로 보는 것을 권장합니다.
 
-1. `docs/theory.md`에서 왜 메모리 저장만으로는 부족한지 읽습니다.
-2. `docs/implementation.md`에서 오늘 구현 순서를 확인합니다.
+1. `docs/theory.md`에서 왜 로그인 이후 요청을 구분해야 하는지 읽습니다.
+2. `docs/implementation.md`에서 오늘 손으로 칠 순서를 확인합니다.
 3. 아래 핵심 파일을 순서대로 엽니다.
 
-- `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
-- `src/main/kotlin/com/andi/rest_crud/repository/PostRepository.kt`
-- `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/PostController.kt`
-- `src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt`
-- `src/main/kotlin/com/andi/rest_crud/dto/PostUpdateRequest.kt`
-- `src/main/kotlin/com/andi/rest_crud/dto/PostResponse.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/UserSignUpRequest.kt`
+- `src/main/kotlin/com/andi/rest_crud/dto/LoginRequest.kt`
+- `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
+- `src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt`
+- `src/main/kotlin/com/andi/rest_crud/security/SecurityConfig.kt`
+- `src/main/kotlin/com/andi/rest_crud/controller/AuthController.kt`
 
-`implementation` 브랜치에서는 `TODO(A&I)`를 채우며 실습하고,
-완료 후에는 `answer` 브랜치나 `docs/answer-guide.md`로 비교하면 됩니다.
+`04-implementation`에서는 TODO를 채우며 실습하고,
+완료 후에는 `04-answer`나 `docs/answer-guide.md`로 비교하면 됩니다.
 
 ## 미리 제공되는 것
 
-- Kotlin + Spring Boot + Spring Data JPA 프로젝트 기본 설정
+- Kotlin + Spring Boot + Spring Security + JWT 기본 설정
+- MySQL 실행 설정과 테스트용 H2 설정
 - Swagger UI 진입 설정
-- H2 file DB 실행 설정과 H2 console 설정
-- 테스트용 H2 in-memory 설정
-- 패키지 구조와 메인 애플리케이션 클래스
+- `User`, `UserRepository`, `TokenResponse`, `CurrentUserResponse`
+- `PasswordEncoder` Bean, JWT 필터 뼈대, 인증 실패 응답 기본 처리
 
-학생은 영속 저장으로 바뀌는 핵심 흐름만 직접 구현합니다.
+학생은 회원가입, 로그인, 토큰 발급, 보호된 API 흐름의 핵심만 직접 구현합니다.
 
 ## 실행 방법
+
+먼저 MySQL을 준비합니다.
+
+```bash
+docker compose up -d
+```
 
 애플리케이션 실행:
 
@@ -86,12 +92,6 @@ Swagger UI:
 http://localhost:8080/swagger
 ```
 
-H2 Console:
-
-```text
-http://localhost:8080/h2-console
-```
-
 테스트 실행:
 
 ```bash
@@ -100,10 +100,11 @@ http://localhost:8080/h2-console
 
 ## 이번 실습에서 직접 구현할 범위
 
-- `PostEntity` 핵심 필드와 JPA 어노테이션 이해
-- `PostRepository` 선언
-- `PostService`의 create / getAll / getById / update / delete 흐름을 Repository 기반으로 연결
-- `PostController`에서 수정 / 삭제 API 연결
-- DB 저장 결과 확인
+- 회원가입 요청 DTO 검증
+- 로그인 요청 DTO 검증
+- `AuthService`의 회원가입 / 로그인 / 현재 사용자 조회 흐름
+- `JwtTokenProvider`의 토큰 발급 / 사용자 식별 / 검증 메서드
+- `SecurityConfig`에서 보호할 API 지정과 JWT 필터 연결
+- `/auth/signup`, `/auth/login`, `/auth/me` 흐름 확인
 
-이번 시퀀스에서는 Validation, Exception Handling, Security, 연관관계 매핑을 넣지 않습니다.
+이번 시퀀스에서는 OAuth2, Email Verification, refresh token, 권한(Role) 확장, 복잡한 인가 정책은 넣지 않습니다.
