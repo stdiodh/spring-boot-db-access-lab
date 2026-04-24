@@ -31,6 +31,7 @@ class SecurityConfig(
                         "/v3/api-docs/**",
                         "/auth/signup",
                         "/auth/login",
+                        "/account-recovery/password-reset",
                         "/oauth2/**",
                         "/login/oauth2/**"
                     ).permitAll()

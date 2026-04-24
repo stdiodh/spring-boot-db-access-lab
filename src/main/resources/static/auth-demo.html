@@ -195,8 +195,8 @@
   <main class="shell">
     <section class="hero">
       <span class="eyebrow">A&I Backend Lab</span>
-      <h1>Local Auth와 OAuth 흐름을 한 화면에서 확인해보세요.</h1>
-      <p>이 페이지는 실습용 간단 프론트입니다. 로컬 회원가입/로그인으로 JWT를 확인하고, 이후에는 OAuth 버튼을 눌러 외부 로그인 확장 흐름을 붙일 수 있습니다.</p>
+      <h1>Local Auth, OAuth, SMTP 흐름을 한 화면에서 확인해보세요.</h1>
+      <p>이 페이지는 실습용 간단 프론트입니다. 로컬 회원가입/로그인, Google OAuth 로그인, 비밀번호 재설정 메일 요청까지 한 번에 확인할 수 있습니다.</p>
       <div class="hero-list">
         <div class="hero-item">
           <strong>Step 04</strong>
@@ -208,7 +208,7 @@
         </div>
         <div class="hero-item">
           <strong>Next Idea</strong>
-          이후 시퀀스에서 이메일 찾기, 비밀번호 재설정 같은 계정 복구 흐름으로 확장
+          SMTP로 비밀번호 재설정 메일 요청을 보내는 계정 복구 흐름
         </div>
       </div>
     </section>
@@ -238,6 +238,16 @@
         <button class="ghost" id="oauth-google" type="button">Google OAuth 시작</button>
         <p class="hint">실습 준비 전에는 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` 값을 채워야 합니다.</p>
         <p class="hint">흐름: Google 로그인 -> Google이 사용자 정보 반환 -> 우리 서버가 User 연결 -> JWT 발급 -> 이 페이지로 redirect</p>
+      </div>
+
+      <div class="section">
+        <h2>비밀번호 재설정 메일 요청</h2>
+        <form id="password-reset-form">
+          <input id="password-reset-email" type="email" placeholder="email@example.com" required>
+          <button class="ghost" type="submit">SMTP 메일 요청</button>
+        </form>
+        <p class="hint">실습 준비 전에는 `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` 값을 채워야 합니다.</p>
+        <p class="hint">흐름: email 입력 -> reset 링크 생성 -> SMTP 메일 발송</p>
       </div>
 
       <div class="section">
@@ -324,6 +334,31 @@
 
     document.getElementById("oauth-google").addEventListener("click", () => {
       window.location.href = "/oauth2/authorization/google";
+    });
+
+    document.getElementById("password-reset-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = document.getElementById("password-reset-email").value;
+
+      const response = await fetch("/account-recovery/password-reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (response.ok) {
+        printStatus("비밀번호 재설정 메일 요청", {
+          email,
+          status: response.status,
+          message: "SMTP 메일 요청이 접수되었습니다."
+        });
+        return;
+      }
+
+      const error = await response.json().catch(() => ({ message: "메일 요청에 실패했습니다." }));
+      printStatus("비밀번호 재설정 메일 요청 실패", error);
     });
 
     if (query.get("oauth") === "success") {
