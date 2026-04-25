@@ -15,6 +15,7 @@
 | 03 | `03-implementation` | `03-answer` | DTO, Validation, ErrorResponse, ExceptionHandler | Ready |
 | 04 | `04-implementation` | `04-answer` | 회원가입, 로그인, JWT, `/auth/me` 보호 | Ready |
 | 05 | `05-implementation` | `05-answer` | Google OAuth2 로그인, 사용자 연결, SMTP 메일 요청 | Ready |
+| 06 | `06-implementation` | `06-answer` | Service 테스트, fixture, mock, 정상/실패 검증 | Ready |
 
 ## 학생용 이동 규칙
 
