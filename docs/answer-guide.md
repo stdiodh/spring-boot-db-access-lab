@@ -162,8 +162,26 @@ Controller는 입구, Service는 흐름, Repository는 DB 접근으로 역할이
 문제는 관계가 생기면 조회할 때 연관 데이터를 각 행마다 다시 읽어와서 쿼리가 많아질 수 있다는 점입니다.
 이것이 N+1의 시작입니다.
 
-이번 단계에서는 해결 코드를 바로 구현하지 않고,
-`fetch join`, `EntityGraph` 같은 해결 방향이 있다는 정도만 알고 넘어가면 충분합니다.
+문서에서는 해결 방향도 같이 봐야 합니다.
+예를 들면 아래처럼 `fetch join`을 써서 게시글과 댓글을 한 번에 읽는 조회 메서드 예시를 같이 볼 수 있습니다.
+
+```kotlin
+@Query(
+    """
+    select distinct post
+    from Post post
+    left join fetch post.comments
+    """
+)
+fun findAllWithComments(): List<Post>
+```
+
+핵심은 “댓글에 접근하는 코드 자체”보다
+“연관 데이터를 어떤 조회 전략으로 읽느냐”가 성능을 크게 바꾼다는 점입니다.
+
+이번 단계에서는 이 해결 코드를 실제 starter 구현에 강제로 넣지 않고,
+`docs/theory.md`와 정답 가이드에서
+문제 코드와 해결 코드 흐름을 같이 이해하는 것을 목표로 둡니다.
 
 ## 다음 시퀀스 연결
 
