@@ -21,6 +21,53 @@
 이 감각이 잡혀야 다음에 캐시나 확장 기능이 들어와도
 "변경 전후를 어떻게 확인할지"를 자연스럽게 생각할 수 있습니다.
 
+## 기초 개념 먼저 잡기
+
+### test
+
+- **무엇인가요**  
+  코드가 기대한 결과를 내는지 확인하는 실행 가능한 검증입니다.
+- **왜 필요한가요**  
+  기능이 늘어날수록 "수정 후에도 기존 동작이 맞는가"를 사람이 기억만으로 확인하기 어려워지기 때문입니다.
+- **이번 코드에서는 어디에 보이나요**  
+  `PostServiceTest.kt`, `AuthServiceTest.kt`
+
+### service test
+
+- **무엇인가요**  
+  controller, DB 전체, 브라우저 전체가 아니라 service 로직 흐름에 집중하는 테스트입니다.
+- **왜 필요한가요**  
+  지금은 service 안의 분기와 결과를 다시 믿게 만드는 것이 가장 중요한 단계이기 때문입니다.
+- **이번 코드에서는 어디에 보이나요**  
+  `postService.create(...)`, `postService.getById(...)`, `authService.login(...)`
+
+### fixture
+
+- **무엇인가요**  
+  테스트에서 반복해서 사용할 입력값과 객체를 미리 만들어두는 도구입니다.
+- **왜 필요한가요**  
+  테스트마다 준비 코드가 길어지지 않게 해서, 본문이 검증 흐름에 집중되게 해줍니다.
+- **이번 코드에서는 어디에 보이나요**  
+  `TestFixtureFactory`
+
+### mock
+
+- **무엇인가요**  
+  실제 DB나 외부 의존성 대신, 테스트 안에서 원하는 동작만 흉내 내는 객체입니다.
+- **왜 필요한가요**  
+  이번 시퀀스에서는 service 로직 자체를 보고 싶지, DB 설정 전체를 다시 검증하려는 것이 아니기 때문입니다.
+- **이번 코드에서는 어디에 보이나요**  
+  `postRepository.save(...)`, `userRepository.findByEmail(...)` 설정 부분
+
+### regression
+
+- **무엇인가요**  
+  수정 후 원래 되던 기능이 깨지는 상황입니다.
+- **왜 필요한가요**  
+  지금처럼 기능이 많아질수록 회귀를 빨리 찾는 장치가 필요하기 때문입니다.
+- **이번 코드에서는 어디에 보이나요**  
+  `./gradlew test` 를 다시 돌려 기존 흐름을 확인하는 전체 과정
+
 ## 이번 실습 흐름을 먼저 한눈에 보기
 
 1. 테스트가 Service를 직접 호출합니다.
@@ -34,6 +81,29 @@
 
 > 한 줄로 다시 보기  
 > 기능을 만드는 단계에서 한 걸음 물러나, 지금까지 만든 코드를 다시 믿을 수 있게 만드는 실습입니다.
+
+## 현재 코드 흐름에서 어디를 보면 되는가
+
+이번 시퀀스는 기능을 새로 만드는 단계가 아니라,
+이미 있는 service 흐름을 테스트 코드에서 다시 따라가는 단계입니다.
+
+1. `PostService.kt`
+   게시글 생성과 조회 예외 흐름의 테스트 대상입니다.
+2. `AuthService.kt`
+   로그인 성공과 실패 흐름의 테스트 대상입니다.
+3. `TestFixtureFactory.kt`
+   fixture 를 모아 테스트 준비 코드를 짧게 만드는 지점입니다.
+4. `PostServiceTest.kt`
+   CRUD service 테스트의 가장 작은 예시입니다.
+5. `AuthServiceTest.kt`
+   인증 흐름도 service 테스트 대상이 될 수 있음을 보여주는 예시입니다.
+
+짧게 말하면 이번 시퀀스는
+
+- `fixture 준비 -> Service 호출 -> 결과 검증`
+- `정상 케이스 -> 실패 케이스 -> 다시 실행`
+
+흐름을 반복하며 신뢰를 쌓는 단계입니다.
 
 ## 오늘 꼭 잡아야 할 질문
 
@@ -145,6 +215,17 @@ fun `login은 올바른 이메일과 비밀번호면 access token을 만든다`(
 - **짧은 상황 예시**  
   요청 DTO를 만들고, Service를 호출하고, 응답 제목을 검증하는 순서가 바로 이 구조입니다.
 
+### unit test 와 integration test 의 감각 차이
+
+- **뜻**  
+  unit test 는 작은 범위에 집중하고, integration test 는 여러 계층이나 실제 연결을 함께 봅니다.
+- **왜 중요한가**  
+  지금은 모든 테스트를 다 하려는 것이 아니라, 현재 목적에 맞는 범위를 고르는 감각이 필요하기 때문입니다.
+- **이번 코드에서는 어디에 보이나요**  
+  지금 시퀀스는 `service test + mock` 중심으로 설계되어 있습니다.
+- **짧은 상황 예시**  
+  `PostService.create()`만 보고 싶을 때는 mock 기반 service test 가 더 빠르고 선명합니다.
+
 ## 핵심 개념 설명
 
 ### 1. 테스트는 결과 확인 도구입니다
@@ -165,6 +246,67 @@ fun `login은 올바른 이메일과 비밀번호면 access token을 만든다`(
 하지만 실제 서비스는 없는 게시글 조회, 잘못된 비밀번호처럼
 실패 상황도 자주 만나기 때문에 예외 흐름을 같이 검증해야 구조가 더 또렷하게 보입니다.
 
+## 실무에서 한 번 더 보기
+
+이번 시퀀스의 실무 확장 개념은 아래 두 가지입니다.
+
+- 테스트 범위 구분
+- 테스트 더블 사용 기준
+
+### 1. 왜 지금은 service test 에 집중하는가
+
+05 시퀀스까지 오면 기능은 늘어났지만,
+지금 가장 먼저 확인해야 하는 것은 "service 로직이 기대한 값을 내는가"입니다.
+
+그래서 이번 시퀀스에서는 의도적으로 아래 범위를 제외합니다.
+
+- controller test
+- repository test
+- integration test
+- e2e test
+
+이건 중요하지 않아서가 아니라,
+이번 단계에서는 **검증 범위를 좁혀서 테스트 감각을 먼저 잡기 위해서**입니다.
+
+### 2. 처음 보면 자연스러운 문제 코드
+
+```kotlin
+val context = SpringApplication.run(App::class.java)
+val postService = context.getBean(PostService::class.java)
+val result = postService.create(request)
+```
+
+이런 방식은 실행 자체는 가능하지만,
+
+- 지금 실패가 service 로직 때문인지
+- DB 설정 때문인지
+- 다른 bean wiring 때문인지
+
+구분하기 어려워질 수 있습니다.
+
+### 3. 해결 방향 코드
+
+```kotlin
+val postRepository = mock(PostRepository::class.java)
+val postService = PostService(postRepository)
+
+`when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)
+
+val result = postService.create(request)
+assertEquals(request.title, result.title)
+```
+
+이 흐름이면 "이번 테스트는 PostService.create 로직을 본다"는 범위가 분명해집니다.
+
+### 4. fixture 를 왜 따로 두는가
+
+```kotlin
+val request = TestFixtureFactory.postCreateRequest()
+```
+
+fixture 는 단순 편의 기능이 아니라,
+테스트 본문이 준비 코드로 길어지는 것을 막아줍니다.
+
 ## 이번 실습에서 꼭 보면 좋은 포인트
 
 - fixture를 쓰면 테스트 본문이 얼마나 짧아지는지
@@ -178,6 +320,7 @@ fun `login은 올바른 이메일과 비밀번호면 access token을 만든다`(
 - 이번 시퀀스는 controller 테스트나 통합 테스트까지 넓히지 않습니다.
 - fixture는 진짜 로직이 아니라 테스트 입력을 정리하는 도구입니다.
 - mock은 "가짜라서 의미 없다"가 아니라 "이번에는 Service만 집중해서 본다"는 뜻에 가깝습니다.
+- mock 을 썼다고 테스트가 낮은 가치가 되는 것은 아니고, 검증 범위가 다를 뿐입니다.
 
 ## 직접 말해보기
 
@@ -191,6 +334,8 @@ fun `login은 올바른 이메일과 비밀번호면 access token을 만든다`(
 - [ ] 테스트가 왜 필요한지 한 문장으로 설명할 수 있습니다.
 - [ ] 정상 케이스와 예외 케이스를 구분해서 설명할 수 있습니다.
 - [ ] fixture와 mock이 각각 어디에 쓰이는지 말할 수 있습니다.
+- [ ] 왜 지금은 service test 에 집중하는지 설명할 수 있습니다.
+- [ ] unit test 와 integration test 의 감각 차이를 설명할 수 있습니다.
 - [ ] `PostService`와 `AuthService` 테스트 흐름을 다시 설명할 수 있습니다.
 - [ ] 테스트가 구조 점검 도구라는 점을 이해했습니다.
 

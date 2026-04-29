@@ -7,11 +7,15 @@
 - `AuthServiceTest`에서 인증 성공과 실패를 각각 검증했는가
 - `./gradlew test`가 실제로 통과하는가
 
+이번 answer 는 "테스트 코드를 완성했다"에서 끝나는 것이 아니라,
+왜 지금은 service test 범위로 자른 것인지까지 함께 이해하는 기준입니다.
+
 ## 1. fixture 정답 포인트
 
 - 게시글 요청과 저장 결과 Entity를 빠르게 만들 수 있어야 합니다.
 - 로그인 요청과 사용자 fixture를 빠르게 만들 수 있어야 합니다.
 - fixture는 복잡한 로직이 아니라 테스트 가독성을 위한 준비 도구에 가깝습니다.
+- fixture 를 따로 둔 이유는 테스트 본문이 검증 흐름에 집중하게 만들기 위해서입니다.
 
 예시 형태:
 
@@ -69,6 +73,8 @@ assertThrows(PostNotFoundException::class.java) {
 }
 ```
 
+이 테스트의 포인트는 "실패도 별도 시나리오로 검증한다"는 데 있습니다.
+
 ## 3. `AuthServiceTest` 정답 포인트
 
 ### 인증 성공 테스트
@@ -92,6 +98,9 @@ assertFalse(result.accessToken.isBlank())
 assertEquals(request.email, jwtTokenProvider.getEmail(result.accessToken))
 ```
 
+여기서는 단순히 "문자열이 나왔다"보다
+"그 토큰이 기대한 사용자를 다시 식별하는가"를 보는 것이 핵심입니다.
+
 ### 인증 실패 테스트
 
 1. 저장된 사용자 비밀번호는 정상 비밀번호를 인코딩해서 둡니다.
@@ -111,14 +120,26 @@ assertThrows(InvalidCredentialsException::class.java) {
 }
 ```
 
-## 4. 강사용 빠른 비교 포인트
+이 테스트는 사용자를 찾았더라도 인증이 실패할 수 있다는 점을 분리해서 보여줍니다.
+
+## 4. 왜 이번에는 service test 에 집중하는가
+
+정답 기준에서도 이번 시퀀스는 의도적으로 범위를 좁힙니다.
+
+- 지금은 service 로직을 빠르게 다시 믿게 만드는 것이 목적입니다.
+- controller, repository, integration 테스트를 한 번에 넣으면 무엇을 검증하는지 흐려질 수 있습니다.
+- 그래서 mock 기반 service test 로 given / when / then 감각을 먼저 잡습니다.
+
+## 5. 강사용 빠른 비교 포인트
 
 - fixture는 재사용용 준비 코드인지
 - 테스트 이름만 읽어도 무엇을 검증하는지 드러나는지
 - 정상/실패 흐름이 각각 한 테스트에 한 동작만 담고 있는지
 - `assertEquals`, `assertFalse`, `assertThrows`가 역할에 맞게 쓰였는지
+- mock 을 왜 썼는지 설명할 수 있는지
+- 지금은 왜 integration test 가 아닌지 설명할 수 있는지
 
-## 5. answer 기준 완성 형태
+## 6. answer 기준 완성 형태
 
 `06-answer`에서는 아래 세 파일이 완성되어 있습니다.
 
