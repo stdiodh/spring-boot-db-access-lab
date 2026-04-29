@@ -162,6 +162,76 @@ fun handlePostNotFoundException(exception: PostNotFoundException): ErrorResponse
 - 검증 실패와 비즈니스 예외를 같은 코드로 내려주는 경우
 - `errors` 맵을 만들지 않고 검증 실패 이유를 잃어버리는 경우
 
+## 실무 확장 개념: 커스텀 Validation
+
+이번 시퀀스의 메인 구현은 기본 `@NotBlank`와 `@Valid`입니다.
+하지만 실무에서는 “비어 있지는 않지만 서비스 규칙상 허용할 수 없는 값”을 자주 만나게 됩니다.
+
+예를 들어 제목에 `광고`, `무료`, `대출` 같은 금지어를 막아야 한다고 가정하면,
+기본 `@NotBlank`만으로는 아래 입력이 그대로 통과합니다.
+
+```json
+{
+  "title": "무료 대출 이벤트",
+  "content": "지금 바로 신청하세요",
+  "author": "marketing-bot"
+}
+```
+
+처음에는 Service 안쪽에서 아래처럼 막고 싶어질 수 있습니다.
+
+```kotlin
+if (request.title.contains("무료") || request.title.contains("광고")) {
+    throw IllegalArgumentException("허용되지 않는 제목입니다.")
+}
+```
+
+하지만 이렇게 되면 저장 흐름과 입력 정책이 한 메서드 안에 섞입니다.
+그래서 실무에서는 커스텀 annotation과 validator를 따로 두는 방식을 자주 씁니다.
+
+```kotlin
+@Target(AnnotationTarget.FIELD)
+@Retention(AnnotationRetention.RUNTIME)
+@Constraint(validatedBy = [NoForbiddenTitleWordsValidator::class])
+annotation class NoForbiddenTitleWords(
+    val message: String = "허용되지 않는 제목입니다.",
+    val groups: Array<KClass<*>> = [],
+    val payload: Array<KClass<out Payload>> = []
+)
+```
+
+```kotlin
+class NoForbiddenTitleWordsValidator : ConstraintValidator<NoForbiddenTitleWords, String> {
+    private val forbiddenWords = listOf("광고", "무료", "대출")
+
+    override fun isValid(value: String?, context: ConstraintValidatorContext): Boolean {
+        if (value.isNullOrBlank()) return true
+        return forbiddenWords.none { forbiddenWord -> value.contains(forbiddenWord) }
+    }
+}
+```
+
+DTO에서는 아래처럼 붙일 수 있습니다.
+
+```kotlin
+data class PostCreateRequest(
+    @field:NotBlank(message = "title은 비어 있을 수 없습니다.")
+    @field:NoForbiddenTitleWords
+    val title: String,
+    @field:NotBlank(message = "content는 비어 있을 수 없습니다.")
+    val content: String,
+    @field:NotBlank(message = "author는 비어 있을 수 없습니다.")
+    val author: String
+)
+```
+
+핵심은 `@NotBlank`를 버리는 것이 아니라,
+기본 검증은 기본 검증대로 두고 서비스 고유 규칙은 커스텀 validator로 분리하는 것입니다.
+
+이번 단계에서는 이 커스텀 Validation을 starter 필수 구현 범위로 넣지 않고,
+`docs/theory.md`와 정답 가이드에서
+문제 입력과 해결 코드 흐름을 같이 이해하는 것을 목표로 둡니다.
+
 ## 왜 지금 이 흐름이 중요한가
 
 이번 시퀀스는 단순히 어노테이션을 붙이는 연습이 아닙니다.

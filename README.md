@@ -14,6 +14,7 @@
 3. `PostNotFoundException`으로 비즈니스 예외를 분리합니다.
 4. `GlobalExceptionHandler`와 `ErrorResponse`로 실패 응답을 통일합니다.
 5. 정상 요청과 실패 요청이 어떻게 다르게 흘러가는지 직접 확인합니다.
+6. 기본 Validation만으로 부족한 순간에는 커스텀 Validation이 왜 필요한지 이해합니다.
 
 ## 브랜치 사용 방법
 
@@ -72,6 +73,8 @@ git diff origin/03-implementation..origin/03-answer
 - 패키지 구조와 메인 애플리케이션 클래스
 
 학생은 입력 검증과 실패 응답의 핵심 흐름만 직접 구현합니다.
+커스텀 Validation은 실무 확장 개념으로 문서에서 같이 다루되,
+이번 starter의 메인 구현 범위를 과하게 넓히지는 않습니다.
 
 ## 실행 방법
 
@@ -106,5 +109,12 @@ http://localhost:8080/swagger
 - `PostService`에서 비즈니스 예외 흐름 연결
 - `ErrorResponse` 구조 이해
 - `GlobalExceptionHandler`에서 검증 실패 / 비즈니스 예외 응답 통일
+
+실무 확장 메모:
+`docs/theory.md`와 `docs/answer-guide.md`에는
+- 기본 `@NotBlank`만으로는 통과되는 문제 입력
+- Service 안쪽 `if` 검증의 한계
+- 커스텀 annotation / validator 해결 코드
+도 함께 정리되어 있습니다.
 
 이번 시퀀스에서는 Security, JWT, 테스트 확장, 복잡한 공통 응답 래퍼를 넣지 않습니다.
