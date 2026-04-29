@@ -14,6 +14,7 @@
 3. 로그인 시 email과 password를 확인합니다.
 4. 로그인 성공 후 JWT를 발급합니다.
 5. `/auth/me`는 토큰이 있어야 접근되도록 보호합니다.
+6. 로그인만으로는 부족하고, 그다음에는 인가 규칙이 왜 필요한지도 이해합니다.
 
 ## 브랜치 사용 방법
 
@@ -71,6 +72,8 @@ git diff origin/04-implementation..origin/04-answer
 - `PasswordEncoder` Bean, JWT 필터 뼈대, 인증 실패 응답 기본 처리
 
 학생은 회원가입, 로그인, 토큰 발급, 보호된 API 흐름의 핵심만 직접 구현합니다.
+인가와 역할 기반 접근은 실무 확장 개념으로 문서에서 같이 다루되,
+이번 starter의 메인 구현 범위를 과하게 넓히지는 않습니다.
 
 ## 실행 방법
 
@@ -106,5 +109,12 @@ http://localhost:8080/swagger
 - `JwtTokenProvider`의 토큰 발급 / 사용자 식별 / 검증 메서드
 - `SecurityConfig`에서 보호할 API 지정과 JWT 필터 연결
 - `/auth/signup`, `/auth/login`, `/auth/me` 흐름 확인
+
+실무 확장 메모:
+`docs/theory.md`와 `docs/answer-guide.md`에는
+- 로그인만으로는 부족한 문제 상황
+- `authenticated()`만으로는 설명되지 않는 접근 규칙
+- `hasRole("ADMIN")`, 본인 확인 인가 코드 예시
+도 함께 정리되어 있습니다.
 
 이번 시퀀스에서는 OAuth2, Email Verification, refresh token, 권한(Role) 확장, 복잡한 인가 정책은 넣지 않습니다.

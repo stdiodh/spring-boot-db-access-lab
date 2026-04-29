@@ -186,3 +186,63 @@ fun me(authentication: Principal): CurrentUserResponse {
 
 이번 시퀀스의 정답 핵심은  
 **회원가입으로 저장하고, 로그인으로 확인하고, JWT로 다음 요청을 구분하는 흐름이 보이는가** 입니다.
+
+## 실무 확장 개념: 인증과 인가의 분리
+
+이번 시퀀스의 메인 구현은 최소 인증 흐름입니다.
+하지만 실무에서는 “로그인만 됐으면 모든 API가 다 허용되는가?”라는 질문이 바로 따라옵니다.
+
+예를 들어 아래 설정은 처음 보면 자연스럽습니다.
+
+```kotlin
+.authorizeHttpRequests { auth ->
+    auth
+        .requestMatchers("/auth/signup", "/auth/login").permitAll()
+        .requestMatchers("/auth/**").authenticated()
+}
+```
+
+이렇게 두면 `/auth/me` 같은 API는 잘 보호할 수 있습니다.
+하지만 곧 아래 같은 요구가 생깁니다.
+
+- `/admin/users`는 관리자만 접근해야 한다
+- `/users/{email}`은 본인만 조회해야 한다
+
+이때 필요한 것이 인가입니다.
+즉, 인증은 “누구인지 확인”이고,
+인가는 “이 기능을 써도 되는지 확인”입니다.
+
+### 역할 기반 접근 예시
+
+```kotlin
+.authorizeHttpRequests { auth ->
+    auth
+        .requestMatchers("/auth/signup", "/auth/login").permitAll()
+        .requestMatchers("/auth/me").authenticated()
+        .requestMatchers("/admin/**").hasRole("ADMIN")
+}
+```
+
+이 예시는 아래 차이를 보여줍니다.
+
+- `/auth/me`: 로그인만 되면 접근 가능
+- `/admin/**`: 관리자 역할이 있어야 접근 가능
+
+### 본인만 접근 가능한 규칙 예시
+
+```kotlin
+fun getProfile(requestedEmail: String, principalEmail: String): UserProfileResponse {
+    if (requestedEmail != principalEmail) {
+        throw ForbiddenException("본인 정보만 조회할 수 있습니다.")
+    }
+
+    return userQueryService.getProfileByEmail(requestedEmail)
+}
+```
+
+핵심은 JWT를 발급하는 것보다,
+그 JWT로 확인된 사용자가 **어디까지 허용되는지**를 나누는 규칙이 곧 필요해진다는 점입니다.
+
+이번 단계에서는 이 인가 구조를 starter 필수 구현 범위로 넣지 않고,
+`docs/theory.md`와 정답 가이드에서
+문제 상황과 코드 예시까지 같이 이해하는 것을 목표로 둡니다.
