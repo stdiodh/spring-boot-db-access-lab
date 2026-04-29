@@ -16,6 +16,9 @@
 4. `GlobalExceptionHandler`가 실패를 `ErrorResponse`로 통일합니다.
 5. 정상 요청과 실패 요청을 Swagger에서 직접 비교합니다.
 
+여기서 한 걸음 더 나가면,
+실무에서는 기본 `@NotBlank`만으로는 막히지 않는 입력을 커스텀 Validation으로 다룬다는 점까지 이론 문서에서 함께 이해해야 합니다.
+
 ## 학생이 직접 구현할 순서
 
 1. `PostCreateRequest`, `PostUpdateRequest`에 기본 검증을 붙입니다.
@@ -45,6 +48,14 @@
 - `ErrorResponse` 기본 틀
 - 실행 가능한 starter 환경
 
+실무 확장 메모:
+이번 브랜치의 메인 구현 흐름은 기본 Validation과 실패 응답 통일입니다.
+커스텀 Validation은 `docs/theory.md`와 `docs/answer-guide.md`에서
+- 기본 검증만으로는 통과되는 문제 입력
+- Service 안쪽 `if` 검증의 한계
+- 커스텀 annotation / validator 코드 예시
+로 먼저 이해하고 넘어갑니다.
+
 ## 파일별 역할 설명
 
 - `PostCreateRequest.kt`: 글 생성 요청의 입력 검증 기준
@@ -64,6 +75,8 @@
 
 확인 포인트:
 - 빈 문자열 요청이 Service까지 들어가기 전에 막힐 준비가 되었는가
+- 이 단계가 바로 나중에 커스텀 Validation 설명과 연결됩니다.
+  지금은 기본 `@NotBlank`를 붙이지만, 서비스 규칙이 더 생기면 어떤 커스텀 validator가 필요한지 `docs/theory.md`에서 같이 확인하세요.
 
 ### Step 2. 응답 DTO 변환 완성하기
 
@@ -97,6 +110,7 @@
 
 확인 포인트:
 - 어떤 필드가 왜 실패했는지 응답에서 바로 보이는가
+- 커스텀 Validation을 붙여도 결국 이 실패 응답 흐름 안으로 들어온다는 점을 설명할 수 있는가
 
 ### Step 6. 게시글 없음 응답 만들기
 
@@ -126,6 +140,7 @@
 - [ ] 없는 게시글 조회를 `PostNotFoundException`으로 분리할 수 있습니다.
 - [ ] 검증 실패 응답과 게시글 없음 응답을 Swagger에서 직접 확인할 수 있습니다.
 - [ ] 실패 응답을 왜 통일하는지 설명할 수 있습니다.
+- [ ] 기본 Validation과 커스텀 Validation이 어떤 기준으로 갈리는지 설명할 수 있습니다.
 
 ## 강사 / PPT 체크리스트
 
@@ -133,6 +148,7 @@
 - [ ] 빈 값 요청과 없는 게시글 요청을 각각 시연할 수 있는가
 - [ ] `@Valid`, `@NotBlank`, `ErrorResponse` 역할을 코드와 함께 설명할 수 있는가
 - [ ] 검증 실패와 비즈니스 예외 차이를 학생이 말로 설명하게 만들 수 있는가
+- [ ] 기본 검증으로는 부족한 입력 사례와 커스텀 Validation 방향을 연결해 설명할 수 있는가
 - [ ] 다음 시퀀스의 인증/JWT에서도 같은 입력 안전성 감각이 이어진다는 점을 연결할 수 있는가
 
 ## 다음 도메인 연결 포인트

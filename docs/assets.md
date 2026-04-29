@@ -10,6 +10,7 @@
 | Swagger UI 설정 | 정상 / 실패 요청을 빠르게 비교하게 하기 위해 | OpenAPI UI 연결 설정 |
 | `PostController`의 `@Valid` 연결 | 학생이 핵심 TODO 파일에 집중하게 하기 위해 | 요청 진입점 기본 wiring |
 | `PostNotFoundException` 틀 | 비즈니스 예외 개념에 집중하게 하기 위해 | 예외 클래스 기본 선언 |
+| 커스텀 Validation 예시 문서 | 기본 검증의 한계를 설명하기 위해 | annotation / validator 전체 구현을 starter 필수 범위로 강제하지 않음 |
 
 ## 학생이 직접 구현하는 것
 
@@ -18,6 +19,7 @@
 - `PostService`의 비즈니스 예외 연결
 - `GlobalExceptionHandler`의 검증 실패 / 게시글 없음 응답
 - 실패 응답 구조를 직접 실행해보는 과정
+- 커스텀 Validation이 왜 필요한지 문서 기준으로 설명하는 과정
 
 ## 운영 메모
 
@@ -25,3 +27,4 @@
 - 테스트는 H2 in-memory DB를 사용합니다.
 - 이번 시퀀스에서는 Security, JWT, 테스트 확장, 복잡한 예외 계층은 다루지 않습니다.
 - 핵심은 "요청 초입에서 잘못된 값을 막고, 실패를 같은 구조로 응답한다"입니다.
+- 실무 확장 개념인 커스텀 Validation은 문서에서 문제 입력과 해결 코드 예시까지 같이 다룹니다.
