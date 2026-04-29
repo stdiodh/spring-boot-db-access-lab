@@ -13,6 +13,12 @@
 현재 레포는 로그인 아이디가 곧 `email`이라서,
 이번 SMTP 파트는 `아이디 찾기`보다 `비밀번호 재설정 메일 요청`을 대표 흐름으로 다룹니다.
 
+이번에는 구현만 따라가는 것이 아니라,
+아래 두 실무 질문도 같이 붙잡습니다.
+
+1. 같은 email의 로컬 계정과 Google 계정이 만나면 어떤 정책으로 연결할 것인가
+2. 비밀번호 재설정 메일 요청은 왜 보안 관점에서 조심해야 하는가
+
 ## 브랜치 사용 방법
 
 - `main`: 이 레포의 주제, 문서, 브랜치 구조를 안내하는 대표 브랜치
@@ -44,7 +50,7 @@ git diff origin/05-implementation..origin/05-answer
 
 ## 파일을 어떻게 보면 좋나요
 
-1. `docs/theory.md`에서 왜 이번에 OAuth2와 SMTP를 함께 다루는지 읽습니다.
+1. `docs/theory.md`에서 계정 연결 정책과 계정 복구 보안 관점을 먼저 읽습니다.
 2. `docs/implementation.md`에서 오늘 손으로 칠 순서를 확인합니다.
 3. 아래 핵심 파일을 순서대로 엽니다.
 
@@ -56,6 +62,11 @@ git diff origin/05-implementation..origin/05-answer
 
 `05-implementation`에서는 TODO를 채우며 실습하고,
 완료 후에는 `05-answer`나 `docs/answer-guide.md`로 비교하면 됩니다.
+
+이번 문서는 특히 아래 코드를 기준으로 읽으면 이해가 빨라집니다.
+
+- `OAuthAccountService.handleOAuthLogin(...)`
+- `AccountRecoveryService.requestPasswordReset(...)`
 
 ## 미리 제공되는 것
 
