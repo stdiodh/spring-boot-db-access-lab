@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: aandi-seq02-mysql
+    environment:
+      MYSQL_DATABASE: aandi_lab
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-seq02-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql-seq02-data:
