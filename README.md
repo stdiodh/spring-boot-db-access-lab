@@ -14,6 +14,12 @@ Service 단위 테스트를 직접 작성해보는 단계입니다.
 3. 정상 케이스와 예외 케이스를 나눠서 보는 습관이 중요합니다.
 4. 인증 흐름도 테스트 대상이 될 수 있습니다.
 
+그리고 이번에는 구현만 따라가는 것이 아니라,
+아래 실무 질문도 같이 붙잡습니다.
+
+1. 왜 지금은 controller 나 integration 이 아니라 service test 에 집중하는가
+2. mock 은 언제 도움이 되고, 어디까지 믿어야 하는가
+
 ## 브랜치 사용 방법
 
 - `main`: 이 레포의 주제, 문서, 브랜치 구조를 안내하는 대표 브랜치
@@ -45,7 +51,7 @@ git diff origin/06-implementation..origin/06-answer
 
 ## 파일을 어떻게 보면 좋나요
 
-1. `docs/theory.md`에서 왜 지금 테스트를 붙이는지 읽습니다.
+1. `docs/theory.md`에서 왜 지금 service test 를 붙이는지, 왜 mock 을 쓰는지 먼저 읽습니다.
 2. `docs/implementation.md`에서 오늘 손으로 칠 순서를 확인합니다.
 3. 아래 핵심 파일을 순서대로 엽니다.
 
@@ -66,6 +72,12 @@ git diff origin/06-implementation..origin/06-answer
 - MySQL 런타임 설정과 H2 테스트 설정
 
 학생은 테스트의 핵심 흐름만 직접 작성합니다.
+
+이번 문서는 특히 아래 코드를 기준으로 읽으면 이해가 빨라집니다.
+
+- `PostServiceTest`
+- `AuthServiceTest`
+- `TestFixtureFactory`
 
 ## 실행 방법
 
