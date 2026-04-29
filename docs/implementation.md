@@ -8,7 +8,10 @@
 2. `PostRepository`를 선언해 DB 접근을 맡깁니다.
 3. `PostService`가 메모리 저장 대신 Repository를 사용하게 만듭니다.
 4. `POST`, `GET`, `PUT`, `DELETE` 흐름을 DB 기반 CRUD로 연결합니다.
-5. Swagger와 H2 console에서 저장 결과를 확인합니다.
+5. Swagger와 MySQL 저장 결과를 확인합니다.
+
+여기서 한 걸음 더 나가면,
+실무에서는 게시글과 댓글처럼 연관관계가 생기고 N+1 문제가 따라온다는 점까지 이론 문서에서 함께 이해해야 합니다.
 
 ## 학생이 직접 구현할 순서
 
@@ -20,7 +23,7 @@
 6. `deleteById()` 연결
 7. `update()` 핵심 로직 작성
 8. Controller에서 수정 / 삭제 API 연결
-9. DB 저장 결과 확인
+9. MySQL 저장 결과 확인
 
 ## TODO를 넣을 파일
 
@@ -39,6 +42,10 @@
 - `PostUpdateRequest.kt`: 글 수정 요청 값
 - `PostResponse.kt`: 바깥으로 내보낼 응답 모양
 
+실무 확장 메모:
+이번 브랜치의 구현 메인 흐름은 단일 테이블 CRUD입니다.
+관계 매핑과 N+1은 `docs/theory.md`에서 먼저 이해하고 넘어갑니다.
+
 ## 단계별 구현 안내
 
 ### Step 1. Entity 만들기
@@ -49,7 +56,7 @@
 
 실습 힌트:
 - 이번 실습에서는 단일 테이블 기준으로 단순하게 갑니다.
-- 연관관계나 복잡한 매핑은 넣지 않습니다.
+- 연관관계나 복잡한 매핑은 구현 메인 흐름에 넣지 않습니다.
 
 ### Step 2. Repository 선언하기
 
@@ -111,9 +118,10 @@
 
 ### Step 9. DB 저장 결과 확인
 
+- `docker compose up -d`로 MySQL을 실행합니다.
 - `./gradlew bootRun`으로 앱을 실행합니다.
 - `http://localhost:8080/swagger`에서 API를 호출합니다.
-- `http://localhost:8080/h2-console`에서 `posts` 테이블을 확인합니다.
+- MySQL client나 Workbench에서 `posts` 테이블을 확인합니다.
 
 실습 힌트:
 - 서버를 껐다 켠 뒤에도 데이터가 남는지 보면 메모리 저장과 차이가 더 선명해집니다.
@@ -128,7 +136,7 @@
 - Step 6: 삭제 후 목록에서 데이터가 빠지는가
 - Step 7: 수정 후 다시 조회했을 때 값이 바뀌는가
 - Step 8: 수정 / 삭제 API가 Controller에 연결되어 있는가
-- Step 9: Swagger와 H2 console에서 결과를 눈으로 확인했는가
+- Step 9: Swagger와 MySQL 조회 결과를 눈으로 확인했는가
 
 ## 학생 체크 질문
 
@@ -136,13 +144,16 @@
 - `PostEntity`와 `PostResponse`는 무엇이 다른가요?
 - Repository가 생기면 Service는 어떤 점이 더 읽기 쉬워지나요?
 - 수정 흐름은 어떤 순서로 동작하나요?
+- 게시글과 댓글 관계가 생기면 어떤 매핑이 필요할까요?
+- N+1은 왜 생길 수 있을까요?
 
 ## 강사용 확인 포인트
 
 - 학생이 Entity와 DTO 역할을 구분해서 설명하는지 확인합니다.
 - 학생이 Service에서 Repository를 호출하는 이유를 말할 수 있는지 확인합니다.
-- 학생이 DB 저장 결과를 Swagger와 H2 console에서 함께 확인했는지 확인합니다.
+- 학생이 DB 저장 결과를 Swagger와 MySQL 조회 도구에서 함께 확인했는지 확인합니다.
 - 학생이 수정과 삭제도 같은 계층 흐름으로 설명할 수 있는지 확인합니다.
+- 학생이 관계 매핑과 N+1을 “이번엔 구현하지 않지만 곧 마주치는 실무 개념”으로 설명할 수 있는지 확인합니다.
 
 ## 다음 시퀀스 연결 포인트
 
