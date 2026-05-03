@@ -1,6 +1,6 @@
 # Spring Boot OAuth2 And SMTP Recovery Lab
 
-> Google OAuth2 로그인과 SMTP 기반 비밀번호 재설정 메일 요청을 함께 익히는 실습 레포입니다.
+Google OAuth2 로그인과 SMTP 기반 비밀번호 재설정 메일 요청을 함께 익히는 실습 레포입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
@@ -73,7 +73,7 @@ git diff origin/05-implementation..origin/05-answer
 - `04-answer` 기반 자체 로그인 + JWT 흐름
 - Google OAuth2 client 설정 뼈대
 - SMTP 설정 자리
-- MySQL 실행 설정과 테스트용 H2 설정
+- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 - 간단한 프론트 `auth-demo.html`
 - `User`, `UserRepository`, `OAuthUserProfile`, `OAuthLoginResponse`
 
