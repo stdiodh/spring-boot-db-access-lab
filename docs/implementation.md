@@ -54,7 +54,7 @@
 ## 미리 제공할 것
 
 - `03-answer` 기반 CRUD, Validation, 예외 응답 구조
-- MySQL 실행 설정과 테스트용 H2 설정
+- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 - `User`, `UserRepository`, `TokenResponse`, `CurrentUserResponse`
 - `PasswordEncoder` Bean
 - JWT 필터 뼈대와 인증 실패 응답 기본 처리

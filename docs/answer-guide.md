@@ -138,7 +138,7 @@ fun createToken(email: String): String {
 ```kotlin
 .authorizeHttpRequests { auth ->
     auth
-        .requestMatchers("/swagger/**", "/v3/api-docs/**", "/auth/signup", "/auth/login")
+        .requestMatchers("/swagger/", "/v3/api-docs/", "/auth/signup", "/auth/login")
         .permitAll()
         .requestMatchers("/auth/me").authenticated()
         .anyRequest().permitAll()
@@ -185,7 +185,7 @@ fun me(authentication: Principal): CurrentUserResponse {
 ## 강사용 한 줄 요약
 
 이번 시퀀스의 정답 핵심은  
-**회원가입으로 저장하고, 로그인으로 확인하고, JWT로 다음 요청을 구분하는 흐름이 보이는가** 입니다.
+회원가입으로 저장하고, 로그인으로 확인하고, JWT로 다음 요청을 구분하는 흐름이 보이는가 입니다.
 
 ## 실무 확장 개념: 인증과 인가의 분리
 
@@ -198,7 +198,7 @@ fun me(authentication: Principal): CurrentUserResponse {
 .authorizeHttpRequests { auth ->
     auth
         .requestMatchers("/auth/signup", "/auth/login").permitAll()
-        .requestMatchers("/auth/**").authenticated()
+        .requestMatchers("/auth/").authenticated()
 }
 ```
 
@@ -219,14 +219,14 @@ fun me(authentication: Principal): CurrentUserResponse {
     auth
         .requestMatchers("/auth/signup", "/auth/login").permitAll()
         .requestMatchers("/auth/me").authenticated()
-        .requestMatchers("/admin/**").hasRole("ADMIN")
+        .requestMatchers("/admin/").hasRole("ADMIN")
 }
 ```
 
 이 예시는 아래 차이를 보여줍니다.
 
 - `/auth/me`: 로그인만 되면 접근 가능
-- `/admin/**`: 관리자 역할이 있어야 접근 가능
+- `/admin/`: 관리자 역할이 있어야 접근 가능
 
 ### 본인만 접근 가능한 규칙 예시
 
@@ -241,7 +241,7 @@ fun getProfile(requestedEmail: String, principalEmail: String): UserProfileRespo
 ```
 
 핵심은 JWT를 발급하는 것보다,
-그 JWT로 확인된 사용자가 **어디까지 허용되는지**를 나누는 규칙이 곧 필요해진다는 점입니다.
+그 JWT로 확인된 사용자가 어디까지 허용되는지를 나누는 규칙이 곧 필요해진다는 점입니다.
 
 이번 단계에서는 이 인가 구조를 starter 필수 구현 범위로 넣지 않고,
 `docs/theory.md`와 정답 가이드에서
