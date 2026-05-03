@@ -7,7 +7,7 @@
 - Mockito 사용 환경
 - `PasswordConfig`, `JwtTokenProvider`를 활용할 수 있는 테스트 기본 구조
 - 테스트 패키지와 클래스 뼈대
-- MySQL 런타임 설정과 H2 테스트 설정
+- MySQL 런타임 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 
 ## 왜 미리 제공하는가
 
