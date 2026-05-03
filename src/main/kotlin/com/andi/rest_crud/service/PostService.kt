@@ -40,7 +40,7 @@ class PostService(
     }
 
     // TODO(A&I) 1. deleteById(id)를 사용하거나 조회 후 삭제하세요.
-    // TODO(A&I) 2. 삭제 후 Swagger나 H2 console에서 결과를 확인하세요.
+    // TODO(A&I) 2. 삭제 후 Swagger와 MySQL 조회 결과를 확인하세요.
     fun delete(id: Long) {
         TODO("DB 삭제 흐름으로 delete를 완성하세요.")
     }

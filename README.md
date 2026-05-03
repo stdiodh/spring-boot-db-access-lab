@@ -1,6 +1,6 @@
 # Spring Boot DB Access Lab
 
-> 메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 실습 레포입니다.
+메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 실습 레포입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
@@ -68,7 +68,7 @@ git diff 02-implementation..02-answer
 - Kotlin + Spring Boot + Spring Data JPA 프로젝트 기본 설정
 - Swagger UI 진입 설정
 - MySQL 실행 설정과 Docker Compose 예시
-- 테스트용 H2 in-memory 설정
+- 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 - 패키지 구조와 메인 애플리케이션 클래스
 
 학생은 영속 저장으로 바뀌는 핵심 흐름만 직접 구현합니다.
