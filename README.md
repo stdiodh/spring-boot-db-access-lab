@@ -1,6 +1,6 @@
 # Spring Boot DB Access Lab
 
-> 메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 정답 브랜치입니다.
+메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 정답 브랜치입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 

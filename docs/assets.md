@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Kotlin + Spring Boot + Spring Data JPA 설정 | 환경 설정보다 저장 흐름 이해에 집중하게 하기 위해 | Gradle, 플러그인, 메인 클래스 |
 | MySQL 실행 설정과 Compose 예시 | 실무에 더 가까운 DB 환경에서 영속 저장 차이를 바로 보여주기 위해 | datasource, Docker Compose 예시 |
-| 테스트용 H2 in-memory 설정 | 테스트를 독립적으로 실행하게 하기 위해 | test application 설정 |
+| 테스트 격리 실행을 위한 MySQL 호환 테스트 설정 | 테스트를 독립적으로 실행하게 하기 위해 | test application 설정 |
 | Swagger UI 진입 설정 | API를 바로 실행하며 흐름을 확인하게 하기 위해 | OpenAPI UI 연결 설정 |
 | DTO 기본 틀 | 학생이 Entity/Repository/Service 핵심 흐름에 집중하게 하기 위해 | 요청/응답 기본 구조 |
 
