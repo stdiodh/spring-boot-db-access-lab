@@ -1,6 +1,6 @@
 # Spring Boot Authentication And JWT Lab
 
-> 회원가입, 로그인, JWT 발급, 보호된 API 접근까지 가장 작은 인증 흐름으로 익히는 실습 레포입니다.
+회원가입, 로그인, JWT 발급, 보호된 API 접근까지 가장 작은 인증 흐름으로 익히는 실습 레포입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
@@ -66,7 +66,7 @@ git diff origin/04-implementation..origin/04-answer
 ## 미리 제공되는 것
 
 - Kotlin + Spring Boot + Spring Security + JWT 기본 설정
-- MySQL 실행 설정과 테스트용 H2 설정
+- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 - Swagger UI 진입 설정
 - `User`, `UserRepository`, `TokenResponse`, `CurrentUserResponse`
 - `PasswordEncoder` Bean, JWT 필터 뼈대, 인증 실패 응답 기본 처리

@@ -28,7 +28,6 @@ class SecurityConfig(
                     .requestMatchers(
                         "/swagger/**",
                         "/v3/api-docs/**",
-                        "/h2-console/**",
                         "/auth/signup",
                         "/auth/login"
                     ).permitAll()
