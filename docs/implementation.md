@@ -41,7 +41,7 @@
 ## 미리 제공할 것
 
 - `02-answer` 기반 CRUD 구조
-- MySQL 실행 설정과 테스트용 H2 설정
+- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 - Swagger UI 진입 설정
 - `PostController`의 `@Valid` 연결
 - `PostNotFoundException` 기본 틀
