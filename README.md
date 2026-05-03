@@ -1,6 +1,6 @@
 # Spring Boot Testing And Verification Lab
 
-> 이미 만든 Service 흐름을 테스트로 다시 신뢰하는 방법을 익히는 실습 레포입니다.
+이미 만든 Service 흐름을 테스트로 다시 신뢰하는 방법을 익히는 실습 레포입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
@@ -69,7 +69,7 @@ git diff origin/06-implementation..origin/06-answer
 - Mockito 사용 환경
 - 기본 fixture 구조
 - 테스트 패키지 구조
-- MySQL 런타임 설정과 H2 테스트 설정
+- MySQL 런타임 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 
 학생은 테스트의 핵심 흐름만 직접 작성합니다.
 
