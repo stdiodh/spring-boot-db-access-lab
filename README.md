@@ -1,6 +1,6 @@
 # Spring Boot Safe Request Handling Lab
 
-> DTO 분리, Validation, 예외 응답 통일을 통해 "안전한 요청 처리" 감각을 익히는 실습 레포입니다.
+DTO 분리, Validation, 예외 응답 통일을 통해 "안전한 요청 처리" 감각을 익히는 실습 레포입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
@@ -66,7 +66,7 @@ git diff origin/03-implementation..origin/03-answer
 ## 미리 제공되는 것
 
 - Kotlin + Spring Boot + Spring Data JPA 프로젝트 기본 설정
-- MySQL 실행 설정과 테스트용 H2 설정
+- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 - Swagger UI 진입 설정
 - 기본 CRUD 구조와 `PostController`
 - 예외 클래스 틀과 응답 포맷 틀
