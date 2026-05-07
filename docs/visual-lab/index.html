@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A&amp;I Sequence 02 Visual Lab</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./components.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero-section">
+        <div class="hero-kicker" aria-label="Sequence 02">
+          <span class="hero-icon" aria-hidden="true">&lt;/&gt;</span>
+          <span>Sequence 02 Visual Lab</span>
+        </div>
+        <h1 class="hero-title">
+          Sequence 02
+          <span class="hero-title-accent">Persistence Visual Lab</span>
+        </h1>
+        <p class="hero-subtitle">
+          메모리 CRUD가 Entity, Repository, MySQL을 만나는 순간을 단계별로 따라갑니다.
+        </p>
+        <p class="hero-description">
+          DB 저장, JPA Repository, Entity 변환, CRUD 확장, N+1 입문까지 흐름 중심으로 정리합니다.
+        </p>
+        <div class="hero-divider" aria-hidden="true"></div>
+      </header>
+
+      <main>
+        <section class="topic-section" aria-labelledby="topicSectionTitle">
+          <div class="section-heading">
+            <p class="section-kicker">Persistence Topics</p>
+            <h2 id="topicSectionTitle">영속성 저장 개념 카드</h2>
+          </div>
+          <div id="topicGrid" class="topic-grid" aria-label="Sequence 02 topic cards"></div>
+        </section>
+
+        <section class="detail-section" aria-labelledby="detailTitle" aria-live="polite">
+          <div class="detail-context-layout">
+            <article class="visual-card detail-panel detail-panel-compact">
+              <div class="detail-heading">
+                <p id="detailCategory" class="topic-badge"></p>
+                <h2 id="detailTitle"></h2>
+                <p id="detailEnglishTitle" class="detail-english-title"></p>
+              </div>
+              <p id="detailDescription" class="detail-description"></p>
+              <div class="summary-box">
+                <h3>왜 중요한가</h3>
+                <p id="detailWhy"></p>
+              </div>
+            </article>
+          </div>
+
+          <section class="step-explorer-section" aria-labelledby="stepExplorerTitle">
+            <article class="visual-card step-explorer">
+              <div class="step-explorer-header">
+                <p class="section-kicker">Core Flow</p>
+                <h2 id="stepExplorerTitle">이번 주차 핵심 흐름</h2>
+              </div>
+
+              <div id="focusFlowTabs" class="focus-flow-tabs" aria-label="핵심 흐름 선택"></div>
+
+              <div id="stepRail" class="step-rail" aria-label="단계 선택"></div>
+
+              <div class="step-playback">
+                <button id="playStepButton" class="step-play-button" type="button" aria-pressed="false">재생</button>
+                <div class="step-speed-group" aria-label="재생 속도">
+                  <button class="step-speed-button" type="button" data-speed="0.5">0.5x</button>
+                  <button class="step-speed-button is-active" type="button" data-speed="1">1x</button>
+                  <button class="step-speed-button" type="button" data-speed="2">2x</button>
+                </div>
+              </div>
+
+              <div class="step-progress-track" aria-hidden="true">
+                <span id="stepProgressFill" class="step-progress-fill"></span>
+              </div>
+
+              <div class="architecture-diagram-card" aria-labelledby="architectureDiagramTitle">
+                <div class="architecture-diagram-heading">
+                  <h3 id="architectureDiagramTitle">구조</h3>
+                  <p id="architectureCaption"></p>
+                </div>
+                <div id="architectureDiagram" class="architecture-diagram" aria-label="actor 기반 구조 그림"></div>
+              </div>
+
+              <div id="overviewSnapshot" class="overview-snapshot" aria-label="흐름 요약"></div>
+
+              <div id="currentStepSummary" class="step-summary-card"></div>
+
+              <div class="current-step-example-grid">
+                <pre id="currentStepExample" class="code-box"></pre>
+                <pre id="currentStepExampleResult" class="code-box"></pre>
+              </div>
+
+              <div id="stepStage" class="step-stage">
+                <div class="step-stage-main">
+                  <p id="currentStepMeta" class="step-meta"></p>
+                  <h3 id="currentStepTitle"></h3>
+                  <p id="currentStepDescription"></p>
+                </div>
+
+                <div class="step-io-grid" aria-label="현재 단계 입출력">
+                  <div class="step-io-card">
+                    <span>입력</span>
+                    <strong id="currentStepInput"></strong>
+                  </div>
+                  <div class="step-io-card">
+                    <span>결과</span>
+                    <strong id="currentStepOutput"></strong>
+                  </div>
+                  <div class="step-io-card">
+                    <span>다음</span>
+                    <strong id="currentStepHandoff"></strong>
+                  </div>
+                </div>
+
+                <div id="currentStepSource" class="step-source" hidden></div>
+              </div>
+
+              <div class="step-controls">
+                <button id="prevStepButton" type="button">이전 단계</button>
+                <span id="stepProgress" class="step-progress"></span>
+                <button id="nextStepButton" type="button">다음 단계</button>
+              </div>
+            </article>
+          </section>
+
+          <div class="visual-layout support-layout">
+            <article class="visual-card point-panel" aria-labelledby="pointTitle">
+              <h2 id="pointTitle">핵심</h2>
+              <ul id="pointList" class="point-list"></ul>
+            </article>
+
+            <article class="visual-card related-panel" aria-labelledby="relatedTitle">
+              <h2 id="relatedTitle">자료</h2>
+              <div id="relatedDocs" class="related-list"></div>
+              <div id="relatedCode" class="related-list"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>A&amp;I 4기 Code Lab · Sequence 02 Persistence &amp; Layered Architecture</p>
+      </footer>
+    </div>
+
+    <script src="./sequences.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
