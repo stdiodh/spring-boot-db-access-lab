@@ -2,17 +2,17 @@
 
 ## 미리 제공하는 것
 
-| 항목 | 왜 제공하는가 | 학생이 직접 작성하지 않는 범위 |
+| 항목 | 왜 제공하는가 | 실습에서 직접 작성하지 않는 범위 |
 | --- | --- | --- |
 | `02-answer` 기반 CRUD 구조 | 이번 시퀀스가 저장 로직이 아니라 요청 안전성에 집중하게 하기 위해 | Entity, Repository, 기본 CRUD API |
 | MySQL 실행 설정 | 로컬 실행 기준을 하나로 맞추기 위해 | datasource 기본값, 드라이버 설정 |
 | 테스트 격리 실행을 위한 MySQL 호환 테스트 설정 | 테스트를 DB 설치와 분리하기 위해 | `src/test/resources/application.yaml` |
 | Swagger UI 설정 | 정상 / 실패 요청을 빠르게 비교하게 하기 위해 | OpenAPI UI 연결 설정 |
-| `PostController`의 `@Valid` 연결 | 학생이 핵심 TODO 파일에 집중하게 하기 위해 | 요청 진입점 기본 wiring |
+| `PostController`의 `@Valid` 연결 | 실습자가 핵심 TODO 파일에 집중하게 하기 위해 | 요청 진입점 기본 wiring |
 | `PostNotFoundException` 틀 | 비즈니스 예외 개념에 집중하게 하기 위해 | 예외 클래스 기본 선언 |
 | 커스텀 Validation 예시 문서 | 기본 검증의 한계를 설명하기 위해 | annotation / validator 전체 구현을 starter 필수 범위로 강제하지 않음 |
 
-## 학생이 직접 구현하는 것
+## 실습에서 직접 구현하는 것
 
 - `PostCreateRequest`, `PostUpdateRequest` 검증 어노테이션
 - `PostResponse.from(...)` 변환 로직

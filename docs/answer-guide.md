@@ -1,4 +1,4 @@
-# 안전한 요청 처리 정답 가이드
+# 안전한 요청 처리 참고 구현 가이드
 
 ## 빠른 흐름 정리
 
@@ -12,7 +12,7 @@
 ### `PostCreateRequest.kt`, `PostUpdateRequest.kt`
 
 - `title`, `content`, `author`에 `@field:NotBlank`
-- 메시지는 학생이 바로 읽고 이해할 수 있는 수준으로 유지
+- 메시지는 실습자가 바로 읽고 이해할 수 있는 수준으로 유지
 
 ### `PostResponse.kt`
 
@@ -33,7 +33,7 @@
 - `MethodArgumentNotValidException` -> `VALIDATION_ERROR`
 - `PostNotFoundException` -> `POST_NOT_FOUND`
 
-## 요청 DTO 검증 정답 코드
+## 요청 DTO 검증 참고 구현
 
 ```kotlin
 data class PostCreateRequest(
@@ -48,7 +48,7 @@ data class PostCreateRequest(
 
 수정 요청 DTO도 같은 기준으로 작성합니다.
 
-## 응답 DTO 변환 정답 코드
+## 응답 DTO 변환 참고 구현
 
 ```kotlin
 companion object {
@@ -61,7 +61,7 @@ companion object {
 }
 ```
 
-## 비즈니스 예외 정답 코드
+## 비즈니스 예외 참고 구현
 
 ```kotlin
 private fun findPostById(id: Long): PostEntity {
@@ -73,7 +73,7 @@ private fun findPostById(id: Long): PostEntity {
 핵심은 `NoSuchElementException` 같은 일반 예외 대신
 서비스 의미가 드러나는 예외를 쓰는 것입니다.
 
-## 검증 실패 응답 정답 코드
+## 검증 실패 응답 참고 구현
 
 ```kotlin
 @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -92,7 +92,7 @@ fun handleValidationException(exception: MethodArgumentNotValidException): Error
 }
 ```
 
-## 게시글 없음 응답 정답 코드
+## 게시글 없음 응답 참고 구현
 
 ```kotlin
 @ExceptionHandler(PostNotFoundException::class)
@@ -155,7 +155,7 @@ fun handlePostNotFoundException(exception: PostNotFoundException): ErrorResponse
 }
 ```
 
-## 학생이 자주 틀리는 포인트
+## 실습자가 자주 틀리는 포인트
 
 - DTO에 검증을 붙이지 않고 Service에서 뒤늦게 확인하는 경우
 - `PostResponse.from(...)` 대신 Entity를 그대로 반환하는 경우
@@ -229,7 +229,7 @@ data class PostCreateRequest(
 기본 검증은 기본 검증대로 두고 서비스 고유 규칙은 커스텀 validator로 분리하는 것입니다.
 
 이번 단계에서는 이 커스텀 Validation을 starter 필수 구현 범위로 넣지 않고,
-`docs/theory.md`와 정답 가이드에서
+`docs/theory.md`와 참고 구현 가이드에서
 문제 입력과 해결 코드 흐름을 같이 이해하는 것을 목표로 둡니다.
 
 ## 왜 지금 이 흐름이 중요한가
