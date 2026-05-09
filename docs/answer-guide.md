@@ -1,6 +1,6 @@
-# 테스트와 검증 정답 가이드
+# 테스트와 검증 참고 구현 가이드
 
-## 정답을 보기 전에 먼저 확인할 것
+## 참고 구현을 보기 전에 먼저 확인할 것
 
 - `TestFixtureFactory`에서 요청 DTO와 Entity, User를 재사용할 수 있게 준비했는가
 - `PostServiceTest`에서 정상 케이스와 예외 케이스를 나눴는가
@@ -10,7 +10,7 @@
 이번 answer 는 "테스트 코드를 완성했다"에서 끝나는 것이 아니라,
 왜 지금은 service test 범위로 자른 것인지까지 함께 이해하는 기준입니다.
 
-## 1. fixture 정답 포인트
+## 1. fixture 참고 구현 포인트
 
 - 게시글 요청과 저장 결과 Entity를 빠르게 만들 수 있어야 합니다.
 - 로그인 요청과 사용자 fixture를 빠르게 만들 수 있어야 합니다.
@@ -33,11 +33,11 @@ fun postEntity(
 )
 ```
 
-## 2. `PostServiceTest` 정답 포인트
+## 2. `PostServiceTest` 참고 구현 포인트
 
 ### 정상 케이스
 
-정답 흐름은 아래 순서입니다.
+참고 구현 흐름은 아래 순서입니다.
 
 1. `postCreateRequest()`로 요청을 준비합니다.
 2. `postEntity(...)`로 저장 결과를 준비합니다.
@@ -58,7 +58,7 @@ assertEquals(request.title, result.title)
 
 ### 예외 케이스
 
-정답 흐름은 아래 순서입니다.
+참고 구현 흐름은 아래 순서입니다.
 
 1. `findById(999L)`가 빈 결과를 돌려주게 합니다.
 2. `assertThrows`로 `PostNotFoundException` 발생을 확인합니다.
@@ -75,7 +75,7 @@ assertThrows(PostNotFoundException::class.java) {
 
 이 테스트의 포인트는 "실패도 별도 시나리오로 검증한다"는 데 있습니다.
 
-## 3. `AuthServiceTest` 정답 포인트
+## 3. `AuthServiceTest` 참고 구현 포인트
 
 ### 인증 성공 테스트
 
@@ -124,13 +124,13 @@ assertThrows(InvalidCredentialsException::class.java) {
 
 ## 4. 왜 이번에는 service test 에 집중하는가
 
-정답 기준에서도 이번 시퀀스는 의도적으로 범위를 좁힙니다.
+참고 기준에서도 이번 시퀀스는 의도적으로 범위를 좁힙니다.
 
 - 지금은 service 로직을 빠르게 다시 믿게 만드는 것이 목적입니다.
 - controller, repository, integration 테스트를 한 번에 넣으면 무엇을 검증하는지 흐려질 수 있습니다.
 - 그래서 mock 기반 service test 로 given / when / then 감각을 먼저 잡습니다.
 
-## 5. 강사용 빠른 비교 포인트
+## 5. 리뷰용 빠른 비교 포인트
 
 - fixture는 재사용용 준비 코드인지
 - 테스트 이름만 읽어도 무엇을 검증하는지 드러나는지
