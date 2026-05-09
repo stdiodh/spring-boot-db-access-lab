@@ -1,6 +1,6 @@
 # Spring Boot DB Access Lab
 
-메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 정답 브랜치입니다.
+메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 참고 구현 브랜치입니다.
 
 ## 이 시퀀스에서 무엇을 배우나요
 
@@ -18,17 +18,17 @@
 
 ## 브랜치 사용 방법
 
-- `02-implementation`: 학생 실습용 starter 브랜치
-- `02-answer`: 비교용 정답 브랜치
+- `02-implementation`: 실습용 starter 브랜치
+- `02-answer`: 참고 구현 브랜치
 
-학생은 반드시 `02-implementation`에서 시작하고,
-정답 비교는 `02-answer`에서 합니다.
+실습은 반드시 `02-implementation`에서 시작하고,
+참고 구현 비교는 `02-answer`에서 합니다.
 
 ## 문서 안내
 
 - [이론 문서](./docs/theory.md)
 - [구현 안내](./docs/implementation.md)
-- [정답 가이드](./docs/answer-guide.md)
+- [참고 구현 가이드](./docs/answer-guide.md)
 - [체크리스트](./docs/checklist.md)
 - [제공 자료 안내](./docs/assets.md)
 
