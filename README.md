@@ -19,10 +19,10 @@
 ## 브랜치 사용 방법
 
 - `main`: 이 레포의 주제, 문서, 브랜치 구조를 안내하는 대표 브랜치
-- `04-implementation`: 학생 실습용 starter 브랜치
-- `04-answer`: 비교용 정답 브랜치
+- `04-implementation`: 실습용 starter 브랜치
+- `04-answer`: 참고 구현 브랜치
 
-학생은 반드시 `04-implementation`에서 시작합니다.
+실습은 반드시 `04-implementation`에서 시작합니다.
 
 ```bash
 git clone -b 04-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
@@ -30,7 +30,7 @@ cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
 
-정답 비교가 필요할 때는 아래 흐름을 사용합니다.
+참고 구현 비교가 필요할 때는 아래 흐름을 사용합니다.
 
 ```bash
 git fetch origin
@@ -41,7 +41,7 @@ git diff origin/04-implementation..origin/04-answer
 
 - [이론 문서](./docs/theory.md)
 - [구현 안내](./docs/implementation.md)
-- [정답 가이드](./docs/answer-guide.md)
+- [참고 구현 가이드](./docs/answer-guide.md)
 - [체크리스트](./docs/checklist.md)
 - [제공 자료 안내](./docs/assets.md)
 
@@ -71,7 +71,7 @@ git diff origin/04-implementation..origin/04-answer
 - `User`, `UserRepository`, `TokenResponse`, `CurrentUserResponse`
 - `PasswordEncoder` Bean, JWT 필터 뼈대, 인증 실패 응답 기본 처리
 
-학생은 회원가입, 로그인, 토큰 발급, 보호된 API 흐름의 핵심만 직접 구현합니다.
+실습자는 회원가입, 로그인, 토큰 발급, 보호된 API 흐름의 핵심만 직접 구현합니다.
 인가와 역할 기반 접근은 실무 확장 개념으로 문서에서 같이 다루되,
 이번 starter의 메인 구현 범위를 과하게 넓히지는 않습니다.
 

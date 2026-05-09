@@ -2,7 +2,7 @@
 
 ## 미리 제공하는 것
 
-| 항목 | 왜 제공하는가 | 학생이 직접 작성하지 않는 범위 |
+| 항목 | 왜 제공하는가 | 실습에서 직접 작성하지 않는 범위 |
 | --- | --- | --- |
 | `03-answer` 기반 요청 검증 / 예외 응답 구조 | 이번 시퀀스가 인증 흐름에 집중하게 하기 위해 | 게시글 CRUD, `ErrorResponse`, 전역 예외 처리 기본 틀 |
 | MySQL 실행 설정 | 런타임 DB 기준을 하나로 맞추기 위해 | datasource 기본값, 드라이버 설정, `compose.yaml` |
@@ -12,7 +12,7 @@
 | JWT 필터 뼈대와 인증 실패 처리 | Security 전체 확장보다 최소 흐름을 보이게 하기 위해 | `JwtAuthenticationFilter`, `CustomAuthenticationEntryPoint` 기본 구조 |
 | 인가 확장 예시 문서 | 인증만으로는 부족한 상황을 설명하기 위해 | 역할 체계와 권한 확장을 starter 필수 범위로 강제하지 않음 |
 
-## 학생이 직접 구현하는 것
+## 실습에서 직접 구현하는 것
 
 - `UserSignUpRequest`, `LoginRequest` 검증
 - `AuthService`의 회원가입 / 로그인 / 현재 사용자 조회
