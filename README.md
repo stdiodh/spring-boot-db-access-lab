@@ -18,10 +18,10 @@ DTO 분리, Validation, 예외 응답 통일을 통해 "안전한 요청 처리"
 
 ## 브랜치 사용 방법
 
-- `03-implementation`: 학생 실습용 starter 브랜치
-- `03-answer`: 비교용 정답 브랜치
+- `03-implementation`: 실습용 starter 브랜치
+- `03-answer`: 참고 구현 브랜치
 
-학생은 반드시 `03-implementation`에서 시작합니다.
+실습은 반드시 `03-implementation`에서 시작합니다.
 
 ```bash
 git clone -b 03-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
@@ -29,7 +29,7 @@ cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
 
-정답 비교가 필요할 때는 아래 흐름을 사용합니다.
+참고 구현 비교가 필요할 때는 아래 흐름을 사용합니다.
 
 ```bash
 git fetch origin
@@ -40,7 +40,7 @@ git diff origin/03-implementation..origin/03-answer
 
 - [이론 문서](./docs/theory.md)
 - [구현 안내](./docs/implementation.md)
-- [정답 가이드](./docs/answer-guide.md)
+- [참고 구현 가이드](./docs/answer-guide.md)
 - [체크리스트](./docs/checklist.md)
 - [제공 자료 안내](./docs/assets.md)
 
@@ -72,7 +72,7 @@ git diff origin/03-implementation..origin/03-answer
 - 예외 클래스 틀과 응답 포맷 틀
 - 패키지 구조와 메인 애플리케이션 클래스
 
-학생은 입력 검증과 실패 응답의 핵심 흐름만 직접 구현합니다.
+실습자는 입력 검증과 실패 응답의 핵심 흐름만 직접 구현합니다.
 커스텀 Validation은 실무 확장 개념으로 문서에서 같이 다루되,
 이번 starter의 메인 구현 범위를 과하게 넓히지는 않습니다.
 
