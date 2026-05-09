@@ -1,11 +1,11 @@
-# Google OAuth2와 SMTP 계정 복구 정답 가이드
+# Google OAuth2와 SMTP 계정 복구 참고 구현 가이드
 
-## 정답을 보기 전에 먼저 확인할 것
+## 참고 구현을 보기 전에 먼저 확인할 것
 
 - `05-implementation`에서 직접 손으로 끝까지 작성했는지 먼저 확인합니다.
-- 정답은 흐름 비교용으로 사용합니다.
+- 참고 구현은 흐름 비교용으로 사용합니다.
 
-## OAuth2 정답 포인트
+## OAuth2 참고 구현 포인트
 
 ### `CustomOAuthUserService`
 
@@ -31,7 +31,7 @@ val existingEmailUser = userRepository.findByEmail(profile.email)
     .orElse(null)
 ```
 
-정답 코드가 의도하는 정책은 이렇습니다.
+참고 구현가 의도하는 정책은 이렇습니다.
 
 1. 이미 같은 `provider + providerId` 조합이 있으면 그 사용자를 재사용
 2. 같은 email의 기존 로컬 사용자가 있으면 OAuth 계정으로 연결
@@ -44,7 +44,7 @@ val existingEmailUser = userRepository.findByEmail(profile.email)
 - `OAuthAccountService` 호출
 - `auth-demo.html` redirect URL 만들기
 
-## SMTP 정답 포인트
+## SMTP 참고 구현 포인트
 
 ### `AccountRecoveryService`
 
