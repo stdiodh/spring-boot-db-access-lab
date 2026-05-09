@@ -23,10 +23,10 @@ Service 단위 테스트를 직접 작성해보는 단계입니다.
 ## 브랜치 사용 방법
 
 - `main`: 이 레포의 주제, 문서, 브랜치 구조를 안내하는 대표 브랜치
-- `06-implementation`: 학생 실습용 starter 브랜치
-- `06-answer`: 비교용 정답 브랜치
+- `06-implementation`: 실습용 starter 브랜치
+- `06-answer`: 참고 구현 브랜치
 
-학생은 반드시 `06-implementation`에서 시작합니다.
+실습은 반드시 `06-implementation`에서 시작합니다.
 
 ```bash
 git clone -b 06-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
@@ -34,7 +34,7 @@ cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
 
-정답 비교가 필요할 때는 아래 흐름을 사용합니다.
+참고 구현 비교가 필요할 때는 아래 흐름을 사용합니다.
 
 ```bash
 git fetch origin
@@ -45,7 +45,7 @@ git diff origin/06-implementation..origin/06-answer
 
 - [이론 문서](./docs/theory.md)
 - [구현 안내](./docs/implementation.md)
-- [정답 가이드](./docs/answer-guide.md)
+- [참고 구현 가이드](./docs/answer-guide.md)
 - [체크리스트](./docs/checklist.md)
 - [제공 자료 안내](./docs/assets.md)
 
@@ -59,8 +59,8 @@ git diff origin/06-implementation..origin/06-answer
 - `src/test/kotlin/com/andi/rest_crud/service/PostServiceTest.kt`
 - `src/test/kotlin/com/andi/rest_crud/service/AuthServiceTest.kt`
 
-`06-answer`는 완성된 비교용 기준 브랜치입니다.
-학생 구현과 비교할 때는 `docs/answer-guide.md`와 함께 보면 좋습니다.
+`06-answer`는 완성 흐름을 확인하는 참고 구현 브랜치입니다.
+실습 구현과 비교할 때는 `docs/answer-guide.md`와 함께 보면 좋습니다.
 
 이번 문서는 특히 아래 코드를 기준으로 읽으면 이해가 빨라집니다.
 
@@ -77,7 +77,7 @@ git diff origin/06-implementation..origin/06-answer
 - 테스트 패키지 구조
 - MySQL 런타임 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
 
-학생은 테스트의 핵심 흐름만 직접 작성합니다.
+실습자는 테스트의 핵심 흐름만 직접 작성합니다.
 
 ## 실행 방법
 
