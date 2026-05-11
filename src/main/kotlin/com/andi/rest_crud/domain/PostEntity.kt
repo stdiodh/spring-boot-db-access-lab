@@ -15,4 +15,13 @@ class PostEntity(
     var title: String,
     var content: String,
     var author: String
-)
+) {
+    fun update(title: String, content: String) {
+        this.title = title
+        this.content = content
+    }
+
+    fun isWrittenBy(email: String): Boolean {
+        return author == email
+    }
+}

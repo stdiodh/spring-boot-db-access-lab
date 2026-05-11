@@ -1,0 +1,81 @@
+window.visualLabData = {
+  sequence: "05",
+  title: "OAuth2 + SMTP Account Recovery",
+  goal: "OAuth2 로그인, SMTP 메일 발송, 계정 복구를 05-A/B/C 작은 단계로 나눠 흐름을 본다.",
+  implementationBranch: "05-implementation",
+  concepts: [
+    {
+      name: "OAuth2 Provider",
+      description: "Google 같은 외부 인증 제공자에서 사용자 정보를 받아오는 출발점이다.",
+    },
+    {
+      name: "Provider ID",
+      description: "외부 제공자 안에서 사용자를 구분하는 값으로, email만으로 식별하지 않는다.",
+    },
+    {
+      name: "Recovery Mail Sender",
+      description: "계정 복구 서비스가 실제 SMTP 구현에 직접 묶이지 않도록 나누는 경계다.",
+    },
+    {
+      name: "Reset Token",
+      description: "비밀번호 재설정 요청을 검증하기 위해 짧은 시간 동안만 사용하는 값이다.",
+    },
+  ],
+  flow: [
+    {
+      id: "oauth-start",
+      title: "05-A OAuth2 로그인을 시작한다",
+      actor: "Browser",
+      target: "Google OAuth2",
+      description: "사용자는 Google 로그인 화면으로 이동하고, 성공 후 애플리케이션으로 redirect된다.",
+      checkpoint: "redirect URI와 client id는 설정으로 주입하고 secret은 코드에 쓰지 않는다.",
+    },
+    {
+      id: "oauth-profile",
+      title: "외부 사용자 정보를 읽는다",
+      actor: "OAuth2 Client",
+      target: "OAuth Profile",
+      description: "OAuth 응답에서 provider, providerId, email을 읽어 내부 사용자 연결 기준을 만든다.",
+      checkpoint: "LOCAL 사용자와 OAUTH 사용자의 저장 정책이 구분되는지 확인한다.",
+    },
+    {
+      id: "oauth-token",
+      title: "우리 서비스 토큰으로 연결한다",
+      actor: "Auth Service",
+      target: "JWT",
+      description: "외부 로그인 성공 결과를 우리 서비스의 JWT 또는 현재 사용자 정보 흐름으로 연결한다.",
+      checkpoint: "외부 로그인 성공과 우리 서비스 인증 완료를 같은 단계로 보지 않는다.",
+    },
+    {
+      id: "smtp-boundary",
+      title: "05-B 메일 발송 책임을 나눈다",
+      actor: "AccountRecoveryService",
+      target: "RecoveryMailSender",
+      description: "계정 복구 흐름은 인터페이스에 의존하고 실제 SMTP 발송은 구현체가 맡는다.",
+      checkpoint: "테스트에서는 실제 SMTP 서버 대신 fake sender로 흐름을 확인한다.",
+    },
+    {
+      id: "recovery-request",
+      title: "05-C 복구 요청을 받는다",
+      actor: "Client",
+      target: "Account Recovery API",
+      description: "사용자는 email로 복구를 요청하고, 서버는 계정 존재 여부를 과도하게 노출하지 않는다.",
+      checkpoint: "존재하지 않는 email도 안전한 응답 형태를 유지한다.",
+    },
+    {
+      id: "reset-token",
+      title: "토큰과 만료를 확인한다",
+      actor: "Recovery Service",
+      target: "Reset Token",
+      description: "복구 토큰을 만들고 만료, 재사용 방지, 비밀번호 validation 실패를 테스트한다.",
+      checkpoint: "token, password, SMTP password 같은 민감 값이 로그와 문서에 남지 않는지 확인한다.",
+    },
+  ],
+  checkpoints: [
+    "05-A OAuth2 provider/providerId/email의 역할을 구분한다.",
+    "05-B RecoveryMailSender와 SmtpRecoveryMailSender 책임을 분리한다.",
+    "05-C 복구 토큰 생성, 만료, 재사용 방지 기준을 설명한다.",
+    "실제 Google client secret과 SMTP password는 코드와 문서에 쓰지 않는다.",
+    "외부 계정이 없어도 mock 또는 local profile로 핵심 흐름을 테스트한다.",
+  ],
+};

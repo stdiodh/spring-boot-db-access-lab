@@ -1,0 +1,7 @@
+/*
+ * Compatibility stylesheet for the current repository integrity validator.
+ * The active design system is loaded from:
+ * 1. design-tokens.css
+ * 2. style.css
+ * 3. components.css
+ */

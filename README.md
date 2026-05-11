@@ -1,40 +1,130 @@
 # Spring Boot DB Access Lab
 
-이 레포는 A&I 백엔드 커리큘럼 중
-`02. 영속성 저장과 계층 분리`, `03. 안전한 요청 처리`, `04. 인증과 JWT`, `05. Google OAuth2 + SMTP 계정 복구 입문`, `06. 테스트와 검증`
-시퀀스를 담는 토픽 레포입니다.
+이 레포는 A&I 백엔드 커리큘럼의 `02~06` 시퀀스를 담는 토픽 레포입니다.
+`main`은 가이드 브랜치이고, 학생 실습은 오늘 시퀀스 번호에 맞는 `NN-implementation`에서 시작합니다.
 
-`main` 브랜치는 학생이 바로 실습하는 브랜치가 아니라,
-이 레포가 어떤 주제를 담고 있고 어떤 브랜치에서 수업을 진행해야 하는지 안내하는 대표 브랜치입니다.
-
-## 이 레포가 다루는 내용
+## 이 레포에서 배우는 것
 
 - `02`: MySQL 기반 CRUD와 계층 분리
 - `03`: DTO 분리, Validation, 전역 예외 처리
 - `04`: 회원가입, 로그인, JWT, 보호된 API
-- `05`: Google OAuth2 로그인, 사용자 연결, SMTP 비밀번호 재설정 메일 요청
+- `05`: OAuth2 로그인, SMTP 메일 발송, 계정 복구를 05-A/B/C로 단계화
 - `06`: Service 단위 테스트, fixture, mock, 정상/실패 검증
 
-즉 이 레포는 "DB 저장 -> 안전한 요청 처리 -> 인증과 JWT -> Google OAuth2 + SMTP 계정 복구 입문 -> 테스트와 검증"으로 이어지는
-초중반 백엔드 성장 흐름을 한 도메인 안에서 이어서 다룹니다.
+## 시작 방법
 
-## 브랜치 사용 방법
-
-- `main`: 레포 소개와 브랜치 안내
-- `02-implementation`, `02-answer`
-- `03-implementation`, `03-answer`
-- `04-implementation`, `04-answer`
-- `05-implementation`, `05-answer`
-- `06-implementation`, `06-answer`
-
-학생은 항상 `NN-implementation`에서 시작하고,
-강사는 `NN-answer`에서 비교합니다.
-
-예:
+오늘 시퀀스 번호에 맞는 브랜치로 checkout합니다.
+예를 들어 시퀀스 03은 아래처럼 시작합니다.
 
 ```bash
-git clone -b 05-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
+git clone https://github.com/stdiodh/spring-boot-db-access-lab.git
 cd spring-boot-db-access-lab
+git checkout 03-implementation
+```
+
+## 실습 브랜치
+
+| 용도 | 브랜치 |
+| --- | --- |
+| 가이드 | `main` |
+| 학생 시작 | `02-implementation` ~ `06-implementation` |
+| 참고 정답 | `02-answer` ~ `06-answer` |
+
+## 시퀀스별 브랜치
+
+| Sequence | 학생 시작 | 참고 정답 |
+| --- | --- | --- |
+| 02 | `02-implementation` | `02-answer` |
+| 03 | `03-implementation` | `03-answer` |
+| 04 | `04-implementation` | `04-answer` |
+| 05 | `05-implementation` | `05-answer` |
+| 06 | `06-implementation` | `06-answer` |
+
+## 실행 방법
+
+MySQL이 필요한 시퀀스에서는 먼저 의존 서비스를 실행합니다.
+
+```bash
+docker compose up -d
+./gradlew bootRun
+```
+
+Swagger UI 기본 경로:
+
+```text
+http://localhost:8080/swagger
+```
+
+## 테스트 방법
+
+```bash
+./gradlew test
+```
+
+테스트가 확인하는 것:
+
+시퀀스별 테스트 기준:
+
+| Sequence | 테스트가 확인하는 것 |
+| --- | --- |
+| 02 | Repository integration test, DB 저장/조회/수정/삭제 |
+| 03 | 잘못된 요청 400, 에러 응답 형식 |
+| 04 | 로그인 성공/실패, 보호 API 401, 토큰 접근 성공, 작성자 인가 403 |
+| 05 | 외부 연동 mock/test double, 메일 발송 위임, 복구 토큰 생성/만료 |
+| 06 | unit/slice/integration 차이, 테스트 실행 순서, 실패 메시지 읽기 |
+
+실패하면 먼저 볼 것:
+
+- 실패한 테스트 이름과 expected/actual 값을 먼저 읽습니다.
+- 외부 OAuth2/SMTP가 필요한 흐름은 mock 또는 local profile로 대체되어 있는지 확인합니다.
+- 401은 인증 실패, 403은 인가 실패로 구분해서 봅니다.
+
+완료 기준:
+
+- 오늘 시퀀스의 테스트 기준이 통과합니다.
+- 어떤 테스트가 어떤 개념을 확인하는지 설명할 수 있습니다.
+
+## 05 시퀀스 단계
+
+05는 하나의 브랜치 쌍을 사용하지만 내부 학습은 세 단계로 나눕니다.
+
+| 단계 | 주제 | 핵심 |
+| --- | --- | --- |
+| 05-A | OAuth2 로그인 흐름 | Google redirect, provider/providerId, LOCAL/OAUTH 사용자 구분 |
+| 05-B | SMTP 메일 발송 흐름 | `RecoveryMailSender` 인터페이스, SMTP 구현체, 환경변수 설정 |
+| 05-C | 계정 복구 유스케이스 | 복구 요청, 토큰 생성, 토큰 만료, 비밀번호 재설정 |
+
+실제 Google client secret이나 SMTP password는 문서와 코드에 쓰지 않습니다.
+외부 계정 준비가 어렵다면 mock 또는 local profile로 service 흐름부터 확인합니다.
+
+## 정답과 비교하는 방법
+
+실습 중 막혔거나 완료 후 확인이 필요할 때만 같은 번호의 참고 정답 브랜치와 비교합니다.
+예를 들어 시퀀스 03은 아래처럼 비교합니다.
+
+```bash
+git fetch origin
+git diff 03-implementation..03-answer
+```
+
+## Visual Lab
+
+Visual Lab은 아래 위치에 있습니다.
+
+```text
+docs/visual-lab/index.html
+```
+
+로컬 확인:
+
+```bash
+python3 -m http.server 8080 -d docs/visual-lab
+```
+
+접속 주소:
+
+```text
+http://localhost:8080
 ```
 
 ## 문서 안내
@@ -43,40 +133,9 @@ cd spring-boot-db-access-lab
 - [브랜치 가이드](./docs/branch-guide.md)
 - [시퀀스 맵](./docs/sequence-map.md)
 
-각 시퀀스의 실제 실습 문서는 해당 브랜치 안에서 확인합니다.
-
-예:
-- `03-implementation`의 `docs/theory.md`, `docs/implementation.md`
-- `04-answer`의 `docs/answer-guide.md`
-- `05-implementation`의 `docs/implementation.md`
-
-## 실행 기준
-
-- 앱 런타임 DB: MySQL
-- 테스트 DB: H2 in-memory
-- Swagger UI 기본 경로: `http://localhost:8080/swagger`
-
-MySQL이 필요할 때는 각 시퀀스 브랜치의 `compose.yaml`을 사용합니다.
-
-## 현재 정리 상태
-
-| Sequence | Starter | Answer | Status |
-| --- | --- | --- | --- |
-| 02 | `02-implementation` | `02-answer` | Ready |
-| 03 | `03-implementation` | `03-answer` | Ready |
-| 04 | `04-implementation` | `04-answer` | Ready |
-| 05 | `05-implementation` | `05-answer` | Ready |
-| 06 | `06-implementation` | `06-answer` | Ready |
-
-## 이 레포를 어떻게 보면 좋나요
-
-1. 먼저 `main`에서 이 README와 `docs/branch-guide.md`를 읽습니다.
-2. 진행할 시퀀스의 `NN-implementation` 브랜치로 이동합니다.
-3. 그 브랜치의 `README.md`, `docs/theory.md`, `docs/implementation.md` 순서로 봅니다.
-4. 실습 후 `NN-answer` 브랜치와 비교합니다.
+각 시퀀스의 실제 실습 문서는 해당 `NN-implementation` 브랜치에서 확인합니다.
 
 ## 운영 메모
 
-- 서로 다른 주제가 되면 같은 레포에서 선택형으로 섞지 않고 별도 레포로 분리합니다.
-- 이 레포의 `main` 브랜치는 실습 완료본이 아니라 안내 브랜치입니다.
-- 시퀀스별 문서는 각 브랜치 안에서 계속 바뀌어야 하며, 이전 시퀀스 문서를 그대로 재사용하면 안 됩니다.
+legacy `implementation` 브랜치가 남아 있다면 deprecated로만 취급합니다.
+정식 수업 운영에서는 `02~06-implementation` / `02~06-answer`만 사용합니다.

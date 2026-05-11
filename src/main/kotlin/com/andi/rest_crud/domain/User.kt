@@ -2,6 +2,8 @@ package com.andi.rest_crud.domain
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -18,5 +20,12 @@ class User(
     var email: String,
 
     @Column(nullable = false)
-    var password: String
+    var password: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'LOCAL'")
+    var authProvider: AuthProvider = AuthProvider.LOCAL,
+
+    @Column
+    var providerId: String? = null
 )
