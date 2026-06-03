@@ -1,76 +1,252 @@
 # 이론 정리
 
-## 1. 왜 이 개념이 필요한가
+> 이번 시퀀스는 회원가입, 로그인, JWT 발급, JWT 검증, 공개 API와 보호 API 구분을 다룹니다. 목표는 토큰 문자열 자체를 외우는 것이 아니라 "누가 요청했는가"를 서버가 어떻게 판단하고, 어떤 API를 인증 뒤에 열어야 하는지 설명하는 것입니다.
 
-CRUD와 Validation만으로는 "누가 요청했는가"를 설명할 수 없습니다. 게시글을 작성하거나 보호된 API를 호출할 때는 사용자 식별과 인증 상태가 필요합니다.
+## 1. Problem - 왜 인증과 JWT가 필요한가
 
-이번 시퀀스에서는 회원가입/로그인으로 사용자를 식별하고, JWT를 발급해 이후 요청에서 인증 상태를 확인하는 흐름을 다룹니다.
+CRUD와 Validation만으로는 요청자가 누구인지 알 수 없습니다. 게시글을 작성하거나 현재 사용자 정보를 조회하려면 서버가 요청자를 식별해야 합니다. 모든 API를 공개해 두면 로그인하지 않은 사용자도 보호되어야 할 기능을 호출할 수 있습니다.
 
-## 2. 기존 방식의 한계
+HTTP는 기본적으로 요청마다 독립적입니다. 로그인 요청이 한 번 성공했다고 해서 이후 요청에서 서버가 자동으로 사용자를 기억하지 않습니다. JWT는 로그인 성공 후 클라이언트가 들고 다니는 인증 증표로 사용되고, 서버는 이후 요청마다 토큰을 검증해 인증 정보를 구성합니다.
 
-토큰 없이 모든 API를 열어두면 누구나 보호된 기능을 호출할 수 있습니다. 로그인만 구현하고 이후 요청 인증을 확인하지 않으면 서버는 요청자가 누구인지 유지할 수 없습니다.
+## 2. Analyze - 인증, 토큰 발급, 토큰 검증, 인가를 어떻게 나눌 것인가
 
-JWT는 로그인 성공 후 클라이언트가 들고 다니는 인증 증표 역할을 합니다. 서버는 요청마다 토큰을 검증해 인증 상태를 구성합니다.
+JWT 흐름에서 자주 섞이는 개념은 발급과 검증, 인증과 인가입니다. 로그인은 토큰을 발급받는 시작점이고, 인증 필터는 이후 요청에서 토큰을 검증하는 위치입니다. 인가는 인증된 사용자가 특정 작업을 할 수 있는지 판단하는 단계입니다.
 
-## 3. 이번 시퀀스에서 선택한 접근
+| 구분 | 질문 | 이번 시퀀스에서 보는 위치 |
+|---|---|---|
+| 회원가입 | 사용자를 저장할 수 있는가? | `User`, `UserRepository`, `AuthService.signUp()` |
+| 로그인 | 비밀번호가 맞는 사용자인가? | `AuthService.login()` |
+| 토큰 발급 | 인증 성공 후 어떤 증표를 주는가? | `JwtTokenProvider.createToken()` |
+| 토큰 검증 | 다음 요청에서 토큰이 유효한가? | `JwtAuthenticationFilter`, `JwtTokenProvider.validateToken()` |
+| 인증 경계 | 어떤 API가 로그인 필요인가? | `SecurityConfig` |
+| 인가 경계 | 인증된 사용자가 이 리소스를 바꿀 수 있는가? | 게시글 작성자 정책 확인 지점 |
 
-이번 시퀀스의 흐름은 아래와 같습니다.
+이번 단계에서는 자체 회원가입/로그인과 access token 중심 흐름을 다룹니다. OAuth2, SMTP, refresh token, Redis 기반 토큰 저장은 직접 구현 범위가 아닙니다.
 
-1. 사용자가 회원가입합니다.
-2. 사용자가 로그인합니다.
-3. 서버가 JWT를 발급합니다.
-4. 클라이언트가 `Authorization: Bearer ...` 형식으로 토큰을 보냅니다.
-5. 인증 필터가 토큰을 검증하고 인증 정보를 구성합니다.
-6. 보호된 API가 인증된 요청만 처리합니다.
+## 3. API / 실행 시퀀스 다이어그램
 
-## 4. 핵심 개념
+### 3.1 회원가입과 로그인, 토큰 발급 흐름
 
-### User
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant AuthController
+    participant AuthService
+    participant PasswordEncoder
+    participant UserRepository
+    participant TokenProvider as JwtTokenProvider
 
-인증 대상이 되는 사용자 도메인입니다. 이메일, 비밀번호, 이름 같은 값을 저장합니다.
+    Client->>AuthController: POST /auth/signup
+    AuthController->>AuthService: signUp(request)
+    AuthService->>UserRepository: existsByEmail(email)
+    AuthService->>PasswordEncoder: encode(rawPassword)
+    AuthService->>UserRepository: save(User)
+    AuthController-->>Client: 201 Created
 
-### JWT
-
-로그인 성공 후 발급되는 문자열 형태의 토큰입니다. 서버는 토큰의 서명과 만료 시간을 검증합니다.
-
-### Authentication Filter
-
-Controller에 도달하기 전 요청에서 토큰을 읽고 인증 상태를 구성하는 필터입니다.
-
-### SecurityConfig
-
-어떤 API를 공개하고 어떤 API를 보호할지 정하는 설정입니다.
-
-### Bearer Token
-
-HTTP Authorization 헤더에 담아 보내는 토큰 형식입니다. 이번 시퀀스에서는 JWT를 Bearer token으로 전달합니다.
-
-## 5. 짧은 예제와 해설
-
-이번 흐름은 아래처럼 읽습니다.
-
-```text
-signup -> login -> token issue -> Authorization header -> filter -> protected API
+    Client->>AuthController: POST /auth/login
+    AuthController->>AuthService: login(request)
+    AuthService->>UserRepository: findByEmail(email)
+    AuthService->>PasswordEncoder: matches(rawPassword, encodedPassword)
+    AuthService->>TokenProvider: createToken(email)
+    TokenProvider-->>AuthService: JWT
+    AuthService-->>AuthController: TokenResponse
+    AuthController-->>Client: accessToken
 ```
 
-로그인은 토큰을 받는 시작점이고, 인증 필터는 이후 요청마다 토큰을 해석하는 위치입니다. 공개 API와 보호 API를 구분해야 로그인 전후 흐름을 명확히 설명할 수 있습니다.
+회원가입은 사용자 저장 흐름이고, 로그인은 비밀번호 확인 후 JWT를 발급하는 흐름입니다. 비밀번호는 평문 저장 대상이 아니므로 저장 전 암호화합니다.
 
-## 6. 다음 구현으로 연결되는 지점
+### 3.2 보호 API 요청과 인증 필터 흐름
 
-구현 단계에서는 아래 질문에 답할 수 있어야 합니다.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Filter as JwtAuthenticationFilter
+    participant TokenProvider as JwtTokenProvider
+    participant Context as SecurityContext
+    participant SecurityConfig
+    participant Controller
 
-- 회원가입과 로그인은 어떤 파일을 지나가나요?
-- JWT는 어디에서 생성되고 어디에서 검증되나요?
-- 인증 필터는 Controller와 어떤 순서 관계에 있나요?
-- 토큰이 없는 요청은 보호 API에서 어떻게 처리되나요?
+    Client->>Filter: Authorization: Bearer <token>
+    Filter->>Filter: Bearer token 추출
+    Filter->>TokenProvider: validateToken(token)
+    TokenProvider-->>Filter: valid
+    Filter->>TokenProvider: getEmail(token)
+    Filter->>Context: Authentication 저장
+    Filter->>SecurityConfig: filterChain.doFilter
+    SecurityConfig->>Controller: 보호 API 접근 허용
+    Controller-->>Client: authenticated response
+```
 
-다음 시퀀스에서는 외부 OAuth2 로그인과 SMTP 기반 계정 복구 흐름을 다룹니다.
+토큰 검증은 Controller 전에 실행됩니다. 필터가 유효한 토큰을 읽으면 `SecurityContext`에 인증 정보를 넣고, 보호 API는 그 인증 상태를 기준으로 요청자를 확인합니다.
+
+### 3.3 인증 실패와 경계 확인 흐름
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Filter as JwtAuthenticationFilter
+    participant Security as Spring Security
+    participant EntryPoint as CustomAuthenticationEntryPoint
+    participant Controller
+
+    Client->>Filter: 보호 API 요청 without token
+    Filter->>Filter: token 없음
+    Filter->>Security: 인증 정보 없이 다음 단계
+    Security--xController: 보호 API 접근 차단
+    Security->>EntryPoint: commence()
+    EntryPoint-->>Client: 401 Unauthorized + ErrorResponse shape
+```
+
+인증 실패는 "누구인지 확인되지 않았다"는 뜻입니다. 인가는 "누구인지는 확인되었지만 이 작업을 할 권한이 있는가"를 묻는 단계입니다. 게시글 작성자 기준 수정/삭제는 이 인가 관점으로 확인해야 합니다.
+
+## 4. 계층 / DTO / 메시지 흐름
+
+### 4.1 계층 흐름
+
+```mermaid
+flowchart LR
+    Client[Client or Swagger] --> AuthAPI[AuthController]
+    AuthAPI --> AuthService[AuthService]
+    AuthService --> UserRepo[UserRepository]
+    AuthService --> Encoder[PasswordEncoder]
+    AuthService --> JwtProvider[JwtTokenProvider]
+    JwtProvider --> TokenDTO[TokenResponse]
+    Client --> Header[Authorization Bearer token]
+    Header --> JwtFilter[JwtAuthenticationFilter]
+    JwtFilter --> SecurityContext[SecurityContext]
+    SecurityContext --> ProtectedAPI[Protected Controller]
+    SecurityConfig[SecurityConfig] --> ProtectedAPI
+```
+
+| 흐름 | 주요 타입 | 책임 |
+|---|---|---|
+| 회원가입 | `UserSignUpRequest`, `User`, `UserRepository` | 사용자 정보를 저장하고 중복을 막습니다. |
+| 로그인 | `LoginRequest`, `PasswordEncoder`, `TokenResponse` | 비밀번호를 확인하고 JWT를 발급합니다. |
+| 토큰 생성/검증 | `JwtTokenProvider` | email subject, 만료, 서명을 다룹니다. |
+| 요청 인증 | `JwtAuthenticationFilter`, `SecurityContext` | Authorization header를 인증 정보로 바꿉니다. |
+| 보안 경계 | `SecurityConfig` | 공개 API와 보호 API를 나눕니다. |
+| 인증 실패 응답 | `CustomAuthenticationEntryPoint` | 인증되지 않은 보호 API 요청을 401로 응답합니다. |
+
+### 4.2 DTO와 인증 메시지 구분
+
+| 데이터 | 이동 방향 | 의미 |
+|---|---|---|
+| `UserSignUpRequest` | Client -> Auth API | 회원가입 입력입니다. |
+| `LoginRequest` | Client -> Auth API | 로그인 입력입니다. |
+| `TokenResponse` | Auth API -> Client | 로그인 성공 후 발급된 access token입니다. |
+| `Authorization: Bearer <token>` | Client -> Protected API | 이후 요청에서 인증 증표를 전달합니다. |
+| `CurrentUserResponse` | Protected API -> Client | 토큰으로 확인된 현재 사용자 정보입니다. |
+
+JWT는 사용자 정보를 서버 세션에 저장하는 방식과 다릅니다. 클라이언트가 토큰을 보관하고, 서버는 요청마다 토큰의 서명과 만료를 검증합니다.
+
+## 5. Action - 구현에서 연결할 지점
+
+### 5.1 사용자 저장과 비밀번호 암호화를 확인합니다
+
+회원가입은 사용자 email과 비밀번호를 저장하는 흐름입니다. 비밀번호는 평문으로 저장하지 않고 `PasswordEncoder`를 통해 암호화된 값으로 저장해야 합니다.
+
+확인 질문:
+
+- 중복 email 요청을 어떻게 막나요?
+- 비밀번호가 저장 전에 암호화되나요?
+- 회원가입 요청 DTO와 `User` Entity 역할을 구분할 수 있나요?
+
+### 5.2 로그인과 JWT 발급 위치를 구분합니다
+
+로그인은 저장된 사용자와 비밀번호를 확인하고, 성공 시 JWT를 발급합니다. JWT 발급은 로그인 성공의 결과이지, 이후 요청 인증 자체와 같은 단계가 아닙니다.
+
+확인 질문:
+
+- 로그인 실패가 성공 응답으로 내려가지 않나요?
+- `TokenResponse`에는 어떤 값이 들어가나요?
+- 토큰 subject로 어떤 사용자 식별 값을 사용하나요?
+
+### 5.3 JWT 필터가 Controller보다 먼저 동작합니다
+
+`JwtAuthenticationFilter`는 Authorization header에서 Bearer token을 꺼내고, 유효하면 인증 정보를 `SecurityContext`에 넣습니다. 이 과정은 Controller 메서드가 실행되기 전에 일어납니다.
+
+확인 질문:
+
+- Authorization header 형식이 `Bearer <token>`인가요?
+- 토큰이 없거나 잘못된 경우 보호 API가 실패하나요?
+- 유효한 토큰이면 현재 사용자 API에서 email을 확인할 수 있나요?
+
+### 5.4 공개 API와 보호 API 경계를 확인합니다
+
+회원가입과 로그인은 토큰이 없어도 접근 가능해야 합니다. 현재 사용자 조회 같은 보호 API는 토큰이 필요합니다. 게시글 작성/수정/삭제는 커리큘럼상 인증/인가 경계로 확인해야 하므로 `SecurityConfig`와 Service 정책을 함께 점검합니다.
+
+확인 질문:
+
+- `/auth/signup`, `/auth/login`은 공개 API인가요?
+- `/auth/me`는 인증된 요청에서만 성공하나요?
+- 게시글 쓰기/수정/삭제가 어떤 인증/인가 정책을 가져야 하는지 설명할 수 있나요?
+
+## 6. Result - 무엇을 확인하고 어떤 한계가 남는가
+
+이번 시퀀스를 마치면 다음을 확인합니다.
+
+- `./gradlew test`가 통과합니다.
+- 회원가입과 로그인 요청이 동작합니다.
+- 로그인 성공 시 JWT가 발급됩니다.
+- `Authorization: Bearer <token>`이 있는 요청과 없는 요청의 차이를 확인합니다.
+- JWT 발급 위치와 검증 위치를 구분합니다.
+- 인증과 인가의 차이를 설명합니다.
+
+남은 한계도 분명히 둡니다. 이번 시퀀스는 자체 회원가입/로그인과 access token 기반 인증 흐름에 집중합니다. OAuth2 로그인, SMTP 계정 복구, refresh token, Redis 기반 토큰 저장, 고급 권한 모델은 다음 시퀀스나 확장 주제로 남깁니다.
+
+## 7. 실무 포인트
+
+- JWT secret은 운영 민감값입니다. 코드에 고정하기보다 환경 변수나 비밀 관리 체계로 분리해야 합니다.
+- access token은 탈취되면 만료 전까지 악용될 수 있습니다. 실제 서비스에서는 만료 시간과 재발급 전략을 함께 설계합니다.
+- 인증 필터는 Controller보다 먼저 실행됩니다. Controller에 도달하지 못하는 실패도 정상적인 보안 흐름입니다.
+- 401은 인증 실패, 403은 인가 실패로 구분해서 읽습니다.
+- 공개 API와 보호 API 경계는 문서와 코드가 반드시 일치해야 합니다. `SecurityConfig`는 리뷰 우선순위가 높은 파일입니다.
+
+## 8. 용어 정리
+
+`Authentication`
+: 요청자가 누구인지 확인하는 과정입니다.
+
+`Authorization`
+: 인증된 사용자가 특정 작업을 할 수 있는지 판단하는 과정입니다.
+
+`JWT`
+: 서명된 토큰 형식의 인증 증표입니다.
+
+`Bearer Token`
+: `Authorization: Bearer <token>` 형식으로 전달하는 토큰입니다.
+
+`SecurityContext`
+: 현재 요청의 인증 정보를 담는 Spring Security 컨텍스트입니다.
+
+`Authentication Filter`
+: Controller 전에 요청을 검사하고 인증 정보를 구성하는 필터입니다.
+
+`PasswordEncoder`
+: 비밀번호를 안전한 저장 형태로 바꾸고 검증하는 컴포넌트입니다.
+
+`TokenResponse`
+: 로그인 성공 후 access token을 내려주는 응답 DTO입니다.
+
+`AuthenticationEntryPoint`
+: 인증 실패 시 HTTP 응답을 만드는 Spring Security 확장 지점입니다.
+
+`Stateless`
+: 서버가 요청 사이의 로그인 상태를 세션으로 저장하지 않는 방식입니다.
+
+## 9. 다음 구현으로 연결되는 지점
+
+다음 시퀀스에서는 Google OAuth2 로그인과 SMTP 계정 복구 흐름을 다룹니다. 이번 단계에서 자체 로그인과 JWT 발급/검증 흐름을 이해해 두면 외부 인증 결과를 자체 사용자와 연결하고 다시 JWT로 응답하는 이유를 설명할 수 있습니다.
 
 <details>
 <summary>멘토용 설명 포인트</summary>
 
-- 멘티가 JWT를 세션처럼 서버에 저장한다고 이해하면 요청마다 검증하는 증표라는 관점으로 설명합니다.
-- 토큰 문자열을 외우게 하기보다 발급 위치와 검증 위치를 구분하게 합니다.
-- answer 비교 단계에서는 AuthService, JwtTokenProvider, JwtAuthenticationFilter, SecurityConfig 순서로 확인하게 합니다.
+- JWT를 서버에 저장된 세션처럼 설명하지 않게 하고, 요청마다 검증하는 증표라는 관점으로 정리합니다.
+- 힌트는 `AuthService`, `JwtTokenProvider`, `JwtAuthenticationFilter`, `SecurityConfig` 순서로 제공합니다.
+- 토큰 문자열 자체보다 발급 위치와 검증 위치를 구분하게 합니다.
+- OAuth2나 SMTP 질문은 다음 시퀀스 범위로 분리하고, 이번에는 자체 로그인과 JWT 인증 경계에 집중합니다.
 
 </details>
