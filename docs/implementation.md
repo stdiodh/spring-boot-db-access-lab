@@ -1,183 +1,113 @@
-# 인증과 JWT 구현 안내
+# 구현 가이드
 
-## 이 도메인이 필요한 이유
+## 1. 구현 전에 확인할 문제
 
-요청을 안전하게 받는 것만으로는 아직 부족합니다.
-이제는 "누가 요청했는지"를 구분해야 내 정보 조회 같은 API를 만들 수 있어요.
-이번 실습은 그 첫 단계로 회원가입, 로그인, JWT 발급, 보호된 API 접근을 가장 단순한 형태로 연결합니다.
+이번 구현은 게시글 기능을 확장하는 작업이 아니라, 사용자 인증 상태를 만드는 작업입니다. 회원가입, 로그인, JWT 발급, JWT 검증, 보호 API 접근 흐름을 연결합니다.
 
-## 오늘 실습에서 완성할 최종 흐름
+```text
+signup -> login -> token issue -> token validation -> protected API
+```
 
-오늘 실습이 끝나면 아래 흐름을 직접 보여줄 수 있어야 합니다.
+## 2. 구현 순서
 
-1. `UserSignUpRequest`와 `LoginRequest`를 검증 가능한 DTO로 만듭니다.
-2. `AuthService`에서 회원가입 시 비밀번호를 인코딩해 저장합니다.
-3. 로그인 시 사용자 조회와 비밀번호 확인을 연결합니다.
-4. 로그인 성공 후 JWT를 발급합니다.
-5. `/auth/me`가 토큰 유무에 따라 다르게 동작하는 것을 확인합니다.
+1. `User.kt`, `UserRepository.kt`에서 사용자 저장 구조를 확인합니다.
+2. `AuthService.kt`에서 회원가입과 로그인 흐름을 연결합니다.
+3. `JwtTokenProvider.kt`에서 토큰 발급과 검증 책임을 확인합니다.
+4. `JwtAuthenticationFilter.kt`에서 요청 토큰을 인증 정보로 바꾸는 흐름을 연결합니다.
+5. `SecurityConfig.kt`에서 공개 API와 보호 API를 구분합니다.
+6. Swagger에서 로그인 후 보호 API 접근을 확인합니다.
 
-여기서 한 걸음 더 나가면,
-실무에서는 로그인만 성공했다고 모든 API를 다 열어두지 않고
-인가 규칙까지 붙인다는 점을 이론 문서에서 함께 이해해야 합니다.
+## 3. Step 1. 사용자 저장 구조 확인
 
-## 실습자가 직접 구현할 순서
+### 해야 할 일
 
-1. `User` 핵심 필드를 확인합니다.
-2. 회원가입 `Request DTO`를 만듭니다.
-3. 회원가입 Service에서 비밀번호 인코딩을 연결합니다.
-4. 로그인 `Request DTO`를 만듭니다.
-5. 로그인 Service에서 사용자 조회와 비밀번호 확인을 연결합니다.
-6. JWT 발급 메서드를 연결합니다.
-7. 인증이 필요한 API를 지정합니다.
-8. 토큰에서 사용자 정보를 읽는 흐름을 연결합니다.
-9. 토큰 유무에 따른 결과 차이를 확인합니다.
+`User`와 `UserRepository`가 회원가입 정보를 저장할 수 있는지 확인합니다.
 
-## TODO를 넣을 파일
+### 왜 이 작업을 하는가
 
-- `src/main/kotlin/com/andi/rest_crud/dto/UserSignUpRequest.kt`
-- `src/main/kotlin/com/andi/rest_crud/dto/LoginRequest.kt`
-- `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/SecurityConfig.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/AuthController.kt`
+JWT는 사용자를 식별한 뒤 발급됩니다. 로그인 전에 사용자 저장과 조회 흐름이 먼저 있어야 합니다.
 
-## 파일별 역할 설명
+### 확인 방법
 
-- `UserSignUpRequest.kt`: 회원가입 요청에서 email, password를 받는 DTO
-- `LoginRequest.kt`: 로그인 요청에서 email, password를 받는 DTO
-- `AuthService.kt`: 회원가입, 로그인, 현재 사용자 조회 흐름을 조립하는 핵심 서비스
-- `JwtTokenProvider.kt`: JWT 발급, 사용자 식별, 토큰 검증을 맡는 유틸
-- `SecurityConfig.kt`: 어떤 API를 열어 두고 어떤 API를 보호할지 정하는 설정
-- `AuthController.kt`: `/auth/signup`, `/auth/login`, `/auth/me` 요청의 입구
-- `JwtAuthenticationFilter.kt`: 다음 요청에서 토큰을 읽어 현재 인증 정보를 넣는 필터
+- 회원가입 요청이 사용자 저장으로 이어지는지 확인합니다.
+- 중복 사용자 처리가 필요한 이유를 설명합니다.
 
-## 미리 제공할 것
+## 4. Step 2. 로그인과 토큰 발급
 
-- `03-answer` 기반 CRUD, Validation, 예외 응답 구조
-- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
-- `User`, `UserRepository`, `TokenResponse`, `CurrentUserResponse`
-- `PasswordEncoder` Bean
-- JWT 필터 뼈대와 인증 실패 응답 기본 처리
-- Swagger 설정과 기본 패키지 구조
+### 해야 할 일
 
-실무 확장 메모:
-이번 브랜치의 메인 구현 흐름은 최소 인증과 JWT입니다.
-인가와 역할 기반 접근은 `docs/theory.md`와 `docs/answer-guide.md`에서
-- 로그인만으로는 부족한 문제 상황
-- `authenticated()`만으로는 설명되지 않는 접근 규칙
-- `hasRole("ADMIN")`, 본인 확인 코드 예시
-로 먼저 이해하고 넘어갑니다.
+`AuthService`에서 로그인 요청을 검증하고 JWT를 발급하는 흐름을 연결합니다.
 
-## 단계별 구현 안내
+### 왜 이 작업을 하는가
 
-### Step 1. User 핵심 필드 확인
+로그인은 인증 증표를 받는 시작점입니다. 비밀번호 확인과 토큰 발급 책임이 섞이지 않도록 흐름을 읽어야 합니다.
 
-- `User.kt`를 열어 id, email, password 세 필드만 유지되는지 확인합니다.
-- 이번 시퀀스에서는 권한(Role), 프로필, OAuth 정보까지 확장하지 않습니다.
+### 확인 방법
 
-실습 힌트:
-- 지금은 "인증 최소 흐름"이 목적이라 사용자 정보도 최소화합니다.
+- 잘못된 로그인 요청이 실패하는지 확인합니다.
+- 성공한 로그인 응답에 token이 포함되는지 확인합니다.
 
-### Step 2. 회원가입 DTO 만들기
+## 5. Step 3. 토큰 검증
 
-- `UserSignUpRequest.kt`를 엽니다.
-- email에는 형식 검증과 빈값 검증을 붙입니다.
-- password에는 빈값 검증을 붙입니다.
+### 해야 할 일
 
-실습 힌트:
-- 회원가입 요청에 id 같은 서버 관리 값은 넣지 않습니다.
-- 비밀번호는 다음 단계에서 인코딩하지만, 요청 DTO 단계에서는 우선 빈값을 막습니다.
+`JwtTokenProvider`와 `JwtAuthenticationFilter`에서 토큰 검증 흐름을 확인합니다.
 
-### Step 3. 회원가입 Service 연결
+### 왜 이 작업을 하는가
 
-- `AuthService.signUp(...)`을 엽니다.
-- 같은 email이 이미 있는지 확인합니다.
-- `passwordEncoder.encode(...)`를 거친 뒤 `User`를 저장합니다.
+클라이언트는 이후 요청마다 토큰을 보냅니다. 필터가 토큰을 검증해 인증 정보를 구성해야 보호 API가 요청자를 알 수 있습니다.
 
-실습 힌트:
-- Controller에서 저장 로직을 직접 풀지 말고 Service에서 끝내세요.
-- 이미 존재하는 email이면 `UserAlreadyExistsException`을 사용합니다.
+### 확인 방법
 
-### Step 4. 로그인 DTO 만들기
+- Bearer token 형식을 설명합니다.
+- 토큰이 없거나 잘못된 경우 보호 API가 실패하는지 확인합니다.
 
-- `LoginRequest.kt`를 엽니다.
-- email과 password만 받도록 유지합니다.
-- 회원가입 DTO와 마찬가지로 기본 검증을 붙입니다.
+## 6. Step 4. Security 설정
 
-실습 힌트:
-- 로그인도 요청 초입에서 잘못된 입력을 막는 것이 중요합니다.
+### 해야 할 일
 
-### Step 5. 로그인 Service 연결
+`SecurityConfig`에서 공개 API와 보호 API 경계를 확인합니다.
 
-- `AuthService.login(...)`을 엽니다.
-- email로 사용자를 찾습니다.
-- `passwordEncoder.matches(...)`로 비밀번호를 비교합니다.
+### 왜 이 작업을 하는가
 
-실습 힌트:
-- 비밀번호는 직접 문자열 비교하지 마세요.
-- 조회 실패와 비밀번호 불일치는 모두 `InvalidCredentialsException`으로 묶어도 됩니다.
+회원가입과 로그인은 토큰 없이 접근 가능해야 하고, 보호 API는 인증 후 접근해야 합니다.
 
-### Step 6. JWT 발급 메서드 연결
+### 확인 방법
 
-- `JwtTokenProvider.kt`를 엽니다.
-- 로그인 성공 시 사용할 `createToken(...)`을 완성합니다.
-- 토큰에서 email을 읽는 `getEmail(...)`, 토큰 형식을 확인하는 `validateToken(...)`을 연결합니다.
+- 공개 API 목록을 설명합니다.
+- 보호 API가 토큰 없이 열려 있지 않은지 확인합니다.
 
-실습 힌트:
-- 이번 실습에서는 access token 하나만 발급합니다.
-- subject에는 사용자를 구분할 값인 email을 넣으면 됩니다.
+## 7. Step 5. 실행 확인
 
-### Step 7. 인증이 필요한 API 지정
+```bash
+docker compose up -d
+./gradlew bootRun
+```
 
-- `SecurityConfig.kt`를 엽니다.
-- `/auth/signup`, `/auth/login`, Swagger 관련 경로는 열어 둡니다.
-- `/auth/me`는 `authenticated()`로 보호합니다.
+Swagger UI:
 
-실습 힌트:
-- 이번 단계의 핵심은 "어떤 API가 공개이고, 어떤 API가 보호되는지"를 눈에 보이게 만드는 것입니다.
-- 이 단계가 바로 나중에 인가 설명과 연결됩니다.
-  지금은 `/auth/me`만 보호하지만, 역할 기반 접근이 붙으면 어떤 규칙이 더 필요한지 `docs/theory.md`에서 같이 확인하세요.
+```text
+http://localhost:8080/swagger
+```
 
-### Step 8. 토큰에서 사용자 정보를 읽는 흐름 연결
+테스트:
 
-- `JwtAuthenticationFilter.kt`와 `AuthService.getCurrentUser(...)` 흐름을 함께 봅니다.
-- 필터는 토큰에서 email을 읽고,
-- Service는 그 email로 현재 사용자를 조회하게 연결합니다.
+```bash
+./gradlew test
+```
 
-실습 힌트:
-- Controller가 토큰을 직접 파싱하지 않도록 역할을 분리하세요.
-- `Principal.name`을 Service에 넘기는 구조로 유지하면 흐름이 선명합니다.
+## 마지막 확인
 
-### Step 9. 토큰 유무에 따른 결과 차이 확인
+- 회원가입과 로그인 흐름을 설명합니다.
+- 토큰 발급과 검증 위치를 구분합니다.
+- 공개 API와 보호 API를 구분합니다.
+- OAuth2/SMTP 범위로 확장하지 않았습니다.
 
-- `docker compose up -d`로 MySQL을 실행합니다.
-- `./gradlew bootRun`으로 앱을 실행합니다.
-- Swagger에서 회원가입 -> 로그인 -> `/auth/me` 순서로 호출합니다.
+<details>
+<summary>멘토용 진행 포인트</summary>
 
-실습 힌트:
-- 토큰 없이 `/auth/me`를 호출하면 401이어야 합니다.
-- 로그인으로 받은 access token을 `Authorization: Bearer <token>` 헤더에 넣으면 통과해야 합니다.
-- 그리고 "통과했다"가 끝이 아니라, 다음 단계에서는 누가 어떤 API까지 가능한지 인가 규칙이 더 붙을 수 있다는 점을 설명할 수 있어야 합니다.
+- 각 Step에서 요청이 Controller, Service, token provider, filter, security config 중 어디를 지나는지 말하게 합니다.
+- 힌트가 필요하면 로그인 응답, Authorization header, filter 검증 순서로 좁혀갑니다.
+- 정답을 직접 말하지 않고 "이 요청은 인증 전인가 후인가"를 먼저 질문합니다.
 
-## 실습자 체크리스트
-
-- [ ] 회원가입 요청 DTO와 로그인 요청 DTO에 왜 검증이 필요한지 설명할 수 있습니다.
-- [ ] 회원가입 시 비밀번호를 왜 인코딩해야 하는지 설명할 수 있습니다.
-- [ ] 로그인 흐름을 "조회 -> 비밀번호 확인 -> JWT 발급" 순서로 말할 수 있습니다.
-- [ ] 토큰 없이 `/auth/me`를 호출해 401을 직접 확인했습니다.
-- [ ] 토큰을 넣고 `/auth/me`를 호출해 현재 사용자 조회를 직접 확인했습니다.
-- [ ] 인증과 인가가 어떤 기준에서 갈리는지 설명할 수 있습니다.
-
-## 리뷰어 / PPT 체크리스트
-
-- [ ] 회원가입 -> 로그인 -> JWT 발급 -> `/auth/me` 흐름 그림이 있는가
-- [ ] 인증과 인가 차이를 짧게 비교해 설명할 자료가 있는가
-- [ ] `encode(...)`와 `matches(...)`를 같은 화면에서 보여줄 수 있는가
-- [ ] 토큰 없음 401과 토큰 있음 200을 같은 시연 흐름으로 준비했는가
-- [ ] 로그인 성공 이후에도 역할 기반 접근이나 본인 확인 규칙이 왜 더 필요해지는지 설명할 수 있는가
-- [ ] 다음 시퀀스의 OAuth2 확장으로 자연스럽게 연결할 수 있는가
-
-## 다음 도메인 연결 포인트
-
-다음 시퀀스에서는 직접 만든 로그인만이 아니라
-Google OAuth처럼 외부 인증을 받아 우리 서비스 사용자와 연결하는 흐름으로 확장할 수 있습니다.
+</details>
