@@ -1,27 +1,21 @@
-# Spring Boot Safe Request Handling Lab
+# 03 Validation
 
-DTO 분리, Validation, 예외 응답 통일을 통해 "안전한 요청 처리" 감각을 익히는 실습 레포입니다.
+## 이 시퀀스에서 다루는 문제
 
-## 이 시퀀스에서 무엇을 배우나요
+SEQ02의 DB 기반 CRUD는 동작하지만, 빈 제목이나 존재하지 않는 게시글 같은 실패 상황을 아직 일관되게 설명하지 못합니다. 이번 시퀀스는 요청 DTO 검증과 비즈니스 예외, 공통 실패 응답을 연결해 안전한 요청 처리 흐름을 만듭니다.
 
-이번 실습은 `02-answer`의 DB CRUD 흐름 위에
-입력 검증과 실패 응답 설계를 얹는 단계입니다.
+Security, JWT, 테스트 확장, 복잡한 공통 응답 래퍼는 이번 범위에 넣지 않습니다. 커스텀 Validation은 구현하지 않고 확장 개념으로만 다룹니다.
 
-이번 레포에서는 아래 흐름에 집중합니다.
+## 학습 목표
 
-1. 요청 DTO와 응답 DTO를 분리합니다.
-2. `@Valid`, `@NotBlank`로 잘못된 입력을 초입에서 막습니다.
-3. `PostNotFoundException`으로 비즈니스 예외를 분리합니다.
-4. `GlobalExceptionHandler`와 `ErrorResponse`로 실패 응답을 통일합니다.
-5. 정상 요청과 실패 요청이 어떻게 다르게 흘러가는지 직접 확인합니다.
-6. 기본 Validation만으로 부족한 순간에는 커스텀 Validation이 왜 필요한지 이해합니다.
+- Request DTO와 Entity 역할을 분리합니다.
+- `@Valid`, `@NotBlank`로 잘못된 요청을 초입에서 막습니다.
+- `PostNotFoundException`으로 비즈니스 예외를 분리합니다.
+- `GlobalExceptionHandler`와 `ErrorResponse`로 실패 응답을 통일합니다.
 
-## 브랜치 사용 방법
+## 멘티 시작 흐름
 
-- `03-implementation`: 실습용 starter 브랜치
-- `03-answer`: 참고 구현 브랜치
-
-실습은 반드시 `03-implementation`에서 시작합니다.
+실습은 이 starter 브랜치에서 진행합니다.
 
 ```bash
 git clone -b 03-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
@@ -29,28 +23,16 @@ cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
 
-참고 구현 비교가 필요할 때는 아래 흐름을 사용합니다.
+먼저 `docs/theory.md`에서 왜 요청값을 그대로 믿으면 안 되는지 읽고, `docs/implementation.md`의 순서대로 TODO를 채웁니다.
 
-```bash
-git fetch origin
-git diff origin/03-implementation..origin/03-answer
-```
+## 읽는 순서
 
-## 문서 안내
+1. [이론 정리](./docs/theory.md)
+2. [구현 가이드](./docs/implementation.md)
+3. [체크리스트](./docs/checklist.md)
+4. [제공 자료 안내](./docs/assets.md)
 
-- [이론 문서](./docs/theory.md)
-- [구현 안내](./docs/implementation.md)
-- [참고 구현 가이드](./docs/answer-guide.md)
-- [체크리스트](./docs/checklist.md)
-- [제공 자료 안내](./docs/assets.md)
-
-## 파일을 어떻게 보면 좋나요
-
-실습은 아래 순서로 보는 것을 권장합니다.
-
-1. `docs/theory.md`에서 왜 입력을 그대로 믿으면 안 되는지 읽습니다.
-2. `docs/implementation.md`에서 오늘 손으로 칠 순서를 확인합니다.
-3. 아래 핵심 파일을 순서대로 엽니다.
+핵심 파일은 아래 순서로 확인합니다.
 
 - `src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt`
 - `src/main/kotlin/com/andi/rest_crud/dto/PostUpdateRequest.kt`
@@ -60,33 +42,10 @@ git diff origin/03-implementation..origin/03-answer
 - `src/main/kotlin/com/andi/rest_crud/exception/GlobalExceptionHandler.kt`
 - `src/main/kotlin/com/andi/rest_crud/exception/PostNotFoundException.kt`
 
-`03-implementation`에서는 TODO를 채우며 실습하고,
-완료 후에는 `03-answer`나 `docs/answer-guide.md`로 비교하면 됩니다.
-
-## 미리 제공되는 것
-
-- Kotlin + Spring Boot + Spring Data JPA 프로젝트 기본 설정
-- MySQL 실행 설정과 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
-- Swagger UI 진입 설정
-- 기본 CRUD 구조와 `PostController`
-- 예외 클래스 틀과 응답 포맷 틀
-- 패키지 구조와 메인 애플리케이션 클래스
-
-실습자는 입력 검증과 실패 응답의 핵심 흐름만 직접 구현합니다.
-커스텀 Validation은 실무 확장 개념으로 문서에서 같이 다루되,
-이번 starter의 메인 구현 범위를 과하게 넓히지는 않습니다.
-
-## 실행 방법
-
-먼저 MySQL을 준비합니다.
+## 실행 / 테스트 방법
 
 ```bash
 docker compose up -d
-```
-
-애플리케이션 실행:
-
-```bash
 ./gradlew bootRun
 ```
 
@@ -102,19 +61,33 @@ http://localhost:8080/swagger
 ./gradlew test
 ```
 
-## 이번 실습에서 직접 구현할 범위
+## 완료 기준
 
-- `PostCreateRequest`, `PostUpdateRequest`에 기본 검증 추가
-- `PostResponse`로 응답 DTO 변환 연결
-- `PostService`에서 비즈니스 예외 흐름 연결
-- `ErrorResponse` 구조 이해
-- `GlobalExceptionHandler`에서 검증 실패 / 비즈니스 예외 응답 통일
+- 빈 요청값이 Service까지 들어가기 전에 검증 실패로 처리됩니다.
+- 없는 게시글 요청이 비즈니스 예외로 분리됩니다.
+- 검증 실패와 게시글 없음 실패가 같은 `ErrorResponse` 구조를 사용합니다.
+- 정상 요청과 실패 요청을 Swagger에서 비교해 설명합니다.
+- `./gradlew test`가 통과합니다.
 
-실무 확장 메모:
-`docs/theory.md`와 `docs/answer-guide.md`에는
-- 기본 `@NotBlank`만으로는 통과되는 문제 입력
-- Service 안쪽 `if` 검증의 한계
-- 커스텀 annotation / validator 해결 코드
-도 함께 정리되어 있습니다.
+<details>
+<summary>멘토용 진행 포인트</summary>
 
-이번 시퀀스에서는 Security, JWT, 테스트 확장, 복잡한 공통 응답 래퍼를 넣지 않습니다.
+## 수업 전 확인
+
+- SEQ02의 CRUD 흐름이 전제임을 확인합니다.
+- 커스텀 Validation은 확장 개념으로만 다루고 starter 필수 구현에 넣지 않습니다.
+- JWT/Security로 범위가 넘어가지 않도록 요청 검증과 실패 응답에 집중합니다.
+
+## 수업 중 질문
+
+- Entity를 요청 DTO로 그대로 쓰면 어떤 문제가 생기나요?
+- 검증 실패와 없는 게시글 실패는 왜 다른 종류의 실패인가요?
+- 실패 응답 모양을 통일하면 클라이언트가 무엇을 더 안정적으로 처리할 수 있나요?
+
+## 리뷰 기준
+
+- 멘티가 요청 DTO, Validation, Service, ExceptionHandler 흐름을 순서대로 설명하는지 봅니다.
+- 응답 구조가 실패 종류별로 일관되게 내려가는지 확인합니다.
+- 막힌 경우 완성 내용을 보여주기보다 요청 초입, 비즈니스 규칙, 응답 변환 위치를 질문합니다.
+
+</details>
