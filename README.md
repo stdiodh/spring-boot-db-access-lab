@@ -1,66 +1,90 @@
-# Spring Boot DB Access Lab
+# 02 DB Access
 
-메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 참고 구현 브랜치입니다.
+## 이 시퀀스에서 다루는 문제
 
-## 이 시퀀스에서 무엇을 배우나요
+이번 answer 브랜치는 메모리 CRUD를 MySQL 기반 CRUD로 바꾸는 비교 기준입니다. `Controller -> Service -> Repository -> DB` 흐름이 완성된 상태에서 Entity, Repository, DTO 변환이 어떻게 연결되는지 확인합니다.
 
-이번 실습은 시퀀스 01의 메모리 CRUD를 이어받아,
-영속 저장과 계층 분리를 가장 단순한 JPA CRUD로 익히는 단계입니다.
+Validation, Exception Handling, Security는 이번 구현 범위에 넣지 않습니다. 관계 매핑과 N+1은 구현하지 않고 이론에서 실무 확장 개념으로만 다룹니다.
 
-이번 레포에서는 아래 흐름에 집중합니다.
+## 학습 목표
 
-1. `PostEntity`가 테이블과 연결됩니다.
-2. `PostRepository`가 DB 접근을 맡습니다.
-3. `PostService`가 메모리 저장 대신 Repository를 사용합니다.
-4. `POST /posts`, `GET /posts`, `GET /posts/{id}`, `PUT /posts/{id}`, `DELETE /posts/{id}` 흐름을 완성합니다.
-5. MySQL에 저장된 값이 재시작 후에도 남는지 확인합니다.
-6. 실무 확장 개념으로 관계 매핑과 N+1 문제의 출발점을 이론 문서에서 함께 봅니다.
+- 메모리 저장과 DB 저장의 차이를 설명합니다.
+- Entity, Repository, Service, Controller의 역할을 구분합니다.
+- JPA Repository 기반 CRUD 흐름을 비교합니다.
+- Swagger와 MySQL 조회로 저장 결과를 확인합니다.
 
-## 브랜치 사용 방법
+## 멘티 시작 흐름
 
-- `02-implementation`: 실습용 starter 브랜치
-- `02-answer`: 참고 구현 브랜치
+먼저 starter 브랜치에서 직접 구현한 뒤, 이 브랜치의 문서를 비교 기준으로 사용합니다.
 
-실습은 반드시 `02-implementation`에서 시작하고,
-참고 구현 비교는 `02-answer`에서 합니다.
+```bash
+git fetch origin
+git diff origin/02-implementation..origin/02-answer
+```
 
-## 문서 안내
+비교할 때는 코드 줄 수보다 Entity, Repository, Service, Controller 책임이 같은 방향을 가리키는지 확인합니다.
 
-- [이론 문서](./docs/theory.md)
-- [구현 안내](./docs/implementation.md)
-- [참고 구현 가이드](./docs/answer-guide.md)
-- [체크리스트](./docs/checklist.md)
-- [제공 자료 안내](./docs/assets.md)
+## 읽는 순서
 
-## 실행 방법
+1. [이론 정리](./docs/theory.md)
+2. [구현 가이드](./docs/implementation.md)
+3. [참고 구현 가이드](./docs/answer-guide.md)
+4. [체크리스트](./docs/checklist.md)
+5. [제공 자료 안내](./docs/assets.md)
 
-MySQL 실행:
+## 실행 / 테스트 방법
+
+MySQL을 실행합니다.
 
 ```bash
 docker compose up -d
 ```
 
-애플리케이션 실행:
+애플리케이션을 실행합니다.
 
 ```bash
 ./gradlew bootRun
 ```
 
-Swagger UI:
+Swagger UI에서 API를 확인합니다.
 
 ```text
 http://localhost:8080/swagger
 ```
 
-테스트 실행:
+자동화 테스트는 아래 명령으로 실행합니다.
 
 ```bash
 ./gradlew test
 ```
 
-## 이 브랜치에서 특히 볼 것
+## 완료 기준
 
-- DTO에서 Entity로 바뀌는 지점
-- `postRepository.save(...)`가 메모리 저장을 대체하는 지점
-- 수정과 삭제도 같은 계층 흐름으로 유지되는지
-- 관계 매핑과 N+1이 왜 “다음에 바로 마주칠 실무 개념”인지
+- `PostEntity`가 테이블과 연결되는 역할을 설명합니다.
+- `PostRepository`가 DB 접근을 맡는 이유를 설명합니다.
+- 생성, 조회, 수정, 삭제가 DB 기준으로 동작합니다.
+- Entity를 그대로 응답하지 않고 응답 DTO로 변환하는 이유를 설명합니다.
+- `./gradlew test`가 통과합니다.
+
+<details>
+<summary>멘토용 진행 포인트</summary>
+
+## 수업 전 확인
+
+- answer 브랜치에서 `./gradlew test`가 통과하는지 확인합니다.
+- MySQL 실행과 Swagger 접근이 가능한지 확인합니다.
+- 관계 매핑과 N+1은 구현 과제가 아니라 실무 확장 개념으로만 다룹니다.
+
+## 수업 중 질문
+
+- answer에서 메모리 저장을 대체하는 지점은 어디인가요?
+- Entity와 Response DTO는 왜 같은 객체가 아니어야 하나요?
+- 수정과 삭제도 같은 계층 흐름을 따르고 있나요?
+
+## 리뷰 기준
+
+- 멘티가 answer 코드를 그대로 외우는 것이 아니라 계층 책임을 설명하는지 봅니다.
+- CRUD 각 흐름이 DB 저장 기준으로 동작하는지 확인합니다.
+- 다음 시퀀스의 Validation/Exception Handling 필요성을 자연스럽게 연결합니다.
+
+</details>
