@@ -1,27 +1,21 @@
-# Spring Boot DB Access Lab
+# 02 DB Access
 
-메모리 저장이 아니라 실제 MySQL 저장으로 바꾸면서 Controller, Service, Repository, Entity 계층이 어떻게 나뉘는지 익히는 실습 레포입니다.
+## 이 시퀀스에서 다루는 문제
 
-## 이 시퀀스에서 무엇을 배우나요
+시퀀스 01의 메모리 CRUD는 서버를 재시작하면 데이터가 사라집니다. 이번 시퀀스는 게시글 데이터를 MySQL에 저장하고, `Controller -> Service -> Repository -> DB` 계층 흐름으로 CRUD를 연결하는 문제를 다룹니다.
 
-이번 실습은 시퀀스 01의 메모리 CRUD를 이어받아,
-영속 저장과 계층 분리를 가장 단순한 JPA CRUD로 익히는 단계입니다.
+Validation, Exception Handling, Security는 이번 구현 범위에 넣지 않습니다. 관계 매핑과 N+1은 구현하지 않고 이론에서 실무 확장 개념으로만 다룹니다.
 
-이번 레포에서는 아래 흐름에 집중합니다.
+## 학습 목표
 
-1. `PostEntity`가 테이블과 연결됩니다.
-2. `PostRepository`가 DB 접근을 맡습니다.
-3. `PostService`가 메모리 저장 대신 Repository를 사용합니다.
-4. `POST /posts`, `GET /posts`, `GET /posts/{id}`, `PUT /posts/{id}`, `DELETE /posts/{id}` 흐름을 완성합니다.
-5. MySQL에 저장된 값이 재시작 후에도 남는지 확인합니다.
-6. 실무 확장 개념으로 관계 매핑과 N+1 문제의 출발점을 이론 문서에서 함께 봅니다.
+- 메모리 저장과 DB 저장의 차이를 설명합니다.
+- Entity, Repository, Service, Controller의 역할을 구분합니다.
+- JPA Repository 기반 CRUD 흐름을 연결합니다.
+- Swagger와 MySQL 조회로 저장 결과를 확인합니다.
 
-## 브랜치 사용 방법
+## 멘티 시작 흐름
 
-- `02-implementation`: 실습용 starter 브랜치
-- `02-answer`: 참고 구현 브랜치
-
-실습은 반드시 `02-implementation`에서 시작합니다.
+실습은 이 starter 브랜치에서 진행합니다.
 
 ```bash
 git clone -b 02-implementation https://github.com/stdiodh/spring-boot-db-access-lab.git
@@ -29,28 +23,16 @@ cd spring-boot-db-access-lab
 git checkout -b feat/<이름>
 ```
 
-참고 구현 비교가 필요할 때는 아래 흐름을 사용합니다.
+먼저 `docs/theory.md`에서 영속 저장과 계층 분리의 이유를 읽고, `docs/implementation.md`의 순서대로 TODO를 채웁니다.
 
-```bash
-git fetch origin
-git diff 02-implementation..02-answer
-```
+## 읽는 순서
 
-## 문서 안내
+1. [이론 정리](./docs/theory.md)
+2. [구현 가이드](./docs/implementation.md)
+3. [체크리스트](./docs/checklist.md)
+4. [제공 자료 안내](./docs/assets.md)
 
-- [이론 문서](./docs/theory.md)
-- [구현 안내](./docs/implementation.md)
-- [참고 구현 가이드](./docs/answer-guide.md)
-- [체크리스트](./docs/checklist.md)
-- [제공 자료 안내](./docs/assets.md)
-
-## 파일을 어떻게 보면 좋나요
-
-실습은 아래 순서로 보는 것을 권장합니다.
-
-1. `docs/theory.md`에서 왜 메모리 저장만으로는 부족한지, 관계 매핑과 N+1이 왜 실무에서 중요해지는지 읽습니다.
-2. `docs/implementation.md`에서 오늘 구현 순서를 확인합니다.
-3. 아래 핵심 파일을 순서대로 엽니다.
+핵심 파일은 아래 순서로 확인합니다.
 
 - `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
 - `src/main/kotlin/com/andi/rest_crud/repository/PostRepository.kt`
@@ -60,52 +42,59 @@ git diff 02-implementation..02-answer
 - `src/main/kotlin/com/andi/rest_crud/dto/PostUpdateRequest.kt`
 - `src/main/kotlin/com/andi/rest_crud/dto/PostResponse.kt`
 
-`02-implementation` 브랜치에서는 `TODO(A&I)`를 채우며 실습하고,
-완료 후에는 `02-answer` 브랜치나 `docs/answer-guide.md`로 비교하면 됩니다.
+## 실행 / 테스트 방법
 
-## 미리 제공되는 것
-
-- Kotlin + Spring Boot + Spring Data JPA 프로젝트 기본 설정
-- Swagger UI 진입 설정
-- MySQL 실행 설정과 Docker Compose 예시
-- 테스트 격리 실행을 위한 MySQL 호환 테스트 설정
-- 패키지 구조와 메인 애플리케이션 클래스
-
-실습자는 영속 저장으로 바뀌는 핵심 흐름만 직접 구현합니다.
-
-## 실행 방법
-
-MySQL 실행:
+MySQL을 실행합니다.
 
 ```bash
 docker compose up -d
 ```
 
-애플리케이션 실행:
+애플리케이션을 실행합니다.
 
 ```bash
 ./gradlew bootRun
 ```
 
-Swagger UI:
+Swagger UI에서 API를 확인합니다.
 
 ```text
 http://localhost:8080/swagger
 ```
 
-테스트 실행:
+자동화 테스트는 아래 명령으로 실행합니다.
 
 ```bash
 ./gradlew test
 ```
 
-## 이번 실습에서 직접 구현할 범위
+## 완료 기준
 
-- `PostEntity` 핵심 필드와 JPA 어노테이션 이해
-- `PostRepository` 선언
-- `PostService`의 create / getAll / getById / update / delete 흐름을 Repository 기반으로 연결
-- `PostController`에서 수정 / 삭제 API 연결
-- MySQL 저장 결과 확인
+- `PostEntity`가 테이블과 연결되는 역할을 설명합니다.
+- `PostRepository`가 DB 접근을 맡는 이유를 설명합니다.
+- 생성, 조회, 수정, 삭제가 DB 기준으로 동작합니다.
+- Entity를 그대로 응답하지 않고 응답 DTO로 변환하는 이유를 설명합니다.
+- `./gradlew test`가 통과합니다.
 
-이번 시퀀스의 구현 메인 흐름에서는 Validation, Exception Handling, Security를 넣지 않습니다.
-관계 매핑과 N+1은 `docs/theory.md`에서 실무 확장 개념으로 상세히 설명합니다.
+<details>
+<summary>멘토용 진행 포인트</summary>
+
+## 수업 전 확인
+
+- MySQL 실행과 Swagger 접근이 가능한지 확인합니다.
+- 시퀀스 03의 Validation/Exception Handling 설명으로 범위가 넘어가지 않도록 합니다.
+- 관계 매핑과 N+1은 구현 과제가 아니라 실무 확장 개념으로만 다룹니다.
+
+## 수업 중 질문
+
+- 서버를 재시작해도 데이터가 남아야 하는 이유는 무엇인가요?
+- Entity와 Response DTO는 왜 같은 객체가 아니어야 하나요?
+- Service가 Repository를 호출하면 Controller의 책임은 어떻게 줄어드나요?
+
+## 리뷰 기준
+
+- 멘티가 `Controller -> Service -> Repository -> DB` 흐름을 파일 이름과 함께 설명하는지 봅니다.
+- CRUD 각 흐름이 DB 저장 기준으로 동작하는지 확인합니다.
+- 막힌 경우 완성 내용을 보여주기보다 Entity, Repository, Service 책임을 질문으로 좁혀갑니다.
+
+</details>

@@ -1,169 +1,125 @@
-# 영속성 저장과 계층 분리 구현 안내
+# 구현 가이드
 
-## 오늘 실습에서 완성할 최종 흐름
+## 1. 구현 전에 확인할 문제
 
-오늘 실습이 끝나면 아래 흐름을 직접 보여줄 수 있어야 합니다.
+이번 구현은 메모리 CRUD를 DB 기반 CRUD로 바꾸는 작업입니다. 새 기능을 크게 늘리기보다 저장 책임을 Repository로 옮기고, Service가 계층 흐름을 조립하도록 만드는 것이 핵심입니다.
 
-1. `PostEntity`를 만들어 테이블과 연결합니다.
-2. `PostRepository`를 선언해 DB 접근을 맡깁니다.
-3. `PostService`가 메모리 저장 대신 Repository를 사용하게 만듭니다.
-4. `POST`, `GET`, `PUT`, `DELETE` 흐름을 DB 기반 CRUD로 연결합니다.
-5. Swagger와 MySQL 저장 결과를 확인합니다.
+완성해야 할 흐름은 아래와 같습니다.
 
-여기서 한 걸음 더 나가면,
-실무에서는 게시글과 댓글처럼 연관관계가 생기고 N+1 문제가 따라온다는 점까지 이론 문서에서 함께 이해해야 합니다.
+```text
+Controller -> Service -> Repository -> MySQL -> Response DTO
+```
 
-## 실습자가 직접 구현할 순서
+## 2. 구현 순서
 
-1. `Entity` 핵심 필드와 어노테이션 작성
-2. `Repository 인터페이스` 선언
-3. `Service` 저장 흐름을 메모리 저장에서 DB 저장으로 변경
-4. `findAll()` 연결
-5. `findById()` 연결
-6. `deleteById()` 연결
-7. `update()` 핵심 로직 작성
-8. Controller에서 수정 / 삭제 API 연결
-9. MySQL 저장 결과 확인
+1. `PostEntity.kt`에서 테이블과 연결되는 Entity를 확인합니다.
+2. `PostRepository.kt`에서 JPA Repository를 선언합니다.
+3. `PostService.kt`에서 create, getAll, getById 흐름을 DB 기준으로 연결합니다.
+4. `PostService.kt`에서 update, delete 흐름을 연결합니다.
+5. `PostController.kt`에서 수정/삭제 API를 Service로 연결합니다.
+6. Swagger와 MySQL 조회로 저장 결과를 확인합니다.
 
-## TODO를 넣을 파일
+## 3. Step 1. Entity 확인
 
-- `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
-- `src/main/kotlin/com/andi/rest_crud/repository/PostRepository.kt`
-- `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/PostController.kt`
+### 해야 할 일
 
-## 파일별 역할 설명
+`PostEntity.kt`에서 게시글 데이터가 DB 테이블과 연결되는 구조를 확인합니다.
 
-- `PostEntity.kt`: DB 테이블과 연결되는 핵심 데이터 구조
-- `PostRepository.kt`: DB 접근을 맡는 기본 JPA Repository
-- `PostService.kt`: Entity 생성, 조회, 수정, 삭제 흐름을 조립하는 곳
-- `PostController.kt`: 요청을 받아 Service에 전달하고 응답을 돌려주는 입구
-- `PostCreateRequest.kt`: 글 생성 요청 값
-- `PostUpdateRequest.kt`: 글 수정 요청 값
-- `PostResponse.kt`: 바깥으로 내보낼 응답 모양
+### 왜 이 작업을 하는가
 
-실무 확장 메모:
-이번 브랜치의 구현 메인 흐름은 단일 테이블 CRUD입니다.
-관계 매핑과 N+1은 `docs/theory.md`에서 먼저 이해하고 넘어갑니다.
-특히 `docs/theory.md`에는
-- 문제를 만드는 조회 코드
-- 예상 쿼리 흐름
-- 왜 느려지는지
-- `fetch join` 해결 코드 예시
-가 같이 들어 있으니, 구현 전에 그 흐름을 먼저 보고 오는 것을 권장합니다.
+Entity는 DB 저장의 기준입니다. 요청 DTO나 응답 DTO와 달리 DB 테이블과 연결되는 내부 모델이라는 점을 구분해야 합니다.
 
-## 단계별 구현 안내
+### 확인 방법
 
-### Step 1. Entity 만들기
+- Entity가 어떤 필드를 갖는지 확인합니다.
+- 이번 단계에서 관계 매핑을 추가하지 않는 이유를 설명합니다.
 
-- `PostEntity.kt`를 엽니다.
-- `@Entity`, `@Table`, `@Id`, `@GeneratedValue`를 연결합니다.
-- title, content, author 핵심 필드를 확인합니다.
+## 4. Step 2. Repository 선언
 
-실습 힌트:
-- 이번 실습에서는 단일 테이블 기준으로 단순하게 갑니다.
-- 연관관계나 복잡한 매핑은 구현 메인 흐름에 넣지 않습니다.
+### 해야 할 일
 
-### Step 2. Repository 선언하기
+`PostRepository.kt`에서 `PostEntity`와 id 타입을 기준으로 JPA Repository를 연결합니다.
 
-- `PostRepository.kt`를 엽니다.
-- `JpaRepository<PostEntity, Long>`를 상속하도록 연결합니다.
+### 왜 이 작업을 하는가
 
-실습 힌트:
-- 구현 클래스를 직접 만들지 않아도 기본 CRUD 메서드를 바로 쓸 수 있습니다.
+Repository가 DB 접근을 맡으면 Service가 저장 구현 세부사항보다 처리 흐름에 집중할 수 있습니다.
 
-### Step 3. Service 저장 흐름 바꾸기
+### 확인 방법
 
-- `create()`에서 요청 DTO를 `PostEntity`로 만듭니다.
-- `postRepository.save(...)`를 호출합니다.
-- 저장 결과를 `PostResponse`로 바꿉니다.
+- Service가 Repository를 통해 저장과 조회를 수행하는지 확인합니다.
+- Controller가 Repository를 직접 호출하지 않는지 확인합니다.
 
-실습 힌트:
-- 이제 id를 직접 증가시키지 않습니다.
-- DB가 생성한 id를 저장 결과에서 받아옵니다.
+## 5. Step 3. 생성과 조회 흐름 연결
 
-### Step 4. 전체 조회 연결하기
+### 해야 할 일
 
-- `findAll()`로 전체 목록을 가져옵니다.
-- `PostResponse` 리스트로 바꿉니다.
+`PostService.kt`에서 생성, 전체 조회, 단건 조회 흐름을 Repository 기반으로 연결합니다.
 
-실습 힌트:
-- Entity를 그대로 응답하지 말고 응답 DTO로 변환하세요.
-- 이 단계가 바로 나중에 N+1 설명과 연결됩니다.
-  지금은 `findAll()`만 쓰지만, 연관관계가 생기면 이 조회 방식이 왜 느려질 수 있는지 `docs/theory.md`에서 같이 확인하세요.
+### 왜 이 작업을 하는가
 
-### Step 5. 단건 조회 연결하기
+메모리 저장과 DB 저장의 차이는 Service의 저장 지점에서 가장 잘 드러납니다. 요청 DTO를 Entity로 만들고, 저장 결과를 응답 DTO로 바꾸는 흐름을 분명히 해야 합니다.
 
-- `findById(id)`로 하나를 찾습니다.
-- `PostResponse`로 바꿔 반환합니다.
+### 확인 방법
 
-실습 힌트:
-- 이번 시퀀스는 예외 처리를 깊게 다루지 않으므로, 먼저 정상 흐름이 분명하게 보이게 만드는 데 집중하세요.
+- 생성 후 `GET /posts`에서 DB 기준 목록이 보이는지 확인합니다.
+- Entity를 그대로 응답하지 않고 `PostResponse`로 변환하는지 확인합니다.
 
-### Step 6. 삭제 연결하기
+## 6. Step 4. 수정과 삭제 흐름 연결
 
-- `deleteById(id)` 또는 조회 후 삭제 흐름을 만듭니다.
+### 해야 할 일
 
-실습 힌트:
-- 삭제 후 다시 전체 조회했을 때 목록에서 빠지는지 확인하면 됩니다.
+id로 기존 게시글을 찾고, 값을 바꾸거나 삭제하는 흐름을 연결합니다.
 
-### Step 7. 수정 로직 만들기
+### 왜 이 작업을 하는가
 
-- id로 기존 Entity를 조회합니다.
-- title, content, author 값을 바꿉니다.
-- 저장 후 응답 DTO로 돌려줍니다.
+수정과 삭제도 생성/조회와 같은 계층 흐름을 따라야 합니다. Controller에서 직접 DB 접근을 처리하면 계층 분리가 흐려집니다.
 
-실습 힌트:
-- 수정도 결국 조회 -> 값 변경 -> 저장 흐름이라는 점을 먼저 보세요.
+### 확인 방법
 
-### Step 8. Controller 수정/삭제 API 연결
+- 수정 후 다시 조회했을 때 값이 바뀌는지 확인합니다.
+- 삭제 후 목록에서 데이터가 사라지는지 확인합니다.
 
-- `PUT /posts/{id}`
-- `DELETE /posts/{id}`
+## 7. Step 5. API 연결과 실행 확인
 
-실습 힌트:
-- Controller에서 Repository를 직접 부르지 말고 Service를 통해 흐름을 유지하세요.
+### 해야 할 일
 
-### Step 9. DB 저장 결과 확인
+`PostController.kt`에서 수정/삭제 API가 Service를 호출하도록 연결하고 Swagger에서 확인합니다.
 
-- `docker compose up -d`로 MySQL을 실행합니다.
-- `./gradlew bootRun`으로 앱을 실행합니다.
-- `http://localhost:8080/swagger`에서 API를 호출합니다.
-- MySQL client나 Workbench에서 `posts` 테이블을 확인합니다.
+### 왜 이 작업을 하는가
 
-실습 힌트:
-- 서버를 껐다 켠 뒤에도 데이터가 남는지 보면 메모리 저장과 차이가 더 선명해집니다.
+Controller는 HTTP 요청의 입구이고, 실제 처리 흐름은 Service로 넘겨야 계층 책임이 유지됩니다.
 
-## 각 단계의 확인 포인트
+### 확인 방법
 
-- Step 1: Entity가 테이블과 연결되는 어노테이션이 보이는가
-- Step 2: Repository가 기본 CRUD 메서드를 사용할 수 있는 구조인가
-- Step 3: create가 `save(...)`를 호출하는가
-- Step 4: 전체 조회가 DB 값을 기준으로 동작하는가
-- Step 5: 단건 조회가 id 기준으로 연결되는가
-- Step 6: 삭제 후 목록에서 데이터가 빠지는가
-- Step 7: 수정 후 다시 조회했을 때 값이 바뀌는가
-- Step 8: 수정 / 삭제 API가 Controller에 연결되어 있는가
-- Step 9: Swagger와 MySQL 조회 결과를 눈으로 확인했는가
+```bash
+docker compose up -d
+./gradlew bootRun
+```
 
-## 실습자 체크 질문
+Swagger UI에서 생성, 조회, 수정, 삭제를 실행합니다.
 
-- 왜 메모리 저장 대신 DB 저장이 필요한가요?
-- `PostEntity`와 `PostResponse`는 무엇이 다른가요?
-- Repository가 생기면 Service는 어떤 점이 더 읽기 쉬워지나요?
-- 수정 흐름은 어떤 순서로 동작하나요?
-- 게시글과 댓글 관계가 생기면 어떤 매핑이 필요할까요?
-- N+1은 왜 생길 수 있을까요?
+```text
+http://localhost:8080/swagger
+```
 
-## 리뷰용 확인 포인트
+자동화 테스트도 실행합니다.
 
-- 실습자가 Entity와 DTO 역할을 구분해서 설명하는지 확인합니다.
-- 실습자가 Service에서 Repository를 호출하는 이유를 말할 수 있는지 확인합니다.
-- 실습자가 DB 저장 결과를 Swagger와 MySQL 조회 도구에서 함께 확인했는지 확인합니다.
-- 실습자가 수정과 삭제도 같은 계층 흐름으로 설명할 수 있는지 확인합니다.
-- 실습자가 관계 매핑과 N+1을 “이번엔 구현하지 않지만 곧 마주치는 실무 개념”으로 설명할 수 있는지 확인합니다.
+```bash
+./gradlew test
+```
 
-## 다음 시퀀스 연결 포인트
+## 마지막 확인
 
-다음 시퀀스에서는 지금 만든 CRUD 흐름에 입력값 검증과 실패 응답 처리가 붙습니다.
-이번 시퀀스에서 계층 분리와 DB 저장 흐름이 선명해야, 다음에는 DTO와 Validation이 왜 필요한지 자연스럽게 이어집니다.
+- Entity, Repository, Service, Controller 역할을 구분합니다.
+- 생성/조회/수정/삭제가 DB 기준으로 동작합니다.
+- MySQL 저장 결과를 확인했습니다.
+- Validation, Exception Handling, Security를 이번 범위에 추가하지 않았습니다.
+
+<details>
+<summary>멘토용 진행 포인트</summary>
+
+- 각 Step에서 파일 이름과 계층 책임을 함께 말하게 합니다.
+- 힌트가 필요하면 Entity와 DTO 차이, Repository 선언, Service의 Repository 호출 순서로 좁혀갑니다.
+- 정답을 직접 말하지 않고 "이 파일의 책임이 무엇인가요?"로 유도합니다.
+
+</details>
