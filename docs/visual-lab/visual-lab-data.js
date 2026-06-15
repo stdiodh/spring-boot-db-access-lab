@@ -15,7 +15,7 @@ window.visualLabData = {
       "label": "02 DB Access",
       "problem": "메모리 저장은 서버 재시작 후 데이터가 사라지고 여러 인스턴스가 같은 데이터를 공유하기 어렵습니다.",
       "concept": "Entity, Repository, DB persistence",
-      "action": "Request DTO를 Entity로 바꾸고 Repository를 통해 DB에 저장합니다.",
+      "action": "Request DTO를 Entity로 바꾸고 Repository에 DB 저장을 요청합니다.",
       "check": "저장/조회/수정/삭제가 DB 기준으로 유지되는지 확인합니다."
     },
     {

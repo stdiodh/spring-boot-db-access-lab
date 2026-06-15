@@ -5,11 +5,11 @@
 
 ## 이 레포에서 배우는 것
 
-- `02`: MySQL 기반 CRUD와 계층 분리
-- `03`: DTO 분리, Validation, 전역 예외 처리
-- `04`: 회원가입, 로그인, JWT, 보호된 API
-- `05`: OAuth2 로그인, SMTP 메일 발송, 계정 복구를 05-A/B/C로 단계화
-- `06`: Service 단위 테스트, fixture, mock, 정상/실패 검증
+- `02`: 메모리 저장소가 사라지는 문제를 MySQL Repository/Entity 흐름으로 해결합니다.
+- `03`: 잘못된 요청이 Service까지 들어오는 문제를 Validation과 전역 예외 응답으로 막습니다.
+- `04`: 로그인 이후 사용자를 구분하는 문제를 JWT 발급/검증 흐름으로 해결합니다.
+- `05`: 외부 인증과 계정 복구 흐름을 OAuth2/SMTP 책임으로 나눕니다.
+- `06`: 정상/실패 케이스를 fixture와 mock으로 재현해 Service 동작을 검증합니다.
 
 ## 시작 방법
 
@@ -138,4 +138,4 @@ http://localhost:8080
 ## 운영 메모
 
 legacy `implementation` 브랜치가 남아 있다면 deprecated로만 취급합니다.
-정식 수업 운영에서는 `02~06-implementation` / `02~06-answer`만 사용합니다.
+정식 수업 운영에서는 `02~06-implementation`, `02~06-answer`만 사용합니다.
