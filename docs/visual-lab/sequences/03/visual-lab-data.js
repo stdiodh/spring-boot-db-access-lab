@@ -276,7 +276,7 @@ window.visualLabData = {
       "title": "Request DTO에서 입력 형식을 먼저 막습니다",
       "file": "src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt",
       "language": "kotlin",
-      "snippet": "data class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\")\n    val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\")\n    val content: String,\n    @field:NotBlank(message = \"author는 비어 있을 수 없습니다.\")\n    val author: String\n)",
+      "snippet": "data class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\")\n    val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\")\n    val content: String\n)",
       "explanation": "형식 오류는 Service와 DB까지 내려가기 전에 요청 입구에서 멈춥니다.",
       "check": "빈 title 요청이 저장 로직까지 내려가지 않는지 확인합니다."
     },
@@ -672,7 +672,7 @@ window.visualLabData = {
           "title": "Request DTO에서 입력 형식을 먼저 막습니다",
           "file": "src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt",
           "language": "kotlin",
-          "snippet": "data class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\")\n    val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\")\n    val content: String,\n    @field:NotBlank(message = \"author는 비어 있을 수 없습니다.\")\n    val author: String\n)",
+          "snippet": "data class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\")\n    val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\")\n    val content: String\n)",
           "explanation": "형식 오류는 Service와 DB까지 내려가기 전에 요청 입구에서 멈춥니다.",
           "check": "빈 title 요청이 저장 로직까지 내려가지 않는지 확인합니다."
         },

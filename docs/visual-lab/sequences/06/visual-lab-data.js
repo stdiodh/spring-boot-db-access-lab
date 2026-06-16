@@ -277,7 +277,7 @@ window.visualLabData = {
       "title": "Service 단위 테스트는 성공 흐름을 고정합니다",
       "file": "src/test/kotlin/com/andi/rest_crud/service/PostServiceTest.kt",
       "language": "kotlin",
-      "snippet": "@Test\nfun `create는 요청 값을 저장하고 응답으로 돌려준다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(id = 1L)\n    `when`(postRepository.save(any(PostEntity::class.java)))\n        .thenReturn(savedPost)\n\n    val result = postService.create(request)\n\n    assertEquals(1L, result.id)\n    assertEquals(request.title, result.title)\n}",
+      "snippet": "@Test\nfun `create는 현재 로그인 사용자를 작성자로 저장한다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(\n        id = 1L,\n        title = request.title,\n        content = request.content,\n        author = \"owner@example.com\"\n    )\n    `when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\n\n    val result = postService.create(request, \"owner@example.com\")\n\n    assertEquals(1L, result.id)\n    assertEquals(\"owner@example.com\", result.author)\n}",
       "explanation": "테스트는 Service가 어떤 입력을 어떤 응답으로 바꿔야 하는지 고정합니다.",
       "check": "테스트가 DB 연결이 아니라 Service 판단을 검증하는지 확인합니다."
     },
@@ -286,7 +286,7 @@ window.visualLabData = {
       "title": "Fixture는 반복 입력을 한 곳에서 만듭니다",
       "file": "src/test/kotlin/com/andi/rest_crud/support/TestFixtureFactory.kt",
       "language": "kotlin",
-      "snippet": "fun postCreateRequest(\n    title: String = \"테스트 제목\",\n    content: String = \"테스트 내용\",\n    author: String = \"tester\"\n): PostCreateRequest = PostCreateRequest(\n    title = title,\n    content = content,\n    author = author\n)",
+      "snippet": "fun postCreateRequest(\n    title: String = \"테스트 제목\",\n    content: String = \"테스트 내용\"\n): PostCreateRequest = PostCreateRequest(\n    title = title,\n    content = content\n)",
       "explanation": "반복되는 테스트 입력을 fixture로 만들면 실패 케이스만 선명하게 바꿀 수 있습니다.",
       "check": "fixture 기본값과 테스트별 override 값을 구분합니다."
     }
@@ -679,7 +679,7 @@ window.visualLabData = {
           "title": "Service 단위 테스트는 성공 흐름을 고정합니다",
           "file": "src/test/kotlin/com/andi/rest_crud/service/PostServiceTest.kt",
           "language": "kotlin",
-          "snippet": "@Test\nfun `create는 요청 값을 저장하고 응답으로 돌려준다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(id = 1L)\n    `when`(postRepository.save(any(PostEntity::class.java)))\n        .thenReturn(savedPost)\n\n    val result = postService.create(request)\n\n    assertEquals(1L, result.id)\n    assertEquals(request.title, result.title)\n}",
+          "snippet": "@Test\nfun `create는 현재 로그인 사용자를 작성자로 저장한다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(\n        id = 1L,\n        title = request.title,\n        content = request.content,\n        author = \"owner@example.com\"\n    )\n    `when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\n\n    val result = postService.create(request, \"owner@example.com\")\n\n    assertEquals(1L, result.id)\n    assertEquals(\"owner@example.com\", result.author)\n}",
           "explanation": "테스트는 Service가 어떤 입력을 어떤 응답으로 바꿔야 하는지 고정합니다.",
           "check": "테스트가 DB 연결이 아니라 Service 판단을 검증하는지 확인합니다."
         },
@@ -688,7 +688,7 @@ window.visualLabData = {
           "title": "Fixture는 반복 입력을 한 곳에서 만듭니다",
           "file": "src/test/kotlin/com/andi/rest_crud/support/TestFixtureFactory.kt",
           "language": "kotlin",
-          "snippet": "fun postCreateRequest(\n    title: String = \"테스트 제목\",\n    content: String = \"테스트 내용\",\n    author: String = \"tester\"\n): PostCreateRequest = PostCreateRequest(\n    title = title,\n    content = content,\n    author = author\n)",
+          "snippet": "fun postCreateRequest(\n    title: String = \"테스트 제목\",\n    content: String = \"테스트 내용\"\n): PostCreateRequest = PostCreateRequest(\n    title = title,\n    content = content\n)",
           "explanation": "반복되는 테스트 입력을 fixture로 만들면 실패 케이스만 선명하게 바꿀 수 있습니다.",
           "check": "fixture 기본값과 테스트별 override 값을 구분합니다."
         }

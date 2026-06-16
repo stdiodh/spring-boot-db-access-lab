@@ -47,7 +47,7 @@ window.visualLabData = {
       "id": "create-read",
       "title": "생성/조회 흐름",
       "summary": "요청 DTO는 DB에 직접 저장되지 않고 Service에서 Entity로 바뀐 뒤 Repository에 저장됩니다.",
-      "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as PostController\n  participant Service as PostService\n  participant Repository as PostRepository\n  participant DB as MySQL\n  Client->>Controller: POST /posts + PostCreateRequest\n  Controller->>Service: create(request)\n  Service->>Repository: save(PostEntity)\n  Repository->>DB: insert row\n  DB-->>Repository: saved entity\n  Repository-->>Service: PostEntity\n  Service-->>Controller: PostResponse\n  Controller-->>Client: JSON response",
+      "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as PostController\n  participant Service as PostService\n  participant Repository as PostRepository\n  participant DB as MySQL\n  Client->>Controller: POST /posts + PostCreateRequest\n  Controller->>Service: create(request, authorEmail)\n  Service->>Repository: save(PostEntity)\n  Repository->>DB: insert row\n  DB-->>Repository: saved entity\n  Repository-->>Service: PostEntity\n  Service-->>Controller: PostResponse\n  Controller-->>Client: JSON response",
       "steps": [
         {
           "order": 1,
@@ -324,7 +324,7 @@ window.visualLabData = {
       "title": "Service는 Repository에 DB 저장을 요청합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/service/PostService.kt",
       "language": "kotlin",
-      "snippet": "fun create(request: PostCreateRequest): PostResponse {\n    val savedPost = postRepository.save(\n        PostEntity(\n            title = request.title,\n            content = request.content,\n            author = request.author\n        )\n    )\n\n    return PostResponse.from(savedPost)\n}",
+      "snippet": "fun create(request: PostCreateRequest, authorEmail: String): PostResponse {\n    val savedPost = postRepository.save(\n        PostEntity(\n            title = request.title,\n            content = request.content,\n            author = authorEmail\n        )\n    )\n\n    return PostResponse.from(savedPost)\n}",
       "explanation": "Service는 DTO를 Entity로 바꾸고 Repository 호출 순서를 조립합니다.",
       "check": "DB 접근 코드가 Controller에 들어가지 않았는지 확인합니다."
     }
@@ -413,7 +413,7 @@ window.visualLabData = {
           "id": "create-read",
           "title": "생성/조회 흐름",
           "summary": "요청 DTO는 DB에 직접 저장되지 않고 Service에서 Entity로 바뀐 뒤 Repository에 저장됩니다.",
-          "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as PostController\n  participant Service as PostService\n  participant Repository as PostRepository\n  participant DB as MySQL\n  Client->>Controller: POST /posts + PostCreateRequest\n  Controller->>Service: create(request)\n  Service->>Repository: save(PostEntity)\n  Repository->>DB: insert row\n  DB-->>Repository: saved entity\n  Repository-->>Service: PostEntity\n  Service-->>Controller: PostResponse\n  Controller-->>Client: JSON response",
+          "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as PostController\n  participant Service as PostService\n  participant Repository as PostRepository\n  participant DB as MySQL\n  Client->>Controller: POST /posts + PostCreateRequest\n  Controller->>Service: create(request, authorEmail)\n  Service->>Repository: save(PostEntity)\n  Repository->>DB: insert row\n  DB-->>Repository: saved entity\n  Repository-->>Service: PostEntity\n  Service-->>Controller: PostResponse\n  Controller-->>Client: JSON response",
           "steps": [
             {
               "order": 1,
@@ -747,7 +747,7 @@ window.visualLabData = {
           "title": "Service는 Repository에 DB 저장을 요청합니다",
           "file": "src/main/kotlin/com/andi/rest_crud/service/PostService.kt",
           "language": "kotlin",
-          "snippet": "fun create(request: PostCreateRequest): PostResponse {\n    val savedPost = postRepository.save(\n        PostEntity(\n            title = request.title,\n            content = request.content,\n            author = request.author\n        )\n    )\n\n    return PostResponse.from(savedPost)\n}",
+          "snippet": "fun create(request: PostCreateRequest, authorEmail: String): PostResponse {\n    val savedPost = postRepository.save(\n        PostEntity(\n            title = request.title,\n            content = request.content,\n            author = authorEmail\n        )\n    )\n\n    return PostResponse.from(savedPost)\n}",
           "explanation": "Service는 DTO를 Entity로 바꾸고 Repository 호출 순서를 조립합니다.",
           "check": "DB 접근 코드가 Controller에 들어가지 않았는지 확인합니다."
         }

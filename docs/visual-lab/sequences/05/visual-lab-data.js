@@ -286,7 +286,7 @@ window.visualLabData = {
       "file": "src/main/kotlin/com/andi/rest_crud/service/OAuthAccountService.kt",
       "language": "kotlin",
       "snippet": "fun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {\n    val linkResult = linkOrCreateUser(profile)\n    return createSuccessResponse(linkResult.user, linkResult.isNewUser)\n}\n\nprivate fun linkOrCreateUser(profile: OAuthUserProfile): OAuthLinkResult {\n    val provider = profile.provider.uppercase()\n    val existingOAuthUser = userRepository\n        .findByAuthProviderAndProviderId(provider, profile.providerId)\n        .orElse(null)\n    // 이후 기존 사용자 연결 또는 신규 사용자 생성으로 이어집니다.\n}",
-      "explanation": "외부 인증 성공은 끝이 아니라 내부 사용자 식별과 연결되어야 합니다.",
+      "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 외부 인증 성공은 끝이 아니라 내부 사용자 식별과 연결되어야 합니다.",
       "check": "provider와 providerId로 외부 사용자를 구분하는지 확인합니다."
     },
     {
@@ -295,7 +295,7 @@ window.visualLabData = {
       "file": "src/main/kotlin/com/andi/rest_crud/service/AccountRecoveryService.kt",
       "language": "kotlin",
       "snippet": "fun requestPasswordReset(email: String) {\n    val user = userRepository.findByEmail(email).orElse(null) ?: return\n    val resetLink = createResetLink(user.email)\n    recoveryMailSender.sendPasswordResetMail(user.email, resetLink)\n}\n\nfun createResetLink(email: String): String {\n    val resetToken = UUID.randomUUID().toString()\n    return UriComponentsBuilder.fromUriString(passwordResetUrl)\n        .queryParam(\"recovery\", \"password-reset\")\n        .queryParam(\"email\", email)\n        .queryParam(\"token\", resetToken)\n        .build()\n        .toUriString()\n}",
-      "explanation": "사용자 조회, reset link 생성, SMTP 발송을 한 덩어리로 노출하지 않습니다.",
+      "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 사용자 조회, reset link 생성, SMTP 발송을 한 덩어리로 노출하지 않습니다.",
       "check": "계정 존재 여부나 reset token이 로그/화면에 과하게 드러나지 않는지 봅니다."
     }
   ],
@@ -696,7 +696,7 @@ window.visualLabData = {
           "file": "src/main/kotlin/com/andi/rest_crud/service/OAuthAccountService.kt",
           "language": "kotlin",
           "snippet": "fun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {\n    val linkResult = linkOrCreateUser(profile)\n    return createSuccessResponse(linkResult.user, linkResult.isNewUser)\n}\n\nprivate fun linkOrCreateUser(profile: OAuthUserProfile): OAuthLinkResult {\n    val provider = profile.provider.uppercase()\n    val existingOAuthUser = userRepository\n        .findByAuthProviderAndProviderId(provider, profile.providerId)\n        .orElse(null)\n    // 이후 기존 사용자 연결 또는 신규 사용자 생성으로 이어집니다.\n}",
-          "explanation": "외부 인증 성공은 끝이 아니라 내부 사용자 식별과 연결되어야 합니다.",
+          "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 외부 인증 성공은 끝이 아니라 내부 사용자 식별과 연결되어야 합니다.",
           "check": "provider와 providerId로 외부 사용자를 구분하는지 확인합니다."
         },
         {
@@ -705,7 +705,7 @@ window.visualLabData = {
           "file": "src/main/kotlin/com/andi/rest_crud/service/AccountRecoveryService.kt",
           "language": "kotlin",
           "snippet": "fun requestPasswordReset(email: String) {\n    val user = userRepository.findByEmail(email).orElse(null) ?: return\n    val resetLink = createResetLink(user.email)\n    recoveryMailSender.sendPasswordResetMail(user.email, resetLink)\n}\n\nfun createResetLink(email: String): String {\n    val resetToken = UUID.randomUUID().toString()\n    return UriComponentsBuilder.fromUriString(passwordResetUrl)\n        .queryParam(\"recovery\", \"password-reset\")\n        .queryParam(\"email\", email)\n        .queryParam(\"token\", resetToken)\n        .build()\n        .toUriString()\n}",
-          "explanation": "사용자 조회, reset link 생성, SMTP 발송을 한 덩어리로 노출하지 않습니다.",
+          "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 사용자 조회, reset link 생성, SMTP 발송을 한 덩어리로 노출하지 않습니다.",
           "check": "계정 존재 여부나 reset token이 로그/화면에 과하게 드러나지 않는지 봅니다."
         }
       ],
