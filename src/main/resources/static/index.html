@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>02 DB Access API Smoke Page</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --muted-card: #f8fafc;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #475569;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #15803d;
+      --green-bg: #dcfce7;
+      --red: #b91c1c;
+      --red-bg: #fee2e2;
+      --code-bg: #0f172a;
+      --code-text: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(100% - 32px, 960px);
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+
+    p {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .badge {
+      align-self: flex-start;
+      min-width: 84px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 12px;
+      text-align: center;
+    }
+
+    .badge.success {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .badge.error {
+      background: var(--red-bg);
+      color: var(--red);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 20px;
+    }
+
+    .api-base {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--muted-card);
+      margin-bottom: 16px;
+      padding: 12px;
+    }
+
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    code,
+    pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    code {
+      overflow-wrap: anywhere;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font: inherit;
+      padding: 10px 12px;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      background: var(--blue);
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      padding: 10px 14px;
+    }
+
+    button:hover {
+      background: var(--blue-dark);
+    }
+
+    button.secondary {
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    button.secondary:hover {
+      background: var(--muted-card);
+    }
+
+    button:disabled {
+      cursor: progress;
+      opacity: 0.7;
+    }
+
+    dl {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 8px 12px;
+      margin: 0 0 14px;
+    }
+
+    dt {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .status.success {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .status.error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .message {
+      display: none;
+      border-radius: 10px;
+      background: var(--red-bg);
+      color: var(--red);
+      font-weight: 700;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+    }
+
+    .message.visible {
+      display: block;
+    }
+
+    pre {
+      min-height: 300px;
+      max-height: 520px;
+      overflow: auto;
+      border-radius: 10px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      margin: 0;
+      padding: 16px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100% - 24px, 960px);
+        padding: 24px 0;
+      }
+
+      header,
+      .layout {
+        display: block;
+      }
+
+      .badge {
+        display: inline-block;
+        margin-top: 14px;
+      }
+
+      .card + .card {
+        margin-top: 16px;
+      }
+
+      dl {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>02 DB Access API Smoke Page</h1>
+        <p>Spring Boot API가 브라우저에서 정상 호출되는지 확인합니다.</p>
+      </div>
+      <span id="statusBadge" class="badge">READY</span>
+    </header>
+
+    <section class="layout" aria-label="API smoke test">
+      <article class="card">
+        <h2>API 확인</h2>
+        <div class="api-base">
+          <span class="label">현재 API base</span>
+          <code id="apiBase">same-origin</code>
+        </div>
+
+        <form id="payloadForm">
+          <label>
+            <span class="label">title</span>
+            <input name="title" type="text" value="DB Access Smoke Test" autocomplete="off">
+          </label>
+          <label>
+            <span class="label">content</span>
+            <textarea name="content">브라우저 fetch로 Spring Boot API 호출을 확인합니다.</textarea>
+          </label>
+          <label>
+            <span class="label">author</span>
+            <input name="author" type="text" value="A&I Student" autocomplete="off">
+          </label>
+        </form>
+
+        <div class="actions">
+          <button type="button" id="listButton">목록 조회</button>
+          <button type="button" id="createButton" class="secondary">샘플 생성</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>요청 / 응답</h2>
+        <dl>
+          <dt>Method</dt>
+          <dd id="lastMethod">-</dd>
+          <dt>URL</dt>
+          <dd id="lastUrl">-</dd>
+          <dt>Status</dt>
+          <dd id="lastStatus" class="status">-</dd>
+        </dl>
+        <p id="errorMessage" class="message" role="alert"></p>
+        <pre id="responseBody">아직 요청하지 않았습니다.</pre>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const endpoint = "/posts";
+    const $ = (selector) => document.querySelector(selector);
+    const statusBadge = $("#statusBadge");
+    const listButton = $("#listButton");
+    const createButton = $("#createButton");
+
+    $("#apiBase").textContent = `${window.location.origin}${endpoint}`;
+
+    function setBadge(state) {
+      statusBadge.textContent = state;
+      statusBadge.className = `badge${state === "SUCCESS" ? " success" : ""}${state === "ERROR" ? " error" : ""}`;
+    }
+
+    function setBusy(isBusy) {
+      listButton.disabled = isBusy;
+      createButton.disabled = isBusy;
+    }
+
+    function getPayload() {
+      const form = new FormData($("#payloadForm"));
+
+      return {
+        title: String(form.get("title") || ""),
+        content: String(form.get("content") || ""),
+        author: String(form.get("author") || "")
+      };
+    }
+
+    async function readBody(response) {
+      const text = await response.text();
+
+      if (!text) {
+        return null;
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return text;
+      }
+    }
+
+    function showBody(body) {
+      if (body === null) {
+        $("#responseBody").textContent = "(empty response)";
+      } else if (typeof body === "string") {
+        $("#responseBody").textContent = body;
+      } else {
+        $("#responseBody").textContent = JSON.stringify(body, null, 2);
+      }
+    }
+
+    function showError(message) {
+      $("#errorMessage").textContent = message;
+      $("#errorMessage").classList.add("visible");
+    }
+
+    function clearError() {
+      $("#errorMessage").textContent = "";
+      $("#errorMessage").classList.remove("visible");
+    }
+
+    async function requestApi(method, body) {
+      setBusy(true);
+      setBadge("READY");
+      clearError();
+      $("#lastMethod").textContent = method;
+      $("#lastUrl").textContent = endpoint;
+      $("#lastStatus").textContent = "요청 중";
+      $("#lastStatus").className = "status";
+
+      try {
+        const response = await fetch(endpoint, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined
+        });
+        const responseBody = await readBody(response);
+        const statusText = response.statusText ? `${response.status} ${response.statusText}` : String(response.status);
+
+        $("#lastStatus").textContent = statusText;
+        $("#lastStatus").classList.add(response.ok ? "success" : "error");
+        setBadge(response.ok ? "SUCCESS" : "ERROR");
+        showBody(responseBody);
+
+        if (!response.ok) {
+          showError("API 응답이 실패 상태입니다. 아래 응답 본문을 확인하세요.");
+        }
+      } catch (error) {
+        $("#lastStatus").textContent = "NETWORK ERROR";
+        $("#lastStatus").classList.add("error");
+        setBadge("ERROR");
+        showError(error.message || "요청 중 오류가 발생했습니다.");
+        showBody({ message: error.message || "Request failed", endpoint });
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    listButton.addEventListener("click", () => requestApi("GET"));
+    createButton.addEventListener("click", () => requestApi("POST", getPayload()));
+  </script>
+</body>
+</html>
