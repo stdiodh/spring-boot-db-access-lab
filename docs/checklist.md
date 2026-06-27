@@ -10,11 +10,12 @@
 
 ## 2. 코드 구조 확인
 
-- [ ] `PostEntity`가 DB 테이블과 연결되는 내부 모델입니다.
-- [ ] `PostRepository`가 DB 접근을 맡습니다.
-- [ ] `PostService`가 DTO, Entity, Repository 흐름을 조립합니다.
-- [ ] `PostController`는 Service를 호출하는 HTTP 입구 역할을 유지합니다.
-- [ ] Entity를 그대로 응답하지 않고 Response DTO로 변환합니다.
+- [ ] `PostEntity`를 직접 작성했습니다.
+- [ ] `PostRepository`를 직접 작성했습니다.
+- [ ] 요청 DTO와 응답 DTO를 직접 작성했습니다.
+- [ ] Service에서 Repository를 통해 DB CRUD를 처리했습니다.
+- [ ] Controller에서 Service를 호출하도록 연결했습니다.
+- [ ] Entity를 그대로 응답하지 않고 Response DTO로 변환했습니다.
 
 ## 3. 실패 케이스 확인
 
