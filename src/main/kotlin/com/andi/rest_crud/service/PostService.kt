@@ -1,5 +1,6 @@
 package com.andi.rest_crud.service
 
+import com.andi.rest_crud.domain.PostEntity
 import com.andi.rest_crud.dto.PostCreateRequest
 import com.andi.rest_crud.dto.PostResponse
 import com.andi.rest_crud.dto.PostUpdateRequest
@@ -19,7 +20,15 @@ class PostService(
      * 3. 저장 결과를 Response DTO로 변환하세요.
      */
     fun create(request: PostCreateRequest): PostResponse {
-        TODO("DB 저장 흐름으로 create를 완성하세요.")
+        val savedPost = postRepository.save(
+            PostEntity(
+                title = request.title,
+                content = request.content,
+                author = request.author
+            )
+        )
+
+        return PostResponse.from(savedPost)
     }
 
     /*
@@ -29,7 +38,8 @@ class PostService(
      * 2. 각 Entity를 Response DTO로 변환하세요.
      */
     fun getAll(): List<PostResponse> {
-        TODO("DB 전체 조회 흐름으로 getAll을 완성하세요.")
+        return postRepository.findAll()
+            .map(PostResponse::from)
     }
 
     /*
@@ -39,7 +49,10 @@ class PostService(
      * 2. 조회 결과를 Response DTO로 변환하세요.
      */
     fun getById(id: Long): PostResponse {
-        TODO("DB 단건 조회 흐름으로 getById를 완성하세요.")
+        val post = postRepository.findById(id)
+            .orElseThrow { NoSuchElementException("게시물을 찾을 수 없습니다. id=$id") }
+
+        return PostResponse.from(post)
     }
 
     /*
@@ -50,7 +63,15 @@ class PostService(
      * 3. 저장 결과를 Response DTO로 변환하세요.
      */
     fun update(id: Long, request: PostUpdateRequest): PostResponse {
-        TODO("DB 수정 흐름으로 update를 완성하세요.")
+        val post = postRepository.findById(id)
+            .orElseThrow { NoSuchElementException("게시물을 찾을 수 없습니다. id=$id") }
+
+        post.title = request.title
+        post.content = request.content
+        post.author = request.author
+
+        val updatePost = postRepository.save(post)
+        return PostResponse.from(updatePost)
     }
 
     /*
@@ -60,6 +81,6 @@ class PostService(
      * 2. Repository로 삭제하세요.
      */
     fun delete(id: Long) {
-        TODO("DB 삭제 흐름으로 delete를 완성하세요.")
+        postRepository.deleteById(id)
     }
 }

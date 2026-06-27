@@ -1,5 +1,11 @@
 package com.andi.rest_crud.repository
 
+import com.andi.rest_crud.domain.PostEntity
+import com.andi.rest_crud.dto.PostResponse
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.CrudRepository
+
 /*
  * TODO(A&I)
  *
@@ -12,4 +18,5 @@ package com.andi.rest_crud.repository
  * - PostEntity를 대상으로 하는 JPA Repository
  * - id 타입은 Long
  */
-interface PostRepository
+interface PostRepository : JpaRepository<PostEntity, Long>
+

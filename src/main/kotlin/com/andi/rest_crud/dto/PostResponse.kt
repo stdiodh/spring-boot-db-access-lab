@@ -1,5 +1,7 @@
 package com.andi.rest_crud.dto
 
+import com.andi.rest_crud.domain.PostEntity
+
 /*
  * TODO(A&I)
  *
@@ -16,4 +18,18 @@ package com.andi.rest_crud.dto
  * 목표 사용 형태:
  * PostResponse.from(entity)
  */
-class PostResponse
+class PostResponse(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val author: String
+) {
+    companion object {
+        fun from(entity: PostEntity): PostResponse = PostResponse(
+            id = entity.id,
+            title = entity.title,
+            content = entity.content,
+            author = entity.author
+        )
+    }
+}

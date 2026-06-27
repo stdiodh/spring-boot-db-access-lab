@@ -12,4 +12,8 @@ package com.andi.rest_crud.dto
  *
  * 요청 DTO는 클라이언트가 서버로 보내는 데이터를 담습니다.
  */
-class PostCreateRequest
+class PostCreateRequest(
+    val title: String,
+    val content: String,
+    val author: String
+)
