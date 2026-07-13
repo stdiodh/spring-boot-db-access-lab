@@ -31,7 +31,7 @@
 3. 같은 파일에서 없는 게시글 조회 예외 테스트를 완성합니다.
 4. `AuthServiceTest.kt`에서 로그인 성공 테스트를 완성합니다.
 5. 같은 파일에서 로그인 실패 테스트를 완성합니다.
-6. `@Disabled`를 제거하고 `./gradlew test`로 결과를 확인합니다.
+6. `./gradlew test`를 다시 실행해 실패가 사라졌는지 확인합니다.
 
 ## TODO를 넣을 파일
 
@@ -134,8 +134,8 @@ controller, repository, integration 테스트는 중요하지만,
 
 ## 실행 확인 방법
 
-1. 먼저 `@Disabled`가 붙은 TODO 테스트 흐름을 읽습니다.
-2. TODO를 채운 뒤 `@Disabled`를 제거합니다.
+1. 먼저 실패한 TODO 테스트 흐름을 읽습니다.
+2. TODO의 fixture, mock, assertion을 순서대로 채웁니다.
 3. 아래 명령으로 테스트를 실행합니다.
 
 ```bash

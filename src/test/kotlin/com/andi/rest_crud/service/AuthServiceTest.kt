@@ -4,7 +4,6 @@ import com.andi.rest_crud.repository.UserRepository
 import com.andi.rest_crud.security.JwtTokenProvider
 import com.andi.rest_crud.security.PasswordConfig
 import com.andi.rest_crud.support.TestFixtureFactory
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 
@@ -23,7 +22,6 @@ class AuthServiceTest {
     )
 
     @Test
-    @Disabled("TODO를 채운 뒤 제거하고 다시 실행하세요.")
     fun `login은 올바른 이메일과 비밀번호면 access token을 만든다`() {
         // TODO 1. given: loginRequest()로 로그인 요청을 준비하세요.
         val request = TestFixtureFactory.loginRequest()
@@ -38,7 +36,6 @@ class AuthServiceTest {
     }
 
     @Test
-    @Disabled("TODO를 채운 뒤 제거하고 다시 실행하세요.")
     fun `login은 비밀번호가 다르면 실패 예외를 확인한다`() {
         // TODO 1. given: 저장된 사용자와 잘못된 비밀번호 요청을 각각 준비하세요.
         // TODO 2. given: userRepository.findByEmail(...) mock을 설정하세요.

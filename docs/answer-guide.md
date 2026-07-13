@@ -5,7 +5,7 @@
 - `TestFixtureFactory`에서 요청 DTO와 Entity, User를 재사용할 수 있게 준비했는가
 - `PostServiceTest`에서 정상 케이스와 예외 케이스를 나눴는가
 - `AuthServiceTest`에서 인증 성공과 실패를 각각 검증했는가
-- TODO를 채운 뒤 `@Disabled`를 제거하고 `./gradlew test`를 다시 실행했는가
+- TODO 테스트가 처음에는 실패하고, 구현 후 `./gradlew test`가 통과하는가
 
 이번 answer 는 "테스트 코드를 완성했다"에서 끝나는 것이 아니라,
 왜 지금은 service test 범위로 자른 것인지까지 함께 이해하는 기준입니다.
