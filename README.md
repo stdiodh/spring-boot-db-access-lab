@@ -67,11 +67,11 @@ http://localhost:8080/swagger
 
 | Sequence | 테스트가 확인하는 것 |
 | --- | --- |
-| 02 | Repository integration test, DB 저장/조회/수정/삭제 |
-| 03 | 잘못된 요청 400, 에러 응답 형식 |
+| 02 | context 기동, Swagger와 MySQL을 통한 CRUD 수동 확인 |
+| 03 | context 기동, Swagger를 통한 400과 에러 응답 수동 확인 |
 | 04 | 로그인 성공/실패, 보호 API 401, 토큰 접근 성공, 작성자 인가 403 |
-| 05 | 외부 연동 mock/test double, 메일 발송 위임, 복구 토큰 생성/만료 |
-| 06 | unit/slice/integration 차이, 테스트 실행 순서, 실패 메시지 읽기 |
+| 05 | context 기동, OAuth/SMTP/reset link의 자동·수동 검증 범위 구분 |
+| 06 | Service 단위 테스트, 테스트 실행 순서, 보장 범위 읽기 |
 
 실패하면 먼저 볼 것:
 
@@ -92,7 +92,7 @@ http://localhost:8080/swagger
 | --- | --- | --- |
 | 05-A | OAuth2 로그인 흐름 | Google redirect, provider/providerId, LOCAL/OAUTH 사용자 구분 |
 | 05-B | SMTP 메일 발송 흐름 | `RecoveryMailSender` 인터페이스, SMTP 구현체, 환경변수 설정 |
-| 05-C | 계정 복구 유스케이스 | 복구 요청, 토큰 생성, 토큰 만료, 비밀번호 재설정 |
+| 05-C | 계정 복구 유스케이스 | 복구 요청과 reset link 생성, 후속 토큰 저장·만료 설계 |
 
 실제 Google client secret이나 SMTP password는 문서와 코드에 쓰지 않습니다.
 외부 계정 준비가 어렵다면 mock 또는 local profile로 service 흐름부터 확인합니다.

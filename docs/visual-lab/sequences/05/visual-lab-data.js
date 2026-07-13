@@ -295,8 +295,8 @@ window.visualLabData = {
       "file": "src/main/kotlin/com/andi/rest_crud/service/AccountRecoveryService.kt",
       "language": "kotlin",
       "snippet": "fun requestPasswordReset(email: String) {\n    val user = userRepository.findByEmail(email).orElse(null) ?: return\n    val resetLink = createResetLink(user.email)\n    recoveryMailSender.sendPasswordResetMail(user.email, resetLink)\n}\n\nfun createResetLink(email: String): String {\n    val resetToken = UUID.randomUUID().toString()\n    return UriComponentsBuilder.fromUriString(passwordResetUrl)\n        .queryParam(\"recovery\", \"password-reset\")\n        .queryParam(\"email\", email)\n        .queryParam(\"token\", resetToken)\n        .build()\n        .toUriString()\n}",
-      "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 사용자 조회, reset link 생성, SMTP 발송을 한 덩어리로 노출하지 않습니다.",
-      "check": "계정 존재 여부나 reset token이 로그/화면에 과하게 드러나지 않는지 봅니다."
+      "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 현재 답안은 reset link 생성과 SMTP 위임까지만 다루며 토큰 저장, 만료 검증, 실제 비밀번호 변경은 후속 범위입니다.",
+      "check": "임시 UUID를 만들었다는 이유만으로 안전한 일회용 reset token 구현이 끝났다고 해석하지 않습니다."
     }
   ],
   "concepts": [
