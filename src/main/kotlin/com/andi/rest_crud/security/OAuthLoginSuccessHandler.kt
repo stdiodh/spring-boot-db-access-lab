@@ -23,8 +23,8 @@ class OAuthLoginSuccessHandler(
         authentication: Authentication
     ) {
         // TODO 1. OAuth2AuthenticationToken에서 provider와 principal을 읽으세요.
-        // TODO 2. CustomOAuthUserService가 넣어둔 providerId, email을 프로필로 정리하세요.
-        // TODO 3. Service에 사용자 연결을 맡기고, 성공 결과를 프론트 redirect 파라미터로 넘기세요.
+        // TODO 2. CustomOAuthUserService가 넣어둔 providerId, email, emailVerified를 프로필로 정리하세요.
+        // TODO 3. JWT는 query가 아니라 URL fragment로 넘기고, 기존 계정 연결 확인이 필요하면 token 없이 상태만 전달하세요.
         TODO("OAuth 로그인 성공 후 redirect 흐름을 완성하세요.")
     }
 }

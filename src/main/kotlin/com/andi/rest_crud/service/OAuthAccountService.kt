@@ -17,8 +17,8 @@ class OAuthAccountService(
 ) {
 
     // TODO 1. provider + providerId 기준으로 기존 OAuth 사용자를 먼저 찾으세요.
-    // TODO 2. 없으면 email 기준 기존 로컬 사용자를 연결할지 확인하세요.
-    // TODO 3. 둘 다 없으면 새 사용자를 만들고 JWT를 발급하세요.
+    // TODO 2. 같은 email의 로컬 계정은 자동 연결하지 말고 명시적인 계정 연결 확인이 필요함을 반환하세요.
+    // TODO 3. 검증된 email이고 기존 OAuth 사용자가 없을 때만 새 사용자를 만들고 JWT를 발급하세요.
     fun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {
         TODO("OAuth 사용자 연결 흐름을 완성하세요.")
     }
