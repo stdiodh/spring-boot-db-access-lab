@@ -2,6 +2,7 @@ package com.andi.rest_crud.service
 
 import com.andi.rest_crud.domain.User
 import com.andi.rest_crud.dto.OAuthLoginResponse
+import com.andi.rest_crud.exception.OAuthAccountLinkRequiredException
 import com.andi.rest_crud.repository.UserRepository
 import com.andi.rest_crud.security.JwtTokenProvider
 import com.andi.rest_crud.security.OAuthUserProfile
@@ -39,10 +40,7 @@ class OAuthAccountService(
             .orElse(null)
 
         if (existingEmailUser != null) {
-            existingEmailUser.authProvider = provider
-            existingEmailUser.providerId = profile.providerId
-            val savedUser = userRepository.save(existingEmailUser)
-            return OAuthLinkResult(savedUser, false)
+            throw OAuthAccountLinkRequiredException()
         }
 
         val newUser = userRepository.save(
