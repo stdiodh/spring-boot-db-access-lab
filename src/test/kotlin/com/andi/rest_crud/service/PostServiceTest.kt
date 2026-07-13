@@ -23,13 +23,13 @@ class PostServiceTest {
             id = 1L,
             title = request.title,
             content = request.content,
-            author = request.author
+            author = "owner@example.com"
         )
 
         // TODO 3. given: postRepository.save(...)가 savedPost를 돌려주게 mock을 설정하세요.
 
-        // TODO 4. when: postService.create(request)를 호출하세요.
-        postService.create(request)
+        // TODO 4. when: 인증된 사용자 email과 함께 postService.create(...)를 호출하세요.
+        postService.create(request, "owner@example.com")
 
         // TODO 5. then: id, title, content, author가 기대값과 같은지 검증하세요.
     }
