@@ -37,10 +37,10 @@ window.visualLabData = {
     {
       "id": "seq-05",
       "label": "05 OAuth2 + SMTP",
-      "problem": "외부 인증 성공과 우리 서비스 사용자 연결, 계정 복구 메일 발송은 서로 다른 책임입니다.",
-      "concept": "OAuth2 profile, account linking, mail sender",
-      "action": "provider/profile 결과를 내부 사용자와 연결하고 reset link 발송 책임을 분리합니다.",
-      "check": "외부 secret과 reset token이 화면, 로그, 코드에 노출되지 않는지 확인합니다."
+      "problem": "외부 인증 성공 뒤에도 verified email, providerId 식별, 기존 계정 충돌 처리가 필요합니다.",
+      "concept": "OAuth2 profile, account collision policy, mail sender",
+      "action": "검증된 profile로 사용자를 식별하고 동일 email 계정은 자동 연결하지 않으며 reset link 발송 책임을 분리합니다.",
+      "check": "계정 충돌 분기에 JWT가 발급되지 않고 외부 secret과 reset token이 노출되지 않는지 확인합니다."
     },
     {
       "id": "seq-06",
