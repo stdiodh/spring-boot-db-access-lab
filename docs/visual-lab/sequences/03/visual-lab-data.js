@@ -317,16 +317,16 @@ window.visualLabData = {
   "mentorHints": [],
   "relatedDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "relatedCode": [],
@@ -334,16 +334,16 @@ window.visualLabData = {
   "question": "잘못된 요청은 Service와 DB까지 내려가기 전에 어디서 멈춰야 할까?",
   "sourceDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "why": {

@@ -277,7 +277,7 @@ window.visualLabData = {
       "title": "Service 단위 테스트는 성공 흐름을 고정합니다",
       "file": "src/test/kotlin/com/andi/rest_crud/service/PostServiceTest.kt",
       "language": "kotlin",
-      "snippet": "@Test\nfun `create는 저장된 게시글을 응답으로 반환한다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(\n        id = 1L,\n        title = request.title,\n        content = request.content,\n        author = request.author\n    )\n    `when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\n\n    val result = postService.create(request)\n\n    assertEquals(1L, result.id)\n    assertEquals(request.author, result.author)\n}",
+      "snippet": "@Test\nfun `create는 현재 로그인 사용자를 작성자로 저장한다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(\n        id = 1L,\n        title = request.title,\n        content = request.content,\n        author = \"owner@example.com\"\n    )\n    `when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\n\n    val result = postService.create(request, \"owner@example.com\")\n\n    assertEquals(1L, result.id)\n    assertEquals(\"owner@example.com\", result.author)\n}",
       "explanation": "테스트는 Service가 어떤 입력을 어떤 응답으로 바꿔야 하는지 고정합니다.",
       "check": "테스트가 DB 연결이 아니라 Service 판단을 검증하는지 확인합니다."
     },
@@ -318,16 +318,16 @@ window.visualLabData = {
   "mentorHints": [],
   "relatedDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "relatedCode": [],
@@ -335,16 +335,16 @@ window.visualLabData = {
   "question": "기능이 많아진 뒤에도 기존 동작을 어떻게 믿을 수 있을까?",
   "sourceDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "why": {

@@ -12,7 +12,7 @@
 - [ ] `02`: Repository와 Entity가 DB 저장/조회 흐름을 담당합니다.
 - [ ] `03`: Validation 실패가 `GlobalExceptionHandler`를 지나 `ErrorResponse`로 내려갑니다.
 - [ ] `04`: 로그인 성공 시 JWT가 발급되고 보호 API에서 Bearer token을 읽습니다.
-- [ ] `05`: 외부 인증과 계정 복구 책임이 로그인 흐름과 섞이지 않습니다.
+- [ ] `05`: verified email만 사용하고, 동일 email 로컬 계정을 자동 연결하지 않으며, JWT를 redirect fragment로 전달합니다.
 - [ ] `06`: fixture와 mock으로 정상/실패 케이스를 분리했습니다.
 
 ## 마무리 확인

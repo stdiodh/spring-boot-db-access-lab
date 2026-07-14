@@ -356,16 +356,16 @@ window.visualLabData = {
   "mentorHints": [],
   "relatedDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "relatedCode": [],
@@ -373,16 +373,16 @@ window.visualLabData = {
   "question": "메모리 CRUD는 왜 DB 기반 CRUD로 이동해야 할까?",
   "sourceDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "why": {

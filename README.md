@@ -90,12 +90,13 @@ http://localhost:8080/swagger
 
 | 단계 | 주제 | 핵심 |
 | --- | --- | --- |
-| 05-A | OAuth2 로그인 흐름 | Google redirect, provider/providerId, LOCAL/OAUTH 사용자 구분 |
+| 05-A | OAuth2 로그인 흐름 | verified email, provider/providerId 식별, 동일 email 계정 충돌 처리 |
 | 05-B | SMTP 메일 발송 흐름 | `RecoveryMailSender` 인터페이스, SMTP 구현체, 환경변수 설정 |
 | 05-C | 계정 복구 유스케이스 | 복구 요청과 reset link 생성, 후속 토큰 저장·만료 설계 |
 
 실제 Google client secret이나 SMTP password는 문서와 코드에 쓰지 않습니다.
 외부 계정 준비가 어렵다면 mock 또는 local profile로 service 흐름부터 확인합니다.
+같은 email의 로컬 계정은 자동 연결하지 않으며, OAuth 성공 JWT는 URL query가 아니라 fragment로 전달합니다.
 
 ## 정답과 비교하는 방법
 
@@ -129,9 +130,10 @@ http://localhost:8080
 
 ## 문서 안내
 
-- [레포 가이드](./docs/repo-guide.md)
-- [브랜치 가이드](./docs/branch-guide.md)
-- [시퀀스 맵](./docs/sequence-map.md)
+- [이론 정리](./docs/theory.md)
+- [구현 안내](./docs/implementation.md)
+- [체크리스트](./docs/checklist.md)
+- [Visual Lab](./docs/visual-lab/index.html)
 
 각 시퀀스의 실제 실습 문서는 해당 `NN-implementation` 브랜치에서 확인합니다.
 

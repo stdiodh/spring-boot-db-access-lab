@@ -3,8 +3,8 @@ window.visualLabData = {
   "sequence": "05",
   "title": "OAuth2 + SMTP",
   "subtitle": "External authentication and account recovery",
-  "goal": "OAuth2 사용자 정보와 내부 사용자 연결, 자체 JWT 발급, SMTP 계정 복구 메일 발송 책임을 나눕니다.",
-  "problem": "Google이 사용자를 인증해도 우리 서비스는 내부 사용자 연결과 이후 API 인증 기준을 다시 정해야 합니다.",
+  "goal": "검증된 OAuth2 사용자 식별, 계정 충돌 처리, 자체 JWT 발급, SMTP 계정 복구 책임을 나눕니다.",
+  "problem": "Google 인증이 성공해도 우리 서비스는 verified email과 providerId로 사용자를 식별하고 기존 계정 충돌을 안전하게 처리해야 합니다.",
   "repo": {
     "name": "spring-boot-db-access-lab",
     "path": "spring-boot-db-access-lab"
@@ -46,8 +46,8 @@ window.visualLabData = {
     {
       "id": "oauth-login",
       "title": "Google OAuth2 로그인 흐름",
-      "summary": "외부 인증 결과를 우리 서비스의 사용자와 연결하고 자체 JWT로 이후 API 요청을 이어갑니다.",
-      "mermaid": "sequenceDiagram\n  actor Browser\n  participant Provider as Google OAuth2\n  participant Security as Spring Security\n  participant Profile as OAuth profile loader\n  participant Account as OAuthAccountService\n  participant Repo as UserRepository\n  participant Jwt as JwtTokenProvider\n  Browser->>Security: OAuth2 authorization request\n  Security->>Provider: external authentication\n  Provider-->>Security: authorization result\n  Security->>Profile: load user info\n  Profile-->>Account: provider, providerId, email\n  Account->>Repo: find or link user\n  Account->>Jwt: issue service token\n  Jwt-->>Browser: login result",
+      "summary": "검증된 외부 인증 결과로 사용자를 식별하고, 동일 email 충돌은 자동 연결하지 않으며, 성공한 경우에만 자체 JWT를 발급합니다.",
+      "mermaid": "sequenceDiagram\n  actor Browser\n  participant Provider as Google OAuth2\n  participant Security as Spring Security\n  participant Profile as OAuth profile loader\n  participant Account as OAuthAccountService\n  participant Repo as UserRepository\n  participant Jwt as JwtTokenProvider\n  Browser->>Security: OAuth2 authorization request\n  Security->>Provider: external authentication\n  Provider-->>Security: authorization result\n  Security->>Profile: load user info\n  Profile-->>Account: provider, providerId, email, emailVerified\n  Account->>Repo: find by provider and providerId\n  alt same email local account exists\n    Account-->>Browser: oauth=link_required\n  else existing OAuth or new user\n    Account->>Jwt: issue service token\n    Jwt-->>Browser: access_token in URL fragment\n  end",
       "steps": [
         {
           "order": 1,
@@ -75,13 +75,13 @@ window.visualLabData = {
           "actor": "Provider",
           "input": "Authorization result",
           "owner": "OAuth profile loader",
-          "action": "provider, providerId, email을 우리 서비스가 읽을 형태로 정리합니다.",
+          "action": "provider, providerId, email, emailVerified를 우리 서비스가 읽을 형태로 정리합니다.",
           "output": "OAuthUserProfile",
-          "note": "providerId는 외부 제공자 안의 고유 식별자입니다.",
+          "note": "검증되지 않은 email은 내부 사용자 식별에 사용하지 않습니다.",
           "id": "oauth-login-step-2",
           "from": "Provider",
           "to": "OAuth profile loader",
-          "message": "provider, providerId, email을 우리 서비스가 읽을 형태로 정리합니다.",
+          "message": "provider, providerId, email, emailVerified를 우리 서비스가 읽을 형태로 정리합니다.",
           "messageKind": "request",
           "problem": "Authorization result",
           "concept": "OAuth profile loader",
@@ -96,17 +96,17 @@ window.visualLabData = {
           "actor": "OAuth profile loader",
           "input": "OAuthUserProfile",
           "owner": "OAuthAccountService",
-          "action": "기존 사용자 연결 또는 신규 사용자 생성 정책을 판단합니다.",
-          "output": "User",
-          "note": "외부 로그인 성공과 내부 사용자 연결은 분리된 책임입니다.",
+          "action": "providerId로 사용자를 식별하고 동일 email 계정 충돌은 자동 연결하지 않습니다.",
+          "output": "User or link_required",
+          "note": "같은 email만으로 기존 로컬 계정을 연결하면 안 됩니다.",
           "id": "oauth-login-step-3",
           "from": "OAuth profile loader",
           "to": "OAuthAccountService",
-          "message": "기존 사용자 연결 또는 신규 사용자 생성 정책을 판단합니다.",
+          "message": "providerId로 식별하고 동일 email 계정 충돌을 확인합니다.",
           "messageKind": "request",
           "problem": "OAuthUserProfile",
           "concept": "OAuthAccountService",
-          "check": "User",
+          "check": "User or link_required",
           "codePointIds": [
             "oauth-link",
             "smtp-reset"
@@ -115,17 +115,17 @@ window.visualLabData = {
         {
           "order": 4,
           "actor": "OAuthAccountService",
-          "input": "User",
+          "input": "Identified user",
           "owner": "JwtTokenProvider",
           "action": "우리 서비스 API 호출에 사용할 자체 token을 발급합니다.",
           "output": "OAuth login result",
-          "note": "OAuth2 이후에도 우리 API 인증 기준은 자체 token으로 이어집니다.",
+          "note": "link_required 분기에는 token을 발급하지 않고, 성공 token은 URL fragment로 전달합니다.",
           "id": "oauth-login-step-4",
           "from": "OAuthAccountService",
           "to": "JwtTokenProvider",
           "message": "우리 서비스 API 호출에 사용할 자체 token을 발급합니다.",
           "messageKind": "response",
-          "problem": "User",
+          "problem": "Identified user",
           "concept": "JwtTokenProvider",
           "check": "OAuth login result",
           "codePointIds": [
@@ -247,7 +247,7 @@ window.visualLabData = {
       "label": "OAuth profile loader",
       "problem": "Authorization result",
       "concept": "OAuth profile loader",
-      "action": "provider, providerId, email을 우리 서비스가 읽을 형태로 정리합니다.",
+      "action": "provider, providerId, email, emailVerified를 우리 서비스가 읽을 형태로 정리합니다.",
       "check": "OAuthUserProfile",
       "codePointIds": [
         "smtp-reset",
@@ -259,8 +259,8 @@ window.visualLabData = {
       "label": "OAuthAccountService",
       "problem": "OAuthUserProfile",
       "concept": "OAuthAccountService",
-      "action": "기존 사용자 연결 또는 신규 사용자 생성 정책을 판단합니다.",
-      "check": "User",
+      "action": "providerId로 사용자를 식별하고 동일 email 계정 충돌은 자동 연결하지 않습니다.",
+      "check": "User or link_required",
       "codePointIds": [
         "oauth-link",
         "smtp-reset"
@@ -269,7 +269,7 @@ window.visualLabData = {
     {
       "id": "oauth-login-step-4",
       "label": "JwtTokenProvider",
-      "problem": "User",
+      "problem": "Identified user",
       "concept": "JwtTokenProvider",
       "action": "우리 서비스 API 호출에 사용할 자체 token을 발급합니다.",
       "check": "OAuth login result",
@@ -282,12 +282,12 @@ window.visualLabData = {
   "codePoints": [
     {
       "id": "oauth-link",
-      "title": "외부 profile을 내부 사용자와 연결합니다",
+      "title": "검증된 외부 profile로 사용자를 식별합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/service/OAuthAccountService.kt",
       "language": "kotlin",
-      "snippet": "fun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {\n    val linkResult = linkOrCreateUser(profile)\n    return createSuccessResponse(linkResult.user, linkResult.isNewUser)\n}\n\nprivate fun linkOrCreateUser(profile: OAuthUserProfile): OAuthLinkResult {\n    val provider = profile.provider.uppercase()\n    val existingOAuthUser = userRepository\n        .findByAuthProviderAndProviderId(provider, profile.providerId)\n        .orElse(null)\n    // 이후 기존 사용자 연결 또는 신규 사용자 생성으로 이어집니다.\n}",
-      "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. 외부 인증 성공은 끝이 아니라 내부 사용자 식별과 연결되어야 합니다.",
-      "check": "provider와 providerId로 외부 사용자를 구분하는지 확인합니다."
+      "snippet": "fun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {\n    require(profile.emailVerified)\n    val linkResult = linkOrCreateUser(profile)\n    return createSuccessResponse(linkResult.user, linkResult.isNewUser)\n}\n\nprivate fun linkOrCreateUser(profile: OAuthUserProfile): OAuthLinkResult {\n    val existingOAuthUser = userRepository\n        .findByAuthProviderAndProviderId(profile.provider.uppercase(), profile.providerId)\n        .orElse(null)\n    val existingEmailUser = userRepository.findByEmail(profile.email).orElse(null)\n    if (existingOAuthUser == null && existingEmailUser != null) {\n        throw OAuthAccountLinkRequiredException()\n    }\n    // 기존 OAuth 사용자 갱신 또는 신규 사용자 생성\n}",
+      "explanation": "이 파일은 `05-implementation` 브랜치 기준 경로입니다. providerId로 외부 사용자를 식별하고 verified email 충돌은 명시적 연결 절차로 보냅니다.",
+      "check": "같은 email의 로컬 계정을 자동 연결하지 않고 link_required로 처리하는지 확인합니다."
     },
     {
       "id": "smtp-reset",
@@ -309,8 +309,8 @@ window.visualLabData = {
       "body": "OAuth2 성공 이후에도 우리 API 요청을 구분할 token이 필요합니다."
     },
     {
-      "title": "providerId와 email을 함께 봅니다",
-      "body": "외부 제공자 고유 사용자와 기존 로컬 사용자 연결 정책을 나누기 위해서입니다."
+      "title": "providerId로 식별하고 verified email로 충돌을 봅니다",
+      "body": "같은 email의 로컬 계정은 소유 확인 없이 자동 연결하지 않습니다."
     },
     {
       "title": "메일 발송은 포트로 분리합니다",
@@ -319,23 +319,23 @@ window.visualLabData = {
   ],
   "practice": [
     "Google 로그인 성공과 우리 서비스 로그인 성공의 차이를 설명할 수 있나요?",
-    "providerId와 email을 함께 보는 이유를 말할 수 있나요?",
+    "providerId 식별과 verified email 충돌 확인을 구분할 수 있나요?",
     "OAuth2 이후 자체 JWT가 필요한 이유를 설명할 수 있나요?",
     "계정 복구 요청에서 email 존재 여부와 reset link를 왜 조심해야 하나요?"
   ],
   "mentorHints": [],
   "relatedDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "relatedCode": [],
@@ -343,23 +343,24 @@ window.visualLabData = {
   "question": "외부 인증 성공과 우리 서비스 로그인 성공은 왜 같은 사건이 아닐까?",
   "sourceDocs": [
     {
-      "label": "레포 가이드",
-      "href": "../../../repo-guide.md"
+      "label": "이론 정리",
+      "href": "../../../theory.md"
     },
     {
-      "label": "시퀀스 맵",
-      "href": "../../../sequence-map.md"
+      "label": "구현 안내",
+      "href": "../../../implementation.md"
     },
     {
-      "label": "브랜치 가이드",
-      "href": "../../../branch-guide.md"
+      "label": "체크리스트",
+      "href": "../../../checklist.md"
     }
   ],
   "why": {
-    "problem": "Google이 사용자를 인증해도 우리 서비스는 내부 사용자 연결과 이후 API 인증 기준을 다시 정해야 합니다.",
+    "problem": "Google 인증이 성공해도 우리 서비스는 verified email과 providerId로 사용자를 식별하고 기존 계정 충돌을 안전하게 처리해야 합니다.",
     "limits": [
       "외부 로그인 성공 후 내부 사용자를 찾지 못하면 우리 서비스의 로그인 상태가 완성되지 않습니다.",
       "email만 보고 외부 사용자를 식별하면 provider 안의 고유 식별자를 놓칠 수 있습니다.",
+      "같은 email만으로 로컬 계정을 자동 연결하면 계정 탈취 위험이 생깁니다.",
       "비밀번호 재설정 요청은 계정 존재 여부와 reset token을 민감하게 다뤄야 합니다."
     ],
     "choice": "OAuth2는 외부 인증 결과 수신으로, SMTP는 계정 복구 메시지 발송으로 나누고 내부 Service가 정책을 조립합니다."
@@ -376,13 +377,13 @@ window.visualLabData = {
   "responsibilities": [
     {
       "name": "OAuth profile loader",
-      "role": "외부 사용자 정보를 provider, providerId, email로 정리합니다.",
-      "caution": "Google 응답 구조를 Service 정책과 섞지 않습니다."
+      "role": "외부 사용자 정보를 provider, providerId, email, emailVerified로 정리합니다.",
+      "caution": "검증되지 않은 email을 내부 사용자 식별에 사용하지 않습니다."
     },
     {
       "name": "OAuthAccountService",
-      "role": "외부 사용자와 내부 사용자를 연결하고 자체 token 발급 흐름을 조립합니다.",
-      "caution": "redirect 처리와 계정 연결 정책을 한 곳에 섞지 않습니다."
+      "role": "외부 사용자를 식별하고 계정 충돌을 거부한 뒤 자체 token 발급 흐름을 조립합니다.",
+      "caution": "같은 email의 로컬 계정을 자동 연결하지 않습니다."
     },
     {
       "name": "AccountRecoveryService",
@@ -425,7 +426,7 @@ window.visualLabData = {
   "practical": [
     {
       "title": "외부 인증 성공은 내부 로그인 완성이 아닙니다",
-      "body": "사용자 연결, 정책 판단, 자체 token 발급까지 이어져야 우리 서비스 흐름이 완성됩니다."
+      "body": "사용자 식별과 계정 충돌 판단 뒤 성공한 경우에만 자체 token을 발급해야 합니다."
     },
     {
       "title": "계정 복구는 정보 노출 문제입니다",
@@ -438,7 +439,7 @@ window.visualLabData = {
   ],
   "checks": [
     "Google 로그인 성공과 우리 서비스 로그인 성공의 차이를 설명할 수 있나요?",
-    "providerId와 email을 함께 보는 이유를 말할 수 있나요?",
+    "providerId 식별과 verified email 충돌 확인을 구분할 수 있나요?",
     "OAuth2 이후 자체 JWT가 필요한 이유를 설명할 수 있나요?",
     "계정 복구 요청에서 email 존재 여부와 reset link를 왜 조심해야 하나요?"
   ],
