@@ -8,23 +8,23 @@
 
 ## 오늘 실습에서 완성할 최종 흐름
 
-1. Google 사용자 정보를 읽습니다.
-2. 기존 사용자와 신규 사용자를 분기합니다.
-3. OAuth 성공 후 JWT와 redirect 응답을 만듭니다.
+1. Google 사용자 정보와 email 검증 여부를 읽습니다.
+2. 기존 OAuth 사용자, 계정 연결 필요, 신규 사용자를 분기합니다.
+3. OAuth 성공 후 JWT fragment와 redirect 응답을 만듭니다.
 4. email 기준 비밀번호 재설정 메일 요청을 받습니다.
 5. reset 링크를 만들고 SMTP 발송 Service를 호출합니다.
 
 ## 이번 실습에서 같이 봐야 하는 실무 질문
 
-1. 같은 email의 로컬 계정과 Google 계정이 만나면 어떤 정책으로 연결할 것인가
+1. 같은 email의 로컬 계정과 Google 계정이 만나면 왜 자동 연결하지 않고 명시적 확인을 요구할 것인가
 2. 비밀번호 재설정 메일 요청은 왜 보안 기능처럼 다뤄야 하는가
 
 ## 실습자가 직접 구현할 순서
 
 1. provider 설정을 확인합니다.
 2. 로그인 성공 후 사용자 정보를 읽습니다.
-3. 신규/기존 사용자를 분기합니다.
-4. 우리 서비스 사용자와 연결합니다.
+3. 기존 OAuth 사용자, 계정 연결 필요, 신규 사용자를 분기합니다.
+4. 우리 서비스 사용자를 식별하거나 충돌을 거부합니다.
 5. 성공 응답을 만듭니다.
 6. SMTP 설정을 확인합니다.
 7. 비밀번호 재설정 메일 요청 흐름을 연결합니다.
@@ -42,7 +42,7 @@
 
 - `CustomOAuthUserService.kt`: Google 응답에서 필요한 속성을 읽는 곳
 - `OAuthLoginSuccessHandler.kt`: OAuth 성공 후 redirect 응답을 만드는 곳
-- `OAuthAccountService.kt`: 기존 사용자와 신규 사용자를 연결하는 핵심 서비스
+- `OAuthAccountService.kt`: 외부 사용자를 식별하고 계정 충돌 정책을 적용하는 핵심 서비스
 - `AccountRecoveryService.kt`: 비밀번호 재설정 메일 요청을 처리하는 서비스
 - `SmtpRecoveryMailSender.kt`: SMTP 메일 발송을 실제로 맡는 구현체
 
@@ -54,11 +54,12 @@
 
 ### Step 2. 로그인 성공 후 사용자 정보 읽기
 
-- `CustomOAuthUserService.kt`에서 `email`, `sub`를 읽습니다.
+- `CustomOAuthUserService.kt`에서 `email`, `email_verified`, `sub`를 읽습니다.
+- 검증되지 않은 email은 내부 사용자 식별에 사용하지 않습니다.
 
 ### Step 3. 신규/기존 사용자 분기
 
-- `OAuthAccountService.kt`에서 `provider + providerId`, `email` 기준으로 분기합니다.
+- `OAuthAccountService.kt`에서 `provider + providerId`로 외부 사용자를 식별하고 `email` 충돌을 확인합니다.
 - 이 단계가 바로 계정 연결 정책입니다.
 
 문제 코드는 보통 이런 모양입니다.
@@ -79,23 +80,25 @@ val newUser = userRepository.save(
 이번 구현에서는 아래 순서가 보이도록 작성합니다.
 
 1. `provider + providerId`가 이미 있는지 확인
-2. 없으면 `email` 기준 기존 로컬 사용자 확인
-3. 둘 다 없을 때만 신규 생성
+2. 없으면 `email` 기준 기존 로컬 사용자 충돌 확인
+3. 같은 email 계정이 있으면 자동 연결하지 않고 연결 필요 오류 반환
+4. 충돌이 없을 때만 신규 생성
 
-### Step 4. 우리 서비스 사용자와 연결
+### Step 4. 우리 서비스 사용자 식별과 충돌 처리
 
 - 기존 OAuth 사용자면 그대로 사용합니다.
-- 기존 로컬 사용자면 OAuth 정보를 연결합니다.
-- 둘 다 없으면 새 사용자를 생성합니다.
+- 기존 로컬 사용자와 email이 같으면 자동 연결하지 않고 명시적 계정 연결이 필요하다고 응답합니다.
+- 기존 계정 충돌이 없으면 새 사용자를 생성합니다.
 
 이 단계에서 실습자가 말로 설명할 수 있어야 하는 문장:
 
-- "외부 로그인은 성공했지만, 우리 서비스 입장에서는 사용자를 다시 연결해야 한다."
-- "email과 providerId를 같이 봐야 계정 충돌을 줄일 수 있다."
+- "외부 로그인은 성공했지만, 우리 서비스는 검증된 email과 providerId로 사용자를 다시 식별해야 한다."
+- "같은 email만으로 기존 로컬 계정을 자동 연결하지 않는다."
 
 ### Step 5. 성공 응답 만들기
 
-- `OAuthLoginSuccessHandler.kt`에서 redirect 파라미터를 완성합니다.
+- `OAuthLoginSuccessHandler.kt`에서 성공 시 JWT를 URL fragment의 `access_token`에 담습니다.
+- 명시적 계정 연결이 필요하면 JWT 없이 query의 `oauth=link_required`로 redirect합니다.
 
 ### Step 6. SMTP 설정 확인
 
@@ -141,8 +144,10 @@ return UriComponentsBuilder.fromUriString(passwordResetUrl)
 ## 실습자 체크리스트
 
 - [ ] Google 응답에서 어떤 값을 읽는지 설명할 수 있습니다.
-- [ ] 기존 사용자와 신규 사용자를 어떤 기준으로 나누는지 설명할 수 있습니다.
-- [ ] 같은 email의 로컬 계정과 OAuth 계정이 만나면 왜 연결 정책이 필요한지 설명할 수 있습니다.
+- [ ] 검증된 email만 사용하는 이유를 설명할 수 있습니다.
+- [ ] 기존 OAuth 사용자, 계정 연결 필요, 신규 사용자를 어떤 기준으로 나누는지 설명할 수 있습니다.
+- [ ] 같은 email의 로컬 계정을 자동 연결하지 않는 이유를 설명할 수 있습니다.
+- [ ] JWT를 redirect URL의 query가 아닌 fragment로 전달하는 이유를 설명할 수 있습니다.
 - [ ] 비밀번호 재설정 메일 요청에서 왜 reset 링크를 만드는지 설명할 수 있습니다.
 - [ ] 존재하지 않는 email 요청을 조용히 종료하는 이유를 설명할 수 있습니다.
 - [ ] reset 링크의 token이 왜 민감한지 설명할 수 있습니다.

@@ -27,10 +27,11 @@ Google이 사용자를 인증해도, 우리 서비스는 다음 기준을 다시
 |---|---|---|
 | `provider` | 어떤 외부 제공자인지 구분합니다. | `OAuthUserProfile.provider`, `User.authProvider` |
 | `providerId` | 외부 제공자 안에서 같은 사용자를 다시 찾습니다. | Google 응답의 `sub`, `User.providerId` |
-| `email` | 기존 로컬 사용자와 연결할 수 있는 보조 기준입니다. | `OAuthUserProfile.email`, `User.email` |
+| `email` | 기존 계정과 충돌하는지 확인하는 보조 기준입니다. | `OAuthUserProfile.email`, `User.email` |
+| `emailVerified` | 제공자가 검증한 email만 로그인에 사용합니다. | Google 응답의 `email_verified`, `OAuthUserProfile.emailVerified` |
 | 자체 JWT | OAuth2 이후 우리 API 요청을 구분합니다. | `OAuthLoginResponse.accessToken` |
 
-`email`만으로 외부 사용자를 식별하면 provider 안의 고유 식별자를 놓칠 수 있습니다. 반대로 `providerId`만 보면 이미 같은 email로 가입한 로컬 사용자를 연결하지 못할 수 있습니다. 그래서 이번 시퀀스는 `provider + providerId`와 `email`을 함께 보며 계정 연결 정책을 세웁니다.
+`email`만으로 외부 사용자를 식별하면 provider 안의 고유 식별자를 놓칠 수 있습니다. 따라서 `provider + providerId`로 외부 사용자를 식별하고, 검증된 `email`은 기존 계정과의 충돌을 확인하는 데 사용합니다. 같은 email의 로컬 계정이 있더라도 소유 확인 없이 자동 연결하지 않고 별도의 계정 연결 절차가 필요하다고 응답합니다.
 
 ### 2.2 SMTP 계정 복구에서 봐야 할 기준
 
@@ -63,15 +64,20 @@ sequenceDiagram
     Security->>Google: 인증 요청
     Google-->>Security: authorization result
     Security->>OAuthUser: Google 사용자 정보 조회
-    OAuthUser-->>Security: provider, providerId, email
+    OAuthUser-->>Security: provider, providerId, email, emailVerified
     Security->>Handler: OAuth2 login success
     Handler->>Account: handleOAuthLogin(profile)
-    Account->>Repo: provider/providerId 또는 email 기준 사용자 조회
-    Account->>Jwt: 자체 JWT 발급 요청
-    Handler-->>Browser: redirect with login result
+    Account->>Repo: provider/providerId 기준 사용자 조회
+    alt same email local account exists
+        Account-->>Handler: account link required
+        Handler-->>Browser: redirect with oauth=link_required
+    else existing OAuth or new user
+        Account->>Jwt: 자체 JWT 발급 요청
+        Handler-->>Browser: redirect with token fragment
+    end
 ```
 
-이 흐름에서 Google은 외부 인증을 맡고, 우리 서비스는 사용자 연결과 자체 JWT 발급을 맡습니다. 두 책임이 섞이면 로그인 성공 이후 어떤 사용자로 처리해야 하는지 흐려집니다.
+이 흐름에서 Google은 외부 인증을 맡고, 우리 서비스는 사용자 식별, 계정 충돌 판단, 자체 JWT 발급을 맡습니다. 두 책임이 섞이면 로그인 성공 이후 어떤 사용자로 처리해야 하는지 흐려집니다.
 
 ### 3.2 비밀번호 재설정 메일 요청 흐름
 
@@ -107,7 +113,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A["Google OAuth2 user info"] --> B["CustomOAuthUserService"]
-    B --> C["OAuthUserProfile(provider, providerId, email)"]
+    B --> C["OAuthUserProfile(provider, providerId, email, emailVerified)"]
     C --> D["OAuthLoginSuccessHandler"]
     D --> E["OAuthAccountService"]
     E --> F["UserRepository"]
@@ -119,7 +125,7 @@ flowchart TD
 | 계층 | 책임 | 직접 확인할 파일 |
 |---|---|---|
 | Security | OAuth2 성공 이벤트와 사용자 정보 로딩을 다룹니다. | `CustomOAuthUserService.kt`, `OAuthLoginSuccessHandler.kt` |
-| Service | 외부 사용자와 내부 사용자를 연결합니다. | `OAuthAccountService.kt` |
+| Service | 외부 사용자를 식별하고 기존 계정 충돌 시 연결 필요 결과를 냅니다. | `OAuthAccountService.kt` |
 | Repository | 내부 사용자 조회와 저장을 담당합니다. | `UserRepository.kt` |
 | DTO | 인증 성공 결과를 응답 형태로 정리합니다. | `OAuthUserProfile.kt`, `OAuthLoginResponse.kt` |
 
@@ -148,11 +154,12 @@ flowchart TD
 
 ### 5.1 OAuth2 사용자 정보 읽기
 
-`CustomOAuthUserService.kt`에서는 기본 OAuth2 사용자 정보를 읽은 뒤, 우리 서비스가 사용할 `provider`, `providerId`, `email`을 정리해야 합니다. 여기서 `providerId`는 Google 응답의 `sub` 값입니다.
+`CustomOAuthUserService.kt`에서는 기본 OAuth2 사용자 정보를 읽은 뒤, 우리 서비스가 사용할 `provider`, `providerId`, `email`, `emailVerified`를 정리해야 합니다. 여기서 `providerId`는 Google 응답의 `sub`, `emailVerified`는 `email_verified` 값입니다.
 
 확인 질문:
 
 - Google 응답에서 `email`이 없을 때 어떻게 다룰 것인가요?
+- `email_verified`가 `false`이면 왜 로그인을 중단해야 하나요?
 - `sub` 값을 왜 우리 서비스의 `providerId`로 다시 담아야 하나요?
 - 이후 Handler가 같은 속성 이름으로 읽을 수 있나요?
 
@@ -163,7 +170,7 @@ flowchart TD
 확인 질문:
 
 - 이미 같은 `provider + providerId` 사용자가 있을 때 어떤 결과여야 하나요?
-- 같은 email의 로컬 사용자가 있을 때 신규 사용자로 만들지 연결할지 결정했나요?
+- 같은 email의 로컬 사용자가 있을 때 자동 연결하지 않고 `link_required`로 처리하나요?
 - OAuth2 성공 후 우리 서비스 JWT를 발급하는 위치가 명확한가요?
 
 ### 5.3 비밀번호 재설정 메일 요청
@@ -196,7 +203,7 @@ flowchart TD
 
 - OAuth2는 외부 인증이고, JWT는 우리 서비스 API 인증입니다. 둘은 이어지지만 같은 역할이 아닙니다.
 - `email`은 바뀔 수 있거나 제공자별 정책이 다를 수 있으므로 외부 사용자 식별에는 `providerId`를 함께 봅니다.
-- 같은 email의 로컬 사용자를 자동 연결할 때는 서비스 정책과 사용자 고지 기준이 필요합니다.
+- 같은 email이라는 이유만으로 로컬 계정을 자동 연결하면 계정 탈취로 이어질 수 있으므로, 별도의 소유 확인과 명시적 동의 절차가 필요합니다.
 - 계정 복구 API는 계정 존재 여부, token, reset link를 모두 민감하게 다뤄야 합니다.
 - SMTP password, Google client secret, JWT secret은 코드와 문서에 실제 값으로 남기지 않습니다.
 - 테스트는 외부 네트워크보다 내부 service 결정과 sender 호출 여부를 먼저 검증합니다.
