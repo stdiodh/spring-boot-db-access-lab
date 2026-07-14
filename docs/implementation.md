@@ -75,7 +75,7 @@ fixture로 입력값을 빠르게 준비하는 방식에 익숙해지는 것이 
 
 1. given: 요청 DTO와 저장 결과 Entity를 준비합니다.
 2. given: `postRepository.save(...)`가 저장 결과를 돌려주게 mock을 설정합니다.
-3. when: `postService.create(request)`를 호출합니다.
+3. when: `postService.create(request, "owner@example.com")`를 호출합니다.
 4. then: id, title, content, author가 기대값과 같은지 검증합니다.
 
 ### 3. 게시글 조회 예외 테스트 작성

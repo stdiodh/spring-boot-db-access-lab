@@ -45,9 +45,7 @@ git diff origin/06-implementation..origin/06-answer
 
 - [이론 문서](./docs/theory.md)
 - [구현 안내](./docs/implementation.md)
-- [참고 구현 가이드](./docs/answer-guide.md)
 - [체크리스트](./docs/checklist.md)
-- [제공 자료 안내](./docs/assets.md)
 
 ## 파일을 어떻게 보면 좋나요
 
@@ -60,7 +58,7 @@ git diff origin/06-implementation..origin/06-answer
 - `src/test/kotlin/com/andi/rest_crud/service/AuthServiceTest.kt`
 
 `06-implementation`에서는 TODO를 채우며 실습하고,
-완료 후에는 `06-answer`나 `docs/answer-guide.md`로 비교하면 됩니다.
+완료 후에는 `06-answer`와 비교하면 됩니다.
 
 ## 미리 제공되는 것
 
