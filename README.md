@@ -45,9 +45,7 @@ git diff origin/06-implementation..origin/06-answer
 
 - [이론 문서](./docs/theory.md)
 - [구현 안내](./docs/implementation.md)
-- [참고 구현 가이드](./docs/answer-guide.md)
 - [체크리스트](./docs/checklist.md)
-- [제공 자료 안내](./docs/assets.md)
 
 ## 파일을 어떻게 보면 좋나요
 
@@ -60,7 +58,7 @@ git diff origin/06-implementation..origin/06-answer
 - `src/test/kotlin/com/andi/rest_crud/service/AuthServiceTest.kt`
 
 `06-answer`는 완성 흐름을 확인하는 참고 구현 브랜치입니다.
-실습 구현과 비교할 때는 `docs/answer-guide.md`와 함께 보면 좋습니다.
+실습 구현과 비교할 때는 `docs/checklist.md`의 리뷰 기준을 함께 봅니다.
 
 이번 문서는 특히 아래 코드를 기준으로 읽으면 이해가 빨라집니다.
 
