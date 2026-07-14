@@ -24,10 +24,10 @@
 | 우선순위 | 판단 기준 | 의도 |
 |---:|---|---|
 | 1 | `provider + providerId`가 이미 있는가 | 같은 외부 사용자의 재로그인을 처리합니다. |
-| 2 | 같은 `email`의 기존 로컬 사용자가 있는가 | 로컬 계정을 OAuth 계정과 연결합니다. |
-| 3 | 둘 다 없는가 | 신규 OAuth 사용자를 생성합니다. |
+| 2 | 같은 `email`의 기존 로컬 사용자가 있는가 | 자동 연결하지 않고 명시적 계정 연결이 필요하다고 응답합니다. |
+| 3 | 계정 충돌이 없는가 | 신규 OAuth 사용자를 생성합니다. |
 
-이 기준은 `email`만으로 외부 사용자를 식별하지 않고, 외부 제공자의 고유 식별자인 `providerId`를 함께 사용합니다. 동시에 같은 email의 로컬 사용자를 완전히 무시하지 않아 계정이 중복 생성되는 위험을 줄입니다.
+정답 구현은 먼저 Google의 `email_verified`를 확인하고, 외부 제공자의 고유 식별자인 `providerId`로 사용자를 식별합니다. 검증된 email은 기존 계정과의 충돌을 확인하는 데 사용하며, 같은 email이라는 이유만으로 로컬 계정을 자동 연결하지 않습니다.
 
 ### 2.2 SMTP 계정 복구 기준
 
@@ -60,22 +60,25 @@ sequenceDiagram
     Security->>Google: 인증 요청
     Google-->>Security: authorization result
     Security->>OAuthUser: 사용자 정보 조회
-    OAuthUser-->>Security: provider, providerId, email
+    OAuthUser-->>Security: provider, providerId, email, emailVerified
     Security->>Handler: OAuth2 login success
     Handler->>Account: handleOAuthLogin(profile)
     Account->>Repo: findByAuthProviderAndProviderId(...)
     alt existing OAuth user
         Account->>Repo: save(updated email)
+        Account->>Jwt: createToken(email)
+        Handler-->>Browser: redirect with token fragment
     else existing local email user
-        Account->>Repo: save(linked provider info)
+        Account-->>Handler: account link required
+        Handler-->>Browser: redirect with oauth=link_required
     else new OAuth user
         Account->>Repo: save(new user)
+        Account->>Jwt: createToken(email)
+        Handler-->>Browser: redirect with token fragment
     end
-    Account->>Jwt: createToken(email)
-    Handler-->>Browser: redirect with token and profile
 ```
 
-이 흐름에서 `CustomOAuthUserService`는 외부 사용자 정보를 읽고, `OAuthAccountService`는 내부 사용자 연결 정책을 결정합니다. `OAuthLoginSuccessHandler`는 성공 결과를 프론트 redirect로 정리하는 역할에 집중합니다.
+이 흐름에서 `CustomOAuthUserService`는 검증된 외부 사용자 정보를 읽고, `OAuthAccountService`는 내부 사용자 식별과 계정 충돌 정책을 결정합니다. `OAuthLoginSuccessHandler`는 성공 또는 연결 필요 결과를 프론트 redirect로 정리합니다.
 
 ### 3.2 비밀번호 재설정 메일 요청 흐름
 
@@ -111,7 +114,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A["Google OAuth2 user info"] --> B["CustomOAuthUserService"]
-    B --> C["OAuthUserProfile(provider, providerId, email)"]
+    B --> C["OAuthUserProfile(provider, providerId, email, emailVerified)"]
     C --> D["OAuthLoginSuccessHandler"]
     D --> E["OAuthAccountService"]
     E --> F["UserRepository"]
@@ -123,7 +126,7 @@ flowchart TD
 | 계층 | 정답 구현에서 확인할 책임 | 주요 파일 |
 |---|---|---|
 | Security | Google 응답을 읽고 성공 이벤트를 처리합니다. | `CustomOAuthUserService.kt`, `OAuthLoginSuccessHandler.kt` |
-| Service | 외부 사용자와 내부 사용자를 연결하고 JWT 응답을 만듭니다. | `OAuthAccountService.kt` |
+| Service | 외부 사용자를 식별하고 계정 충돌을 거부한 뒤 JWT 응답을 만듭니다. | `OAuthAccountService.kt` |
 | Repository | `provider + providerId`, `email` 기준 조회를 제공합니다. | `UserRepository.kt` |
 | DTO | OAuth profile과 로그인 응답을 명시적으로 분리합니다. | `OAuthUserProfile.kt`, `OAuthLoginResponse.kt` |
 
@@ -152,24 +155,26 @@ flowchart TD
 
 ### 5.1 OAuth2 사용자 정보 읽기
 
-`CustomOAuthUserService.kt`는 기본 OAuth2 사용자 정보를 읽은 뒤 Google 응답의 `email`과 `sub`를 확인합니다. 이후 Handler와 Service가 같은 이름으로 읽을 수 있도록 `provider`, `providerId`, `email` 속성을 다시 담습니다.
+`CustomOAuthUserService.kt`는 기본 OAuth2 사용자 정보를 읽은 뒤 Google 응답의 `email`, `email_verified`, `sub`를 확인합니다. 검증되지 않은 email은 거부하고, Handler와 Service가 같은 이름으로 읽을 수 있도록 `provider`, `providerId`, `email`, `emailVerified` 속성을 다시 담습니다.
 
 비교 포인트:
 
 - `sub`를 `providerId`로 보존했는가
 - email이 없는 응답을 실패로 다루는가
+- `email_verified`가 `false`인 응답을 실패로 다루는가
 - provider 이름을 내부 정책에서 일관되게 사용할 수 있게 정리했는가
 
 ### 5.2 내부 사용자 연결 정책
 
-`OAuthAccountService.kt`는 정답 구현의 핵심입니다. 여기서는 단순 신규 생성이 아니라 재로그인, 로컬 계정 연결, 신규 OAuth 사용자 생성이 분리됩니다.
+`OAuthAccountService.kt`는 정답 구현의 핵심입니다. 여기서는 단순 신규 생성이 아니라 재로그인, 명시적 계정 연결 필요, 신규 OAuth 사용자 생성이 분리됩니다.
 
 비교 포인트:
 
 - 같은 `provider + providerId` 사용자를 먼저 찾는가
-- 없을 때 같은 email의 기존 사용자를 연결하는가
-- 둘 다 없을 때만 신규 사용자를 만드는가
+- 없을 때 같은 email의 기존 사용자를 자동 연결하지 않고 연결 필요 오류를 내는가
+- 계정 충돌이 없을 때만 신규 사용자를 만드는가
 - 마지막 응답은 우리 서비스 JWT를 포함하는가
+- 성공 redirect의 JWT는 URL fragment에 있고, 연결 필요 redirect에는 JWT가 없는가
 
 ### 5.3 계정 복구 메일 요청
 
@@ -187,7 +192,7 @@ flowchart TD
 정답 구현 기준으로 아래를 확인합니다.
 
 - OAuth2 성공 후 내부 사용자 연결 결과가 `OAuthLoginResponse`로 정리됩니다.
-- 기존 OAuth 사용자, 기존 로컬 사용자, 신규 사용자의 분기가 구분됩니다.
+- 기존 OAuth 사용자, 명시적 계정 연결 필요, 신규 사용자의 분기가 구분됩니다.
 - OAuth2 성공 후 자체 JWT가 발급됩니다.
 - 비밀번호 재설정 메일 요청은 `RecoveryMailSender`를 통해 발송됩니다.
 - 존재하지 않는 email 요청이 계정 존재 여부를 과하게 드러내지 않습니다.
@@ -202,7 +207,7 @@ flowchart TD
 
 - OAuth2 성공은 외부 인증 성공이고, 우리 서비스 로그인 완료는 내부 사용자 연결과 JWT 발급까지 포함합니다.
 - providerId를 저장하지 않으면 같은 외부 사용자의 재로그인을 안정적으로 식별하기 어렵습니다.
-- 같은 email의 로컬 계정을 자동 연결하는 정책은 서비스 약관, 보안 안내, 사용자 고지와 함께 설계해야 합니다.
+- 같은 email이라는 이유만으로 로컬 계정을 자동 연결하면 계정 탈취로 이어질 수 있으므로 별도의 소유 확인과 명시적 동의 절차가 필요합니다.
 - 계정 복구 API는 계정 존재 여부를 알려주는 탐색 API가 되지 않도록 응답을 조심해야 합니다.
 - reset link의 token은 비밀번호 변경 권한처럼 동작할 수 있으므로 로그와 응답에 남기지 않습니다.
 - `RecoveryMailSender` 같은 포트를 두면 SMTP 구현 대신 fake sender로 service 테스트를 작성하기 좋습니다.
@@ -240,7 +245,7 @@ flowchart TD
 - 이번 코드에서는 어디에 보이는가
   `OAuthAccountService.createSuccessResponse(...)`, `OAuthLoginResponse.kt`
 - 짧은 상황 예시
-  Google 로그인 후 redirect URL에는 provider, email, 신규 여부, 자체 token이 함께 들어갑니다.
+  Google 로그인 후 redirect URL의 query에는 provider와 신규 여부가, fragment에는 자체 token이 들어갑니다.
 
 ### SMTP
 
@@ -266,13 +271,13 @@ flowchart TD
 
 ## 9. 다음 구현으로 연결되는 지점
 
-`docs/implementation.md`와 `docs/answer-guide.md`를 볼 때는 코드가 “OAuth2를 붙였다”에서 끝나는지, 아니면 내부 사용자 연결과 자체 JWT 발급까지 정리하는지 확인합니다. SMTP 파트에서는 메일 발송 성공보다 계정 존재 여부 노출, reset link 민감도, sender 분리를 우선 확인합니다.
+`docs/implementation.md`와 `docs/checklist.md`를 볼 때는 코드가 “OAuth2를 붙였다”에서 끝나는지, 아니면 내부 사용자 연결 정책과 자체 JWT 발급까지 정리하는지 확인합니다. SMTP 파트에서는 메일 발송 성공보다 계정 존재 여부 노출, reset link 민감도, sender 분리를 우선 확인합니다.
 
 <details>
 <summary>멘토용 설명 포인트</summary>
 
 - 멘티가 “Google 로그인 성공”과 “우리 서비스 JWT 발급”을 구분해서 설명하는지 확인합니다.
-- `provider + providerId` 우선 조회와 email 보조 연결 순서를 말로 설명하게 합니다.
+- `provider + providerId` 식별과 verified email 충돌 확인, 자동 연결 금지 순서를 말로 설명하게 합니다.
 - 계정 복구 요청에서는 존재하지 않는 email 처리와 reset token 민감도를 먼저 질문합니다.
 - 정답 비교는 코드 줄보다 분기 정책, 책임 분리, 응답 노출 기준을 중심으로 진행합니다.
 
