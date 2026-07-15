@@ -14,6 +14,36 @@ window.visualLabData = {
     "kind": "persistence",
     "title": "영속성 경계 워크벤치",
     "instruction": "CRUD 시나리오를 선택하고 Request DTO가 Entity로 바뀌어 MySQL에 남는 경로와 DB 변경이 멈추는 지점을 확인하세요.",
+    "visual": {
+      "src": "../../assets/diagrams/02-persistence-boundary.svg",
+      "alt": "HTTP 요청이 Service의 DTO·Entity 변환과 Repository 경계를 지나 MySQL row가 되는 흐름",
+      "caption": "애플리케이션 처리와 프로세스 밖 영속 저장소의 경계를 추적합니다."
+    },
+    "terms": [
+      {
+        "term": "Entity",
+        "meaning": "DB table과 매핑되어 저장 상태를 표현하는 객체입니다."
+      },
+      {
+        "term": "Repository",
+        "meaning": "Service 대신 Entity 저장·조회 요청을 DB 접근 기술에 연결합니다."
+      },
+      {
+        "term": "영속성",
+        "meaning": "애플리케이션 실행이 끝난 뒤에도 데이터를 다시 찾을 수 있는 성질입니다."
+      }
+    ],
+    "comparison": {
+      "label": "재시작을 기준으로 보는 저장 경계",
+      "left": {
+        "title": "메모리 상태",
+        "body": "애플리케이션 프로세스 수명에 묶여 재시작 시 초기화됩니다."
+      },
+      "right": {
+        "title": "MySQL row",
+        "body": "프로세스 밖 DB에 저장되어 재시작 후 조회에서도 다시 발견됩니다."
+      }
+    },
     "nodes": {
       "client": {
         "label": "Client",
@@ -68,6 +98,21 @@ window.visualLabData = {
         "flowId": "create-read",
         "tone": "recovered",
         "prompt": "POST 요청은 어떤 변환과 저장 경계를 지나 MySQL row가 될까요?",
+        "prediction": {
+          "prompt": "POST 요청이 MySQL row가 될 때 중심 변환과 저장 책임은 어디에 있을까요?",
+          "options": [
+            {
+              "id": "controller-sql",
+              "label": "Controller가 JSON을 SQL로 직접 바꾼다"
+            },
+            {
+              "id": "service-repository",
+              "label": "Service가 DTO를 Entity로 바꾸고 Repository가 저장을 요청한다"
+            }
+          ],
+          "answer": "service-repository",
+          "explanation": "Service가 경계 간 모델 변환을 조립하고 Repository가 JPA를 통한 DB 접근을 맡습니다."
+        },
         "diagram": {
           "caption": "Service가 Request DTO를 Entity로 바꾸고 Repository가 JPA 저장을 요청해 MySQL에 row를 남깁니다.",
           "lanes": [
@@ -195,6 +240,21 @@ window.visualLabData = {
         "flowId": "create-read",
         "tone": "recovered",
         "prompt": "애플리케이션이 다시 시작돼도 같은 데이터를 찾을 수 있다는 증거는 무엇일까요?",
+        "prediction": {
+          "prompt": "서버 재시작 뒤 같은 게시글을 다시 찾게 하는 상태는 어디에 남아 있을까요?",
+          "options": [
+            {
+              "id": "process-memory",
+              "label": "종료된 애플리케이션 메모리"
+            },
+            {
+              "id": "database-row",
+              "label": "프로세스 밖 MySQL row"
+            }
+          ],
+          "answer": "database-row",
+          "explanation": "DB row는 애플리케이션 프로세스와 수명이 분리되어 재시작 뒤에도 조회할 수 있습니다."
+        },
         "diagram": {
           "caption": "애플리케이션만 재시작하고 MySQL 서비스와 volume을 유지하면 같은 row를 다시 조회할 수 있습니다.",
           "lanes": [
@@ -297,6 +357,21 @@ window.visualLabData = {
         "flowId": "update-delete",
         "tone": "signal",
         "prompt": "PUT 요청은 왜 먼저 기존 Entity를 찾은 뒤 값을 바꿔야 할까요?",
+        "prediction": {
+          "prompt": "PUT으로 기존 게시글을 수정할 때 저장 전에 먼저 해야 할 일은 무엇일까요?",
+          "options": [
+            {
+              "id": "insert-new",
+              "label": "새 Entity를 바로 INSERT한다"
+            },
+            {
+              "id": "find-change-save",
+              "label": "id로 기존 Entity를 찾고 값을 바꾼 뒤 저장한다"
+            }
+          ],
+          "answer": "find-change-save",
+          "explanation": "수정 대상의 정체성을 보존하려면 먼저 기존 Entity를 식별한 뒤 변경을 저장해야 합니다."
+        },
         "diagram": {
           "caption": "수정은 id로 기존 Entity를 찾은 뒤 값을 바꾸고, 02 시퀀스의 save 흐름으로 UPDATE를 요청합니다.",
           "lanes": [
@@ -437,6 +512,21 @@ window.visualLabData = {
         "flowId": "update-delete",
         "tone": "blocked",
         "prompt": "수정할 Entity를 찾지 못했다면 DB 변경은 어디에서 멈춰야 할까요?",
+        "prediction": {
+          "prompt": "수정할 id가 DB에 없다면 save 호출은 어떻게 되어야 할까요?",
+          "options": [
+            {
+              "id": "create-row",
+              "label": "새 row로 저장한다"
+            },
+            {
+              "id": "stop-before-save",
+              "label": "실패 흐름으로 전환하고 save 전에 멈춘다"
+            }
+          ],
+          "answer": "stop-before-save",
+          "explanation": "없는 수정 대상을 생성으로 바꾸지 않고 조회 실패와 DB 변경을 분리합니다."
+        },
         "diagram": {
           "caption": "02 단계에서는 조회 결과가 비면 예외가 기본 오류 경로로 전파되고 Entity 변경과 UPDATE는 실행되지 않습니다.",
           "lanes": [

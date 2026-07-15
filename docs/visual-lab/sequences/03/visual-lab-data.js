@@ -14,6 +14,36 @@ window.visualLabData = {
     "kind": "gate",
     "title": "요청 실패 게이트",
     "instruction": "요청 상태를 선택해 DTO 검증과 비즈니스 예외가 저장 흐름을 어디에서 차단하고 어떤 ErrorResponse를 남기는지 확인하세요.",
+    "visual": {
+      "src": "../../assets/diagrams/03-request-gates.svg",
+      "alt": "요청 형식 검증과 Service 도메인 판단이 각각 400과 404 실패 경로를 만드는 게이트 지도",
+      "caption": "입력 형식 실패와 대상 부재 실패가 서로 다른 책임에서 멈춥니다."
+    },
+    "terms": [
+      {
+        "term": "Validation",
+        "meaning": "요청 DTO의 필수 값과 형식을 Service 진입 전에 검사하는 과정입니다."
+      },
+      {
+        "term": "GlobalExceptionHandler",
+        "meaning": "여러 실패를 일관된 HTTP 오류 응답으로 바꾸는 공통 경계입니다."
+      },
+      {
+        "term": "400 / 404",
+        "meaning": "400은 요청 형식 문제, 404는 찾는 대상이 없음을 나타내는 응답 상태입니다."
+      }
+    ],
+    "comparison": {
+      "label": "실패가 멈추는 두 게이트",
+      "left": {
+        "title": "Validation · 400",
+        "body": "요청 값이 제약을 어기면 Service와 DB에 닿기 전에 차단합니다."
+      },
+      "right": {
+        "title": "도메인 조회 · 404",
+        "body": "형식은 맞지만 대상이 없으면 Service 판단에서 DB 변경 없이 실패합니다."
+      }
+    },
     "nodes": {
       "client": {
         "label": "Client",
@@ -70,10 +100,25 @@ window.visualLabData = {
     "scenarios": [
       {
         "id": "valid-create",
-        "label": "검증을 통과한 생성",
+        "label": "title·content가 채워진 POST",
         "flowId": "valid-create",
         "tone": "recovered",
-        "prompt": "정상 요청은 어떤 게이트를 통과한 뒤 기존 DB 저장 흐름으로 들어갈까요?",
+        "prompt": "title과 content가 채워진 POST 요청은 저장 전에 어느 경계를 먼저 만날까요?",
+        "prediction": {
+          "prompt": "이 입력은 DB 저장 전에 어떤 순서로 처리될까요?",
+          "options": [
+            {
+              "id": "save-before-validation",
+              "label": "DB 저장 뒤 Validation을 확인한다"
+            },
+            {
+              "id": "validation-then-service",
+              "label": "Validation 통과 뒤 Service 저장 흐름으로 간다"
+            }
+          ],
+          "answer": "validation-then-service",
+          "explanation": "요청 형식을 먼저 검증해야 잘못된 입력이 Service와 DB 변경으로 이어지지 않습니다."
+        },
         "diagram": {
           "caption": "Spring MVC가 DTO를 바인딩하고 Bean Validation을 통과시킨 요청만 Controller method와 저장 흐름으로 들어갑니다.",
           "lanes": [
@@ -188,6 +233,21 @@ window.visualLabData = {
         "flowId": "failure-flow",
         "tone": "blocked",
         "prompt": "빈 필수 값은 저장 계층에 닿기 전에 어느 게이트에서 멈춰야 할까요?",
+        "prediction": {
+          "prompt": "빈 title 요청은 어디까지 도달해야 할까요?",
+          "options": [
+            {
+              "id": "database",
+              "label": "Service와 Repository를 지나 DB에서 실패한다"
+            },
+            {
+              "id": "validation",
+              "label": "Controller 진입 전후의 Validation 경계에서 멈춘다"
+            }
+          ],
+          "answer": "validation",
+          "explanation": "@Valid가 DTO 제약 위반을 감지하면 Service와 DB 저장 로직은 실행되지 않습니다."
+        },
         "diagram": {
           "caption": "빈 필수 값은 Controller method body와 Service에 도달하기 전에 검증 예외로 바뀌어 400 ErrorResponse로 돌아갑니다.",
           "lanes": [
@@ -261,6 +321,21 @@ window.visualLabData = {
         "flowId": "failure-flow",
         "tone": "blocked",
         "prompt": "형식은 맞지만 대상이 없다면 DTO 검증과 다른 어느 책임에서 실패해야 할까요?",
+        "prediction": {
+          "prompt": "형식이 맞는 요청에서 게시글 id만 없다면 어떤 실패로 구분할까요?",
+          "options": [
+            {
+              "id": "bad-request",
+              "label": "Validation의 400 실패"
+            },
+            {
+              "id": "not-found",
+              "label": "Service 조회 판단의 404 실패"
+            }
+          ],
+          "answer": "not-found",
+          "explanation": "요청 형식은 유효하므로 Repository 조회 결과를 해석하는 도메인 책임에서 실패합니다."
+        },
         "diagram": {
           "caption": "형식이 맞는 요청도 id에 해당하는 row가 없으면 Service가 도메인 예외를 만들고 handler가 404 ErrorResponse로 변환합니다.",
           "lanes": [

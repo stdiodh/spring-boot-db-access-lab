@@ -14,6 +14,40 @@ window.visualLabData = {
     "kind": "auth",
     "title": "인증·인가 경계 워크벤치",
     "instruction": "로그인과 보호 API 시나리오를 바꾸며 token 발급, 요청 인증, 작성자 인가가 서로 다른 경계에서 판단되는지 확인하세요.",
+    "visual": {
+      "src": "../../assets/diagrams/04-auth-boundaries.svg",
+      "alt": "로그인 자격 확인과 JWT 발급, 보호 요청 인증, 작성자 인가를 분리한 보안 경계 지도",
+      "caption": "인증되지 않음과 권한 부족을 서로 다른 판단과 상태로 구분합니다."
+    },
+    "terms": [
+      {
+        "term": "인증",
+        "meaning": "요청을 보낸 사용자가 누구인지 확인하는 과정입니다."
+      },
+      {
+        "term": "인가",
+        "meaning": "확인된 사용자가 특정 동작을 할 수 있는지 정책으로 판단하는 과정입니다."
+      },
+      {
+        "term": "JWT",
+        "meaning": "이후 요청에서 사용자 신원을 확인할 수 있도록 서버가 서명해 발급하는 token입니다."
+      },
+      {
+        "term": "SecurityContext",
+        "meaning": "인증을 통과한 사용자 정보를 현재 요청 처리에 전달하는 Spring Security 상태입니다."
+      }
+    ],
+    "comparison": {
+      "label": "보호 요청 실패의 두 의미",
+      "left": {
+        "title": "401 · 인증 필요",
+        "body": "유효한 사용자 근거가 없어 보호된 Controller에 도달하지 못합니다."
+      },
+      "right": {
+        "title": "403 · 권한 부족",
+        "body": "사용자는 확인됐지만 작성자 같은 정책을 만족하지 못해 변경을 막습니다."
+      }
+    },
     "nodes": {
       "client": {
         "label": "Client",
@@ -75,12 +109,19 @@ window.visualLabData = {
         "boundary": "요청별 인증 상태"
       },
       "security-boundary": {
-        "label": "Security authorization / entry point",
+        "label": "Spring Security authorization",
         "icon": "gate",
         "kind": "gate",
-        "role": "authenticated 규칙을 확인하고 미인증 요청을 401로 거절합니다.",
+        "role": "authenticated 규칙을 확인하고 Authentication이 없는 보호 요청을 거절합니다.",
         "boundary": "보호 API 경계",
         "codePointIds": ["jwt-filter"]
+      },
+      "auth-entry-point": {
+        "label": "CustomAuthenticationEntryPoint",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "authorization 경계의 미인증 접근을 401 ErrorResponse로 변환합니다.",
+        "boundary": "HTTP 응답 경계"
       },
       "post-controller": {
         "label": "PostController",
@@ -114,10 +155,25 @@ window.visualLabData = {
     "scenarios": [
       {
         "id": "login-success",
-        "label": "로그인 성공",
+        "label": "LOCAL 계정 로그인 요청",
         "flowId": "login-token",
         "tone": "recovered",
-        "prompt": "올바른 자격 정보는 어떻게 다음 요청에 사용할 JWT가 될까요?",
+        "prompt": "email과 password가 담긴 LOCAL 로그인 요청에서 서버는 무엇을 먼저 확인해야 할까요?",
+        "prediction": {
+          "prompt": "token 발급 여부를 정하기 전에 어떤 확인이 필요할까요?",
+          "options": [
+            {
+              "id": "before-password",
+              "label": "email만 받으면 비밀번호 확인 전에 발급한다"
+            },
+            {
+              "id": "after-credentials",
+              "label": "사용자와 비밀번호를 확인한 뒤 발급한다"
+            }
+          ],
+          "answer": "after-credentials",
+          "explanation": "올바른 자격 정보가 확인된 뒤에만 이후 보호 요청의 인증 근거를 만들 수 있습니다."
+        },
         "diagram": {
           "caption": "로그인은 저장된 사용자와 password hash를 검증한 뒤 JWT를 발급하며, 그 token의 사용은 다음 요청에서 별도로 시작됩니다.",
           "lanes": [
@@ -247,6 +303,21 @@ window.visualLabData = {
         "flowId": "login-token",
         "tone": "blocked",
         "prompt": "비밀번호가 맞지 않을 때 token 발급은 어느 판단 뒤에 멈춰야 할까요?",
+        "prediction": {
+          "prompt": "비밀번호가 일치하지 않으면 JwtTokenProvider 호출은 어떻게 되어야 할까요?",
+          "options": [
+            {
+              "id": "issue-token",
+              "label": "실패 정보와 함께 token도 발급한다"
+            },
+            {
+              "id": "stop-before-token",
+              "label": "인증 실패로 전환하고 token 발급 전에 멈춘다"
+            }
+          ],
+          "answer": "stop-before-token",
+          "explanation": "자격 정보 검증 실패는 token 생성 경계까지 도달하면 안 됩니다."
+        },
         "diagram": {
           "caption": "비밀번호 hash 비교가 실패하면 JWT 발급 없이 InvalidCredentialsException이 401 ErrorResponse로 돌아갑니다.",
           "lanes": [
@@ -334,7 +405,7 @@ window.visualLabData = {
           "Client",
           "AuthController",
           "AuthService",
-          "JwtTokenProvider",
+          "GlobalExceptionHandler",
           "Client"
         ],
         "snapshot": [
@@ -342,7 +413,7 @@ window.visualLabData = {
           { "label": "Token", "value": "발급하지 않음" },
           { "label": "인증", "value": "실패" }
         ],
-        "evidence": "로그인 실패 테스트에서 성공 응답이나 JWT가 생성되지 않는지 확인합니다.",
+        "evidence": "Swagger 또는 HTTP Client에서 잘못된 비밀번호로 로그인해 401 ErrorResponse를 확인하고, AuthService.login의 비밀번호 비교 뒤 InvalidCredentialsException 분기와 token 생성 위치를 코드로 대조합니다.",
         "outcome": "사용자 확인에 실패하면 JwtTokenProvider까지 신호를 보내지 않습니다.",
         "stopAfter": 2
       },
@@ -351,7 +422,22 @@ window.visualLabData = {
         "label": "토큰 없는 보호 요청",
         "flowId": "protected-api",
         "tone": "blocked",
-        "prompt": "Authorization header가 없으면 보호 API 요청은 어디에서 차단될까요?",
+        "prompt": "Authorization header가 없는 보호 API 요청은 filter chain에서 어떤 경계를 거칠까요?",
+        "prediction": {
+          "prompt": "JWT filter가 Authentication을 만들지 못한 뒤 어느 구성 요소가 401 응답을 완성할까요?",
+          "options": [
+            {
+              "id": "controller-first",
+              "label": "Controller가 실행된 뒤 401을 만든다"
+            },
+            {
+              "id": "authorization-entry-point",
+              "label": "filter가 chain을 계속하고 authorization 경계와 entry point가 처리한다"
+            }
+          ],
+          "answer": "authorization-entry-point",
+          "explanation": "JWT filter는 Authentication 없이 chain을 계속하고, 보호 endpoint의 authorization 경계가 요청을 거절하면 entry point가 401을 씁니다."
+        },
         "diagram": {
           "caption": "JWT filter는 header가 없을 때 직접 401을 쓰지 않고 인증 객체 없이 chain을 계속하며, 보호 API 경계의 entry point가 401을 반환합니다.",
           "lanes": [
@@ -381,12 +467,19 @@ window.visualLabData = {
                 },
                 {
                   "from": "security-boundary",
-                  "to": "client",
-                  "verb": "거절·응답",
-                  "payload": "401 Unauthorized",
+                  "to": "auth-entry-point",
+                  "verb": "미인증 접근 거절",
+                  "payload": "보호 endpoint authorization 실패",
                   "kind": "failure",
                   "concept": "AuthenticationEntryPoint",
                   "check": "보호 Controller가 실행되지 않는지 확인합니다."
+                },
+                {
+                  "from": "auth-entry-point",
+                  "to": "client",
+                  "verb": "응답 작성",
+                  "payload": "401 Unauthorized + ErrorResponse",
+                  "kind": "response"
                 }
               ]
             }
@@ -405,8 +498,9 @@ window.visualLabData = {
         "route": [
           "Client",
           "JwtAuthenticationFilter",
-          "Security boundary",
-          "Protected API"
+          "Spring Security authorization",
+          "CustomAuthenticationEntryPoint",
+          "Client"
         ],
         "snapshot": [
           { "label": "Authorization", "value": "없음", "tone": "blocked" },
@@ -414,7 +508,7 @@ window.visualLabData = {
           { "label": "Response", "value": "401 Unauthorized" }
         ],
         "evidence": "토큰 없이 보호 API를 호출해 401이 반환되고 Controller 로직이 실행되지 않는지 확인합니다.",
-        "outcome": "인증되지 않은 요청은 Security 경계에서 끝나며 보호된 쓰기 흐름에 진입하지 않습니다.",
+        "outcome": "JWT filter가 chain을 계속하더라도 Authentication이 없는 보호 요청은 authorization 경계에서 거절되고 entry point가 401을 반환합니다.",
         "stopAfter": 2
       },
       {
@@ -423,6 +517,21 @@ window.visualLabData = {
         "flowId": "protected-api",
         "tone": "blocked",
         "prompt": "유효한 token이 있어도 게시글을 수정할 수 없는 경우는 어느 정책에서 결정될까요?",
+        "prediction": {
+          "prompt": "유효한 token으로 다른 작성자의 글을 수정하면 어떤 의미의 실패일까요?",
+          "options": [
+            {
+              "id": "unauthenticated",
+              "label": "사용자를 알 수 없는 401"
+            },
+            {
+              "id": "forbidden",
+              "label": "사용자는 알지만 권한이 없는 403"
+            }
+          ],
+          "answer": "forbidden",
+          "explanation": "인증은 통과했지만 작성자 정책을 만족하지 않으므로 인가 실패입니다."
+        },
         "diagram": {
           "caption": "유효한 JWT는 요청자를 인증하지만, 게시글 수정 권한은 PostService가 principal email과 작성자를 다시 비교해 결정합니다.",
           "lanes": [

@@ -14,6 +14,40 @@ window.visualLabData = {
     "kind": "test",
     "title": "테스트 보장 범위 워크벤치",
     "instruction": "테스트 시나리오를 선택하고 fixture, mock, Service 실행, assertion이 무엇을 보장하며 HTTP 경계에서 무엇이 남는지 확인하세요.",
+    "visual": {
+      "src": "../../assets/diagrams/06-test-scope.svg",
+      "alt": "Fixture와 mock이 Service를 실행하고 assertion이 결과와 협력을 확인하며 HTTP 경계는 별도 검증으로 남는 테스트 범위",
+      "caption": "단위 테스트가 보장하는 Service 판단과 보장하지 않는 HTTP 정책을 나눕니다."
+    },
+    "terms": [
+      {
+        "term": "Fixture",
+        "meaning": "테스트를 실행하기 전에 의도한 조건을 만들기 위해 준비한 입력과 상태입니다."
+      },
+      {
+        "term": "Mock",
+        "meaning": "Repository 같은 협력자의 응답과 호출을 테스트 안에서 통제하는 대역입니다."
+      },
+      {
+        "term": "Assertion",
+        "meaning": "실제 결과가 기대한 값이나 예외와 같은지 판정하는 확인문입니다."
+      },
+      {
+        "term": "Unit test",
+        "meaning": "외부 시스템을 분리하고 한 책임의 판단을 빠르게 검증하는 테스트입니다."
+      }
+    ],
+    "comparison": {
+      "label": "테스트 결과가 보장하는 범위",
+      "left": {
+        "title": "Service 단위 테스트",
+        "body": "입력, 협력자 호출, 반환 값과 예외 같은 Service 판단을 보장합니다."
+      },
+      "right": {
+        "title": "HTTP 통합 테스트",
+        "body": "Validation·Security filter·상태 코드처럼 여러 경계가 연결된 정책을 확인합니다."
+      }
+    },
     "nodes": {
       "testMethod": {
         "label": "JUnit Test method",
@@ -98,14 +132,21 @@ window.visualLabData = {
         "label": "Security Filter",
         "icon": "security",
         "kind": "security",
-        "role": "Bearer token을 검사하고 인증되지 않은 요청을 Controller 전에 차단합니다.",
+        "role": "Bearer token이 유효하면 Authentication을 만들고, token이 없으면 Authentication 없이 다음 filter chain으로 요청을 넘깁니다.",
         "boundary": "HTTP 통합 경계"
+      },
+      "authorizationBoundary": {
+        "label": "Spring Security authorization",
+        "icon": "gate",
+        "kind": "gate",
+        "role": "Authentication이 없는 보호 endpoint 요청을 Controller 진입 전에 거절합니다.",
+        "boundary": "HTTP authorization 경계"
       },
       "authenticationEntryPoint": {
         "label": "CustomAuthenticationEntryPoint",
         "icon": "handler",
         "kind": "handler",
-        "role": "Security Filter의 인증 실패를 401 ErrorResponse로 변환합니다.",
+        "role": "authorization 경계의 미인증 접근을 401 ErrorResponse로 변환합니다.",
         "boundary": "HTTP 응답 경계"
       },
       "validation": {
@@ -133,10 +174,25 @@ window.visualLabData = {
     "scenarios": [
       {
         "id": "post-service-success",
-        "label": "PostService 정상 케이스",
+        "label": "PostCreateRequest + owner email",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "DB 연결 없이 Service의 생성 판단을 어떤 준비와 assertion으로 검증할까요?",
+        "prompt": "create(request, ownerEmail)의 반환 값을 재현 가능하게 비교하려면 어떤 협력 상태가 필요할까요?",
+        "prediction": {
+          "prompt": "이 Service 호출을 단위 테스트하려면 어느 입력과 협력 결과를 준비할까요?",
+          "options": [
+            {
+              "id": "real-database",
+              "label": "실제 MySQL과 HTTP 서버를 모두 실행한다"
+            },
+            {
+              "id": "fixture-and-mock",
+              "label": "입력 fixture와 Repository mock 결과를 준비한다"
+            }
+          ],
+          "answer": "fixture-and-mock",
+          "explanation": "외부 DB를 분리하면 Service가 저장 흐름과 응답을 조립하는 책임에 집중할 수 있습니다."
+        },
         "diagram": {
           "caption": "PostServiceTest는 Repository 결과를 mock으로 통제하고 반환 PostResponse의 필드를 검증합니다. 이 테스트는 실제 DB 연결을 검증하지 않습니다.",
           "lanes": [
@@ -252,17 +308,32 @@ window.visualLabData = {
         "snapshot": [
           { "label": "Given", "value": "fixture + mock 저장 결과" },
           { "label": "When", "value": "PostService 호출" },
-          { "label": "Then", "value": "응답·호출 검증 PASS", "tone": "recovered" }
+          { "label": "Then", "value": "응답 필드 검증 PASS", "tone": "recovered" }
         ],
-        "evidence": "PostServiceTest에서 준비한 Repository 결과와 반환 PostResponse, mock 호출을 assertion으로 확인합니다.",
+        "evidence": "PostServiceTest에서 Repository.save 반환값을 stub으로 준비하고, create 결과의 id·title·content·author를 assertEquals로 비교하는지 확인합니다. 이 테스트는 save 호출 횟수를 별도로 verify하지 않습니다.",
         "outcome": "DB 연결 문제와 분리해 Service가 요청을 저장 흐름과 응답으로 조립하는 책임을 보장합니다."
       },
       {
         "id": "post-service-not-found",
-        "label": "조회 실패도 PASS",
+        "label": "findById(999) → empty",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "Service가 예외를 던진 결과도 왜 올바른 테스트 성공이 될 수 있을까요?",
+        "prompt": "Repository가 Optional.empty()를 반환하도록 준비한 뒤 Service 호출에서 무엇을 관찰할까요?",
+        "prediction": {
+          "prompt": "이 반환 조건에서 assertion 대상은 반환 값과 예외 중 무엇일까요?",
+          "options": [
+            {
+              "id": "always-fail",
+              "label": "예외가 발생했으므로 무조건 실패한다"
+            },
+            {
+              "id": "expected-pass",
+              "label": "기대 예외와 일치하면 실패 분기 검증이 통과한다"
+            }
+          ],
+          "answer": "expected-pass",
+          "explanation": "예상한 실패를 assertion으로 명시하면 예외도 올바른 정책 결과로 검증할 수 있습니다."
+        },
         "diagram": {
           "caption": "없는 게시글 조건에서 PostNotFoundException이 정확히 발생하면 실패 분기 테스트는 PASS입니다.",
           "lanes": [
@@ -360,23 +431,38 @@ window.visualLabData = {
       },
       {
         "id": "auth-service-failure",
-        "label": "AuthService 인증 실패",
+        "label": "GOOGLE 계정의 password 로그인",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "로그인 실패 테스트는 외부 인증 환경 없이 어떤 Service 판단을 고정할까요?",
+        "prompt": "UserRepository가 GOOGLE 사용자를 반환할 때 LOCAL login 요청은 어느 협력 단계까지 진행할까요?",
+        "prediction": {
+          "prompt": "이 계정 유형에서 AuthService.login 호출의 관찰 대상은 무엇일까요?",
+          "options": [
+            {
+              "id": "continue-credentials",
+              "label": "비밀번호를 비교하고 access token을 만든다"
+            },
+            {
+              "id": "stop-at-provider-policy",
+              "label": "계정 유형 확인 뒤 기대 예외와 비교한다"
+            }
+          ],
+          "answer": "stop-at-provider-policy",
+          "explanation": "AuthService는 password 로그인에서 LOCAL 계정만 허용하므로 GOOGLE 사용자는 비밀번호 비교 전에 InvalidCredentialsException으로 전환됩니다."
+        },
         "diagram": {
-          "caption": "06 기준 단위 테스트는 UserRepository만 mock으로 두고 실제 PasswordEncoder로 잘못된 비밀번호 분기를 실행합니다. JWT는 이 실패 경로에 도달하지 않습니다.",
+          "caption": "AuthServiceTest는 UserRepository만 mock으로 두고 실제 BCryptPasswordEncoder와 JwtTokenProvider를 주입합니다. GOOGLE 계정 fixture는 provider 정책에서 거절되므로 Service의 password 비교와 token 생성에는 도달하지 않습니다.",
           "lanes": [
             {
               "id": "auth-arrange",
               "label": "Given · Arrange",
-              "description": "LOCAL 사용자와 잘못된 login request를 fixture로 만들고 저장된 비밀번호만 실제 encoder로 준비합니다.",
+              "description": "login request와 GOOGLE 사용자 fixture를 만들고 UserRepository 조회 결과만 stub으로 준비합니다.",
               "steps": [
                 {
                   "from": "testMethod",
                   "to": "fixtureFactory",
-                  "verb": "인증 실패 입력 생성",
-                  "payload": "LOCAL User + wrong-password LoginRequest",
+                  "verb": "로그인 입력 생성",
+                  "payload": "LoginRequest",
                   "kind": "call",
                   "codePointIds": [
                     "fixture-factory"
@@ -385,15 +471,15 @@ window.visualLabData = {
                 {
                   "from": "fixtureFactory",
                   "to": "testMethod",
-                  "verb": "fixture 반환",
-                  "payload": "savedUser + wrongPasswordRequest",
+                  "verb": "request 반환",
+                  "payload": "email + password",
                   "kind": "response"
                 },
                 {
                   "from": "testMethod",
                   "to": "passwordEncoder",
-                  "verb": "저장 비밀번호 encoding",
-                  "payload": "password123",
+                  "verb": "fixture 비밀번호 encoding",
+                  "payload": "request.password",
                   "kind": "call",
                   "concept": "Real collaborator"
                 },
@@ -406,9 +492,23 @@ window.visualLabData = {
                 },
                 {
                   "from": "testMethod",
+                  "to": "fixtureFactory",
+                  "verb": "GOOGLE 사용자 생성",
+                  "payload": "authProvider = GOOGLE + providerId",
+                  "kind": "call"
+                },
+                {
+                  "from": "fixtureFactory",
+                  "to": "testMethod",
+                  "verb": "사용자 fixture 반환",
+                  "payload": "oauthUser",
+                  "kind": "response"
+                },
+                {
+                  "from": "testMethod",
                   "to": "mockUserRepository",
                   "verb": "사용자 조회 stub",
-                  "payload": "findByEmail → LOCAL user",
+                  "payload": "findByEmail → GOOGLE user",
                   "kind": "config",
                   "concept": "Mock"
                 }
@@ -417,13 +517,13 @@ window.visualLabData = {
             {
               "id": "auth-act",
               "label": "When · Act",
-              "description": "AuthService가 mock 사용자와 실제 PasswordEncoder를 사용해 자격 정보 불일치를 판단합니다.",
+              "description": "AuthService가 조회한 사용자의 AuthProvider를 password 로그인 정책과 비교합니다.",
               "steps": [
                 {
                   "from": "testMethod",
                   "to": "authService",
                   "verb": "로그인 실행",
-                  "payload": "login(wrongPasswordRequest)",
+                  "payload": "login(request)",
                   "kind": "call"
                 },
                 {
@@ -436,31 +536,17 @@ window.visualLabData = {
                 {
                   "from": "mockUserRepository",
                   "to": "authService",
-                  "verb": "LOCAL 사용자 반환",
-                  "payload": "savedUser",
-                  "kind": "response"
-                },
-                {
-                  "from": "authService",
-                  "to": "passwordEncoder",
-                  "verb": "비밀번호 비교",
-                  "payload": "matches(wrong-password, bcrypt hash)",
-                  "kind": "compare",
-                  "concept": "Credential verification"
-                },
-                {
-                  "from": "passwordEncoder",
-                  "to": "authService",
-                  "verb": "불일치 반환",
-                  "payload": "false",
+                  "verb": "GOOGLE 사용자 반환",
+                  "payload": "oauthUser",
                   "kind": "response"
                 },
                 {
                   "from": "authService",
                   "to": "testMethod",
-                  "verb": "인증 실패 반환",
+                  "verb": "계정 유형 거절",
                   "payload": "throw InvalidCredentialsException",
-                  "kind": "failure"
+                  "kind": "failure",
+                  "concept": "AuthProvider policy"
                 }
               ]
             },
@@ -474,12 +560,13 @@ window.visualLabData = {
                   "to": "assertionOracle",
                   "verb": "예외 타입 비교",
                   "payload": "assertThrows(InvalidCredentialsException)",
-                  "kind": "compare"
+                  "kind": "compare",
+                  "concept": "Expected failure"
                 },
                 {
                   "from": "assertionOracle",
                   "to": "testMethod",
-                  "verb": "실패 정책 확인",
+                  "verb": "정책 결과 확인",
                   "payload": "PASS",
                   "kind": "response"
                 }
@@ -488,54 +575,81 @@ window.visualLabData = {
           ],
           "notReached": [
             {
+              "label": "PasswordEncoder.matches",
+              "reason": "AuthProvider가 LOCAL이 아닌 분기에서 먼저 예외가 발생합니다. 실제 encoder는 fixture hash 생성에만 사용됩니다."
+            },
+            {
               "label": "JwtTokenProvider",
-              "reason": "PasswordEncoder가 false를 반환해 token 발급 분기 전에 예외가 발생합니다. 현재 테스트는 token provider 미호출을 별도 verify하지 않습니다."
+              "reason": "계정 유형 확인에서 예외가 발생해 token 생성 코드에 도달하지 않습니다. 현재 테스트는 token provider 미호출을 별도 verify하지 않습니다."
             }
           ]
         },
         "route": [
           "Test method",
           "TestFixtureFactory",
+          "실제 BCryptPasswordEncoder",
           "Mock UserRepository",
-          "Mock PasswordEncoder",
           "AuthService",
           "Assertion"
         ],
         "snapshot": [
-          { "label": "Given", "value": "사용자·비밀번호 조건" },
-          { "label": "Service 결과", "value": "인증 실패" },
-          { "label": "JWT", "value": "발급되지 않음", "tone": "recovered" }
+          { "label": "Repository 반환", "value": "AuthProvider.GOOGLE" },
+          { "label": "PasswordEncoder.matches", "value": "도달하지 않음" },
+          { "label": "Assertion", "value": "InvalidCredentialsException", "tone": "recovered" }
         ],
-        "evidence": "AuthServiceTest에서 사용자 조회와 PasswordEncoder 결과를 mock으로 통제하고 기대 실패를 검증합니다.",
-        "outcome": "외부 시스템과 분리해 잘못된 자격 정보가 token 발급으로 이어지지 않는 Service 판단을 보장합니다."
+        "evidence": "AuthServiceTest는 UserRepository만 mock으로 두고 실제 BCryptPasswordEncoder와 JwtTokenProvider를 주입합니다. GOOGLE 사용자 fixture를 반환하도록 stub한 뒤 login 호출이 InvalidCredentialsException을 던지는지 assertThrows로 확인합니다.",
+        "outcome": "OAuth 계정의 password 로그인을 거절하는 AuthService 정책을 외부 OAuth Provider 호출 없이 검증합니다."
       },
       {
         "id": "http-policy-gap",
-        "label": "HTTP 정책은 별도 검증",
+        "label": "token 없음 · body 제약 위반 · 작성자 불일치",
         "flowId": "status-code-view",
         "tone": "warning",
-        "prompt": "Service 단위 테스트가 통과해도 400·401·403을 보장했다고 말할 수 없는 이유는 무엇일까요?",
+        "prompt": "이 세 HTTP 요청 조건의 status를 관찰하려면 어느 실행 경계가 필요할까요?",
+        "prediction": {
+          "prompt": "현재 Service 단위 테스트 결과와 별도로 확인해야 할 경계는 무엇일까요?",
+          "options": [
+            {
+              "id": "unit-enough",
+              "label": "Service가 통과했으므로 모든 HTTP 상태도 보장된다"
+            },
+            {
+              "id": "integration-needed",
+              "label": "Validation과 Security를 포함한 작은 통합 검증이 별도로 필요하다"
+            }
+          ],
+          "answer": "integration-needed",
+          "explanation": "HTTP 상태는 Service 밖의 Validation·Security filter·응답 변환 경계에도 의존합니다."
+        },
         "diagram": {
           "caption": "아래 세 lane은 06 필수 Service 단위 테스트가 직접 보장하지 않는 HTTP 정책 경계의 개념 지도입니다. 각 status를 보장하려면 별도 HTTP 통합 테스트 증거가 필요합니다.",
           "lanes": [
             {
               "id": "http-401",
-              "label": "401 · 인증 실패",
-              "description": "유효한 token이 없는 보호 요청은 Controller 전에 Security Filter에서 끝납니다.",
+              "label": "401 · token 없는 보호 요청",
+              "description": "JWT filter는 Authentication 없이 chain을 계속하고, 보호 endpoint의 authorization 경계가 요청을 거절합니다.",
               "steps": [
                 {
                   "from": "httpClient",
                   "to": "securityFilter",
                   "verb": "보호 API 요청",
-                  "payload": "missing | invalid Bearer token",
+                  "payload": "Authorization header 없음",
                   "kind": "request",
                   "concept": "Authentication"
                 },
                 {
                   "from": "securityFilter",
+                  "to": "authorizationBoundary",
+                  "verb": "chain 계속",
+                  "payload": "Authentication 없이 filterChain.doFilter",
+                  "kind": "call",
+                  "concept": "JwtAuthenticationFilter"
+                },
+                {
+                  "from": "authorizationBoundary",
                   "to": "authenticationEntryPoint",
-                  "verb": "인증 실패 처리 위임",
-                  "payload": "missing | invalid authentication",
+                  "verb": "미인증 접근 거절",
+                  "payload": "보호 endpoint authorization 실패",
                   "kind": "failure",
                   "check": "06 Service 단위 테스트만으로는 이 status를 보장하지 않습니다."
                 },
@@ -644,18 +758,17 @@ window.visualLabData = {
         },
         "route": [
           "HTTP Client",
-          "Security Filter",
-          "Validation",
-          "Controller",
-          "Service policy",
-          "HTTP response"
+          "JwtAuthenticationFilter",
+          "authorization · Validation · Service policy 분기",
+          "AuthenticationEntryPoint · GlobalExceptionHandler",
+          "401 · 400 · 403 response"
         ],
         "snapshot": [
           { "label": "현재 보장", "value": "Service 비즈니스 판단" },
           { "label": "미검증 경계", "value": "HTTP · Validation · Security", "tone": "warning" },
           { "label": "후속 후보", "value": "400 · 401 · 403 통합 테스트" }
         ],
-        "evidence": "현재 단위 테스트 대상과 status-code-view의 Security Filter·Validation·HTTP 응답 경계를 대조합니다.",
+        "evidence": "현재 단위 테스트 대상과 status-code-view의 JWT filter·Spring Security authorization·AuthenticationEntryPoint·Validation·HTTP 응답 경계를 대조합니다.",
         "outcome": "Service 테스트 결과를 HTTP 정책 보장으로 과장하지 않고 작은 통합 테스트가 필요한 범위를 구분합니다."
       }
     ]
@@ -790,17 +903,17 @@ window.visualLabData = {
           "order": 1,
           "actor": "Client",
           "input": "HTTP request",
-          "owner": "Security Filter",
-          "action": "토큰이 없거나 잘못되면 인증 실패로 멈춥니다.",
-          "output": "401",
-          "note": "인증 실패는 Controller 전 단계에서 끝날 수 있습니다.",
+          "owner": "Spring Security authorization",
+          "action": "JWT filter가 Authentication 없이 chain을 계속한 뒤 보호 endpoint authorization이 요청을 거절합니다.",
+          "output": "AuthenticationEntryPoint → 401",
+          "note": "JWT filter가 직접 401을 쓰는 흐름으로 설명하지 않습니다.",
           "id": "status-code-view-step-1",
           "from": "Client",
-          "to": "Security Filter",
-          "message": "토큰이 없거나 잘못되면 인증 실패로 멈춥니다.",
+          "to": "Spring Security authorization",
+          "message": "token이 없으면 Authentication 없이 chain을 계속하고 authorization 경계가 entry point로 401을 만듭니다.",
           "messageKind": "error",
           "problem": "HTTP request",
-          "concept": "Security Filter",
+          "concept": "Filter chain + authorization",
           "check": "401",
           "codePointIds": [
             "service-unit-test",
