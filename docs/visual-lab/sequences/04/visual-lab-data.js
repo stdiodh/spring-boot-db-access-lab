@@ -14,6 +14,103 @@ window.visualLabData = {
     "kind": "auth",
     "title": "인증·인가 경계 워크벤치",
     "instruction": "로그인과 보호 API 시나리오를 바꾸며 token 발급, 요청 인증, 작성자 인가가 서로 다른 경계에서 판단되는지 확인하세요.",
+    "nodes": {
+      "client": {
+        "label": "Client",
+        "icon": "client",
+        "kind": "client",
+        "role": "로그인 요청과 보호 API 요청을 보내고 상태 코드를 읽습니다.",
+        "boundary": "HTTP 외부"
+      },
+      "auth-controller": {
+        "label": "AuthController",
+        "icon": "api",
+        "kind": "api",
+        "role": "로그인 HTTP 요청을 AuthService와 연결합니다.",
+        "boundary": "공개 인증 API"
+      },
+      "auth-service": {
+        "label": "AuthService",
+        "icon": "service",
+        "kind": "service",
+        "role": "사용자와 비밀번호를 확인하고 token 발급을 요청합니다.",
+        "boundary": "자격 정보 검증",
+        "codePointIds": ["jwt-create"]
+      },
+      "user-repository": {
+        "label": "UserRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "email로 내부 사용자를 조회합니다.",
+        "boundary": "사용자 저장소"
+      },
+      "password-encoder": {
+        "label": "PasswordEncoder",
+        "icon": "security",
+        "kind": "security",
+        "role": "raw password와 저장된 hash가 일치하는지 비교합니다.",
+        "boundary": "비밀번호 검증"
+      },
+      "jwt-provider": {
+        "label": "JwtTokenProvider",
+        "icon": "token",
+        "kind": "token",
+        "role": "로그인 성공 시 token을 만들고 다음 요청의 token을 검증합니다.",
+        "boundary": "Token 발급·검증",
+        "codePointIds": ["jwt-create", "jwt-filter"]
+      },
+      "jwt-filter": {
+        "label": "JwtAuthenticationFilter",
+        "icon": "security",
+        "kind": "security",
+        "role": "Bearer token이 유효할 때 Authentication을 만듭니다.",
+        "boundary": "요청 인증",
+        "codePointIds": ["jwt-filter"]
+      },
+      "security-context": {
+        "label": "SecurityContext",
+        "icon": "security",
+        "kind": "security",
+        "role": "현재 요청의 인증된 email을 보관합니다.",
+        "boundary": "요청별 인증 상태"
+      },
+      "security-boundary": {
+        "label": "Security authorization / entry point",
+        "icon": "gate",
+        "kind": "gate",
+        "role": "authenticated 규칙을 확인하고 미인증 요청을 401로 거절합니다.",
+        "boundary": "보호 API 경계",
+        "codePointIds": ["jwt-filter"]
+      },
+      "post-controller": {
+        "label": "PostController",
+        "icon": "api",
+        "kind": "api",
+        "role": "인증된 Principal과 게시글 요청을 PostService에 전달합니다.",
+        "boundary": "보호된 게시글 API"
+      },
+      "post-service": {
+        "label": "PostService",
+        "icon": "service",
+        "kind": "service",
+        "role": "현재 사용자와 게시글 작성자를 비교해 resource 인가를 판단합니다.",
+        "boundary": "작성자 인가"
+      },
+      "post-repository": {
+        "label": "PostRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "대상 게시글을 조회하고 허용된 변경만 반영합니다.",
+        "boundary": "게시글 영속성"
+      },
+      "exception-handler": {
+        "label": "GlobalExceptionHandler",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "로그인 실패와 작성자 인가 실패를 401·403 ErrorResponse로 변환합니다.",
+        "boundary": "공통 실패 응답"
+      }
+    },
     "scenarios": [
       {
         "id": "login-success",
@@ -21,6 +118,112 @@ window.visualLabData = {
         "flowId": "login-token",
         "tone": "recovered",
         "prompt": "올바른 자격 정보는 어떻게 다음 요청에 사용할 JWT가 될까요?",
+        "diagram": {
+          "caption": "로그인은 저장된 사용자와 password hash를 검증한 뒤 JWT를 발급하며, 그 token의 사용은 다음 요청에서 별도로 시작됩니다.",
+          "lanes": [
+            {
+              "id": "credential-check",
+              "label": "자격 정보 확인",
+              "description": "email로 LOCAL 사용자를 찾고 raw password와 저장된 hash를 비교합니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "auth-controller",
+                  "verb": "요청",
+                  "payload": "POST /auth/login + LoginRequest",
+                  "kind": "request",
+                  "concept": "공개 로그인 API",
+                  "check": "email과 raw password가 요청 body에 있는지 확인합니다."
+                },
+                {
+                  "from": "auth-controller",
+                  "to": "auth-service",
+                  "verb": "호출",
+                  "payload": "login(email, rawPassword)",
+                  "kind": "call"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "user-repository",
+                  "verb": "조회",
+                  "payload": "findByEmail(email)",
+                  "kind": "call"
+                },
+                {
+                  "from": "user-repository",
+                  "to": "auth-service",
+                  "verb": "반환",
+                  "payload": "User { authProvider, passwordHash }",
+                  "kind": "response"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "auth-service",
+                  "verb": "확인",
+                  "payload": "authProvider == LOCAL",
+                  "kind": "compare",
+                  "concept": "로컬 로그인 가능 계정",
+                  "check": "외부 인증 계정을 password 로그인으로 처리하지 않는지 확인합니다."
+                },
+                {
+                  "from": "auth-service",
+                  "to": "password-encoder",
+                  "verb": "비교",
+                  "payload": "matches(rawPassword, passwordHash)",
+                  "kind": "compare",
+                  "concept": "hash 비교",
+                  "check": "복호화가 아니라 matches 비교인지 확인합니다."
+                },
+                {
+                  "from": "password-encoder",
+                  "to": "auth-service",
+                  "verb": "결과",
+                  "payload": "matched = true",
+                  "kind": "response"
+                }
+              ]
+            },
+            {
+              "id": "token-issuance",
+              "label": "Token 발급",
+              "description": "자격 정보 검증이 끝난 뒤 우리 서비스 JWT를 만들어 응답합니다.",
+              "steps": [
+                {
+                  "from": "auth-service",
+                  "to": "jwt-provider",
+                  "verb": "발급 요청",
+                  "payload": "createToken(user.email)",
+                  "kind": "call",
+                  "concept": "JWT issuance",
+                  "check": "비밀번호 불일치 분기에서는 호출되지 않는지 확인합니다.",
+                  "codePointIds": ["jwt-create"]
+                },
+                {
+                  "from": "jwt-provider",
+                  "to": "auth-service",
+                  "verb": "반환",
+                  "payload": "signed JWT",
+                  "kind": "response"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "auth-controller",
+                  "verb": "포장",
+                  "payload": "TokenResponse { accessToken }",
+                  "kind": "transform"
+                },
+                {
+                  "from": "auth-controller",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "200 OK + TokenResponse",
+                  "kind": "response",
+                  "check": "로그인 응답의 accessToken을 확인합니다."
+                }
+              ]
+            }
+          ]
+        },
         "route": [
           "Client",
           "AuthController",
@@ -44,6 +247,89 @@ window.visualLabData = {
         "flowId": "login-token",
         "tone": "blocked",
         "prompt": "비밀번호가 맞지 않을 때 token 발급은 어느 판단 뒤에 멈춰야 할까요?",
+        "diagram": {
+          "caption": "비밀번호 hash 비교가 실패하면 JWT 발급 없이 InvalidCredentialsException이 401 ErrorResponse로 돌아갑니다.",
+          "lanes": [
+            {
+              "id": "failed-credential-check",
+              "label": "비밀번호 불일치",
+              "description": "사용자는 찾았지만 raw password가 저장된 hash와 일치하지 않습니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "auth-controller",
+                  "verb": "요청",
+                  "payload": "POST /auth/login + LoginRequest",
+                  "kind": "request"
+                },
+                {
+                  "from": "auth-controller",
+                  "to": "auth-service",
+                  "verb": "호출",
+                  "payload": "login(email, rawPassword)",
+                  "kind": "call"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "user-repository",
+                  "verb": "조회",
+                  "payload": "findByEmail(email)",
+                  "kind": "call"
+                },
+                {
+                  "from": "user-repository",
+                  "to": "auth-service",
+                  "verb": "반환",
+                  "payload": "LOCAL User { passwordHash }",
+                  "kind": "response"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "password-encoder",
+                  "verb": "비교",
+                  "payload": "matches(rawPassword, passwordHash)",
+                  "kind": "compare"
+                },
+                {
+                  "from": "password-encoder",
+                  "to": "auth-service",
+                  "verb": "결과",
+                  "payload": "matched = false",
+                  "kind": "failure",
+                  "check": "token 발급 조건이 충족되지 않았는지 확인합니다."
+                }
+              ]
+            },
+            {
+              "id": "failed-login-response",
+              "label": "인증 실패 반환",
+              "description": "Service 예외를 공통 handler가 401 응답으로 바꿉니다.",
+              "steps": [
+                {
+                  "from": "auth-service",
+                  "to": "exception-handler",
+                  "verb": "던짐",
+                  "payload": "InvalidCredentialsException",
+                  "kind": "failure"
+                },
+                {
+                  "from": "exception-handler",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "401 ErrorResponse { INVALID_CREDENTIALS }",
+                  "kind": "response",
+                  "check": "로그인 실패가 성공 응답으로 처리되지 않는지 확인합니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "JwtTokenProvider",
+              "reason": "비밀번호 불일치로 token 발급 조건을 충족하지 못했습니다."
+            }
+          ]
+        },
         "route": [
           "Client",
           "AuthController",
@@ -66,6 +352,56 @@ window.visualLabData = {
         "flowId": "protected-api",
         "tone": "blocked",
         "prompt": "Authorization header가 없으면 보호 API 요청은 어디에서 차단될까요?",
+        "diagram": {
+          "caption": "JWT filter는 header가 없을 때 직접 401을 쓰지 않고 인증 객체 없이 chain을 계속하며, 보호 API 경계의 entry point가 401을 반환합니다.",
+          "lanes": [
+            {
+              "id": "missing-token-return",
+              "label": "미인증 보호 요청",
+              "description": "Authentication이 만들어지지 않은 요청이 authorization 경계에서 거절됩니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "jwt-filter",
+                  "verb": "전송",
+                  "payload": "보호 API request + Authorization 없음",
+                  "kind": "request",
+                  "concept": "Bearer token 누락",
+                  "check": "Authorization header가 없는지 확인합니다."
+                },
+                {
+                  "from": "jwt-filter",
+                  "to": "security-boundary",
+                  "verb": "계속",
+                  "payload": "Authentication 없이 filter chain 진행",
+                  "kind": "call",
+                  "concept": "filter와 authorization 책임 분리",
+                  "check": "filter가 직접 401을 반환한다고 설명하지 않습니다.",
+                  "codePointIds": ["jwt-filter"]
+                },
+                {
+                  "from": "security-boundary",
+                  "to": "client",
+                  "verb": "거절·응답",
+                  "payload": "401 Unauthorized",
+                  "kind": "failure",
+                  "concept": "AuthenticationEntryPoint",
+                  "check": "보호 Controller가 실행되지 않는지 확인합니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "SecurityContext Authentication",
+              "reason": "유효한 Bearer token이 없어 인증 객체를 만들지 않았습니다."
+            },
+            {
+              "label": "PostController / PostService",
+              "reason": "보호 API authorization 경계에서 요청이 거절됐습니다."
+            }
+          ]
+        },
         "route": [
           "Client",
           "JwtAuthenticationFilter",
@@ -87,6 +423,118 @@ window.visualLabData = {
         "flowId": "protected-api",
         "tone": "blocked",
         "prompt": "유효한 token이 있어도 게시글을 수정할 수 없는 경우는 어느 정책에서 결정될까요?",
+        "diagram": {
+          "caption": "유효한 JWT는 요청자를 인증하지만, 게시글 수정 권한은 PostService가 principal email과 작성자를 다시 비교해 결정합니다.",
+          "lanes": [
+            {
+              "id": "authenticated-request",
+              "label": "요청 인증과 endpoint 허용",
+              "description": "Bearer token에서 email을 읽어 SecurityContext에 Authentication을 등록합니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "jwt-filter",
+                  "verb": "전송",
+                  "payload": "PUT /posts/{id} + Authorization: Bearer <token>",
+                  "kind": "request"
+                },
+                {
+                  "from": "jwt-filter",
+                  "to": "jwt-provider",
+                  "verb": "검증",
+                  "payload": "validateToken(token)",
+                  "kind": "call",
+                  "concept": "JWT signature / validity",
+                  "check": "token 유효성 검증을 확인합니다."
+                },
+                {
+                  "from": "jwt-provider",
+                  "to": "jwt-filter",
+                  "verb": "반환",
+                  "payload": "valid + email",
+                  "kind": "response",
+                  "concept": "JWT subject",
+                  "check": "이 단계에서 UserRepository를 다시 조회하지 않음을 구분합니다."
+                },
+                {
+                  "from": "jwt-filter",
+                  "to": "security-context",
+                  "verb": "등록",
+                  "payload": "Authentication(email)",
+                  "kind": "event",
+                  "concept": "현재 요청의 사용자"
+                },
+                {
+                  "from": "security-context",
+                  "to": "security-boundary",
+                  "verb": "제공",
+                  "payload": "authenticated principal",
+                  "kind": "response"
+                },
+                {
+                  "from": "security-boundary",
+                  "to": "post-controller",
+                  "verb": "허용",
+                  "payload": "authenticated PUT request",
+                  "kind": "call",
+                  "concept": "endpoint authentication policy",
+                  "check": "`.authenticated()` 조건을 통과했는지 확인합니다."
+                }
+              ]
+            },
+            {
+              "id": "ownership-denied",
+              "label": "게시글 작성자 인가 실패",
+              "description": "인증된 사용자라도 대상 게시글의 작성자가 아니면 Service 정책에서 실패합니다.",
+              "steps": [
+                {
+                  "from": "post-controller",
+                  "to": "post-service",
+                  "verb": "호출",
+                  "payload": "update(id, request, principal.name)",
+                  "kind": "call"
+                },
+                {
+                  "from": "post-service",
+                  "to": "post-repository",
+                  "verb": "조회",
+                  "payload": "findById(id)",
+                  "kind": "call"
+                },
+                {
+                  "from": "post-repository",
+                  "to": "post-service",
+                  "verb": "반환",
+                  "payload": "PostEntity { author }",
+                  "kind": "response"
+                },
+                {
+                  "from": "post-service",
+                  "to": "exception-handler",
+                  "verb": "비교·던짐",
+                  "payload": "principal email != post.author → ForbiddenPostAccessException",
+                  "kind": "failure",
+                  "concept": "resource ownership authorization",
+                  "check": "role이 아니라 작성자 비교에서 실패하는지 확인합니다."
+                },
+                {
+                  "from": "exception-handler",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "403 ErrorResponse { FORBIDDEN_POST_ACCESS }",
+                  "kind": "response",
+                  "check": "403과 DB 무변경을 확인합니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "PostRepository mutation",
+              "reason": "작성자 비교에서 실패해 Entity 변경과 저장이 실행되지 않습니다."
+            }
+          ]
+        },
         "route": [
           "Client",
           "JwtAuthenticationFilter",

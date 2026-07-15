@@ -14,6 +14,105 @@ window.visualLabData = {
     "kind": "trust",
     "title": "외부 신뢰 경계 워크벤치",
     "instruction": "OAuth profile과 계정 복구 상태를 선택해 외부 제공자의 결과를 어디까지 신뢰하고, 우리 서비스가 무엇을 다시 판단하는지 확인하세요.",
+    "nodes": {
+      "browser": {
+        "label": "Browser",
+        "icon": "client",
+        "kind": "client",
+        "role": "OAuth 시작 요청과 redirect 결과를 주고받습니다.",
+        "boundary": "클라이언트"
+      },
+      "springSecurity": {
+        "label": "Spring Security",
+        "icon": "security",
+        "kind": "security",
+        "role": "OAuth authorization, callback, 인증 객체 생성을 조정합니다.",
+        "boundary": "애플리케이션 보안"
+      },
+      "googleOAuth": {
+        "label": "Google OAuth",
+        "icon": "external",
+        "kind": "external",
+        "role": "사용자를 인증하고 provider profile을 제공합니다.",
+        "boundary": "외부 Identity Provider"
+      },
+      "oauthProfileLoader": {
+        "label": "CustomOAuthUserService",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "외부 profile에서 providerId, email, email_verified를 읽고 신뢰 조건을 검사합니다.",
+        "boundary": "애플리케이션 보안"
+      },
+      "oauthSuccessHandler": {
+        "label": "OAuthLoginSuccessHandler",
+        "icon": "response",
+        "kind": "handler",
+        "role": "검증된 profile을 내부 계정 판단으로 넘기고 redirect 결과를 만듭니다.",
+        "boundary": "애플리케이션 보안"
+      },
+      "oauthAccountService": {
+        "label": "OAuthAccountService",
+        "icon": "service",
+        "kind": "service",
+        "role": "providerId로 사용자를 식별하고 동일 email 계정 충돌을 차단합니다.",
+        "boundary": "계정 정책",
+        "codePointIds": [
+          "oauth-link"
+        ]
+      },
+      "userRepository": {
+        "label": "UserRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "외부 식별자와 email로 내부 사용자 상태를 조회합니다.",
+        "boundary": "영속성"
+      },
+      "jwtTokenProvider": {
+        "label": "JwtTokenProvider",
+        "icon": "token",
+        "kind": "token",
+        "role": "내부 사용자 식별 결과로 우리 API용 JWT를 만듭니다.",
+        "boundary": "내부 인증"
+      },
+      "recoveryClient": {
+        "label": "Recovery Client",
+        "icon": "client",
+        "kind": "client",
+        "role": "비밀번호 재설정 메일을 요청하고 중립 응답을 받습니다.",
+        "boundary": "클라이언트"
+      },
+      "accountRecoveryController": {
+        "label": "AccountRecoveryController",
+        "icon": "api",
+        "kind": "api",
+        "role": "복구 요청을 받고 계정 존재 여부를 드러내지 않는 응답 경계를 담당합니다.",
+        "boundary": "HTTP API"
+      },
+      "accountRecoveryService": {
+        "label": "AccountRecoveryService",
+        "icon": "service",
+        "kind": "service",
+        "role": "사용자를 조회하고 reset link 생성과 발송 위임을 조립합니다.",
+        "boundary": "계정 복구",
+        "codePointIds": [
+          "smtp-reset"
+        ]
+      },
+      "recoveryMailSender": {
+        "label": "RecoveryMailSender",
+        "icon": "mail",
+        "kind": "service",
+        "role": "계정 복구 Service가 의존하는 메일 발송 포트입니다.",
+        "boundary": "메일 포트"
+      },
+      "smtpAdapter": {
+        "label": "SmtpRecoveryMailSender",
+        "icon": "external",
+        "kind": "external",
+        "role": "수신자, 제목, reset link를 SMTP 발송 요청으로 변환합니다.",
+        "boundary": "인프라 어댑터"
+      }
+    },
     "scenarios": [
       {
         "id": "verified-oauth",
@@ -21,6 +120,164 @@ window.visualLabData = {
         "flowId": "oauth-login",
         "tone": "recovered",
         "prompt": "외부 인증 성공 결과는 어떤 식별과 충돌 확인을 거쳐 우리 서비스 token이 될까요?",
+        "diagram": {
+          "caption": "외부 인증 성공은 verified profile을 내부 계정과 연결한 뒤에야 우리 서비스 JWT가 되는 흐름입니다. 실제 Google 왕복은 수동 확인 범위입니다.",
+          "lanes": [
+            {
+              "id": "authorization-redirect",
+              "label": "Browser redirect + callback",
+              "description": "Spring Security가 Browser에 authorization URL을 돌려주고 Browser가 Google과 callback URL을 왕복합니다.",
+              "steps": [
+                {
+                  "from": "browser",
+                  "to": "springSecurity",
+                  "verb": "로그인 시작",
+                  "payload": "GET /oauth2/authorization/google",
+                  "kind": "request",
+                  "concept": "OAuth2 authorization"
+                },
+                {
+                  "from": "springSecurity",
+                  "to": "browser",
+                  "verb": "authorization URL 반환",
+                  "payload": "302 authorization URL",
+                  "kind": "response",
+                  "concept": "Redirect"
+                },
+                {
+                  "from": "browser",
+                  "to": "googleOAuth",
+                  "verb": "외부 인증 요청",
+                  "payload": "authorization request",
+                  "kind": "request"
+                },
+                {
+                  "from": "googleOAuth",
+                  "to": "browser",
+                  "verb": "callback URL 반환",
+                  "payload": "302 /login/oauth2/code/google + code + state",
+                  "kind": "response"
+                },
+                {
+                  "from": "browser",
+                  "to": "springSecurity",
+                  "verb": "인증 결과 callback",
+                  "payload": "authorization code + state",
+                  "kind": "request"
+                }
+              ]
+            },
+            {
+              "id": "provider-profile",
+              "label": "Provider profile",
+              "description": "callback 처리 뒤 profile loader가 provider user-info를 읽고 email 신뢰 조건을 확인합니다.",
+              "steps": [
+                {
+                  "from": "springSecurity",
+                  "to": "oauthProfileLoader",
+                  "verb": "profile 로딩 위임",
+                  "payload": "OAuth2UserRequest",
+                  "kind": "call"
+                },
+                {
+                  "from": "oauthProfileLoader",
+                  "to": "googleOAuth",
+                  "verb": "user-info 요청",
+                  "payload": "provider access token",
+                  "kind": "request"
+                },
+                {
+                  "from": "googleOAuth",
+                  "to": "oauthProfileLoader",
+                  "verb": "검증할 profile 반환",
+                  "payload": "sub + email + email_verified",
+                  "kind": "response",
+                  "concept": "Verified email",
+                  "check": "email_verified=true인지 확인하고 외부 인증과 내부 로그인을 구분합니다."
+                }
+              ]
+            },
+            {
+              "id": "internal-account",
+              "label": "내부 계정 판단",
+              "description": "외부 식별 결과를 우리 서비스의 providerId와 email 충돌 정책으로 다시 판단합니다.",
+              "steps": [
+                {
+                  "from": "oauthProfileLoader",
+                  "to": "oauthSuccessHandler",
+                  "verb": "검증된 인증 전달",
+                  "payload": "Authentication + verified attributes",
+                  "kind": "transform"
+                },
+                {
+                  "from": "oauthSuccessHandler",
+                  "to": "oauthAccountService",
+                  "verb": "내부 로그인 요청",
+                  "payload": "OAuthUserProfile",
+                  "kind": "call",
+                  "codePointIds": [
+                    "oauth-link"
+                  ]
+                },
+                {
+                  "from": "oauthAccountService",
+                  "to": "userRepository",
+                  "verb": "계정 식별과 충돌 조회",
+                  "payload": "provider + providerId, then email",
+                  "kind": "call",
+                  "concept": "Account linking policy",
+                  "codePointIds": [
+                    "oauth-link"
+                  ]
+                },
+                {
+                  "from": "userRepository",
+                  "to": "oauthAccountService",
+                  "verb": "계정 상태 반환",
+                  "payload": "existing OAuth user | new user candidate",
+                  "kind": "response"
+                }
+              ]
+            },
+            {
+              "id": "internal-token-result",
+              "label": "내부 token + redirect",
+              "description": "계정 판단이 성공한 경우에만 JWT를 발급하고 데모 redirect 결과를 Browser에 전달합니다.",
+              "steps": [
+                {
+                  "from": "oauthAccountService",
+                  "to": "jwtTokenProvider",
+                  "verb": "내부 token 발급",
+                  "payload": "identified user email",
+                  "kind": "call",
+                  "concept": "Internal JWT"
+                },
+                {
+                  "from": "jwtTokenProvider",
+                  "to": "oauthAccountService",
+                  "verb": "서명된 token 반환",
+                  "payload": "signed JWT",
+                  "kind": "response"
+                },
+                {
+                  "from": "oauthAccountService",
+                  "to": "oauthSuccessHandler",
+                  "verb": "로그인 결과 반환",
+                  "payload": "OAuthLoginResponse",
+                  "kind": "response"
+                },
+                {
+                  "from": "oauthSuccessHandler",
+                  "to": "browser",
+                  "verb": "데모 결과 redirect",
+                  "payload": "oauth metadata + #access_token",
+                  "kind": "response",
+                  "check": "fragment 전달은 데모 방식이며 운영 권장 방식이 아닙니다."
+                }
+              ]
+            }
+          ]
+        },
         "route": [
           "Browser",
           "Spring Security",
@@ -44,6 +301,83 @@ window.visualLabData = {
         "flowId": "oauth-login",
         "tone": "blocked",
         "prompt": "외부 profile에 email이 있어도 verified가 아니라면 신뢰 경계는 어디에서 멈춰야 할까요?",
+        "diagram": {
+          "caption": "email_verified=false이면 profile loader에서 신뢰를 중단합니다. 이후 계정 조회와 JWT 발급은 도달하지 않습니다.",
+          "lanes": [
+            {
+              "id": "verified-email-gate",
+              "label": "Verified email gate",
+              "description": "외부 profile의 email 문자열이 아니라 provider가 검증한 상태를 확인합니다.",
+              "steps": [
+                {
+                  "from": "browser",
+                  "to": "springSecurity",
+                  "verb": "로그인 시작",
+                  "payload": "OAuth2 authorization request",
+                  "kind": "request"
+                },
+                {
+                  "from": "springSecurity",
+                  "to": "browser",
+                  "verb": "authorization URL 반환",
+                  "payload": "302 authorization URL",
+                  "kind": "response"
+                },
+                {
+                  "from": "browser",
+                  "to": "googleOAuth",
+                  "verb": "외부 인증 요청",
+                  "payload": "authorization request",
+                  "kind": "request"
+                },
+                {
+                  "from": "googleOAuth",
+                  "to": "browser",
+                  "verb": "callback URL 반환",
+                  "payload": "302 callback + code + state",
+                  "kind": "response"
+                },
+                {
+                  "from": "browser",
+                  "to": "springSecurity",
+                  "verb": "인증 결과 callback",
+                  "payload": "authorization code + state",
+                  "kind": "request"
+                },
+                {
+                  "from": "springSecurity",
+                  "to": "oauthProfileLoader",
+                  "verb": "profile 검증 위임",
+                  "payload": "email + email_verified=false",
+                  "kind": "call"
+                },
+                {
+                  "from": "oauthProfileLoader",
+                  "to": "springSecurity",
+                  "verb": "검증되지 않은 email 거부",
+                  "payload": "OAuth2AuthenticationException: unverified_email",
+                  "kind": "failure",
+                  "concept": "Verified email",
+                  "check": "내부 사용자 식별 전에 중단되는지 확인합니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "OAuthLoginSuccessHandler",
+              "reason": "검증된 Authentication이 만들어지지 않았습니다."
+            },
+            {
+              "label": "OAuthAccountService · UserRepository",
+              "reason": "검증되지 않은 email을 내부 계정 식별에 사용하지 않습니다."
+            },
+            {
+              "label": "JwtTokenProvider",
+              "reason": "내부 로그인이 완성되지 않아 JWT를 발급하지 않습니다."
+            }
+          ]
+        },
         "route": [
           "Browser",
           "Spring Security",
@@ -67,6 +401,120 @@ window.visualLabData = {
         "flowId": "oauth-login",
         "tone": "blocked",
         "prompt": "같은 email의 LOCAL 사용자가 있으면 왜 자동 연결 대신 별도 확인이 필요할까요?",
+        "diagram": {
+          "caption": "verified email이어도 기존 LOCAL 계정의 소유권을 증명하지는 않습니다. 충돌을 감지하면 link_required 결과로 중단합니다.",
+          "lanes": [
+            {
+              "id": "verified-provider-profile",
+              "label": "검증된 외부 profile",
+              "description": "외부 인증과 email 검증은 통과했지만 내부 계정 정책은 아직 결정되지 않았습니다.",
+              "steps": [
+                {
+                  "from": "browser",
+                  "to": "springSecurity",
+                  "verb": "로그인 시작",
+                  "payload": "OAuth2 authorization request",
+                  "kind": "request"
+                },
+                {
+                  "from": "springSecurity",
+                  "to": "browser",
+                  "verb": "authorization URL 반환",
+                  "payload": "302 authorization URL",
+                  "kind": "response"
+                },
+                {
+                  "from": "browser",
+                  "to": "googleOAuth",
+                  "verb": "외부 인증 요청",
+                  "payload": "authorization request",
+                  "kind": "request"
+                },
+                {
+                  "from": "googleOAuth",
+                  "to": "browser",
+                  "verb": "callback URL 반환",
+                  "payload": "302 callback + code + state",
+                  "kind": "response"
+                },
+                {
+                  "from": "browser",
+                  "to": "springSecurity",
+                  "verb": "인증 결과 callback",
+                  "payload": "authorization code + state",
+                  "kind": "request"
+                },
+                {
+                  "from": "springSecurity",
+                  "to": "oauthProfileLoader",
+                  "verb": "검증된 profile 로딩",
+                  "payload": "providerId + email + email_verified=true",
+                  "kind": "call"
+                },
+                {
+                  "from": "oauthProfileLoader",
+                  "to": "oauthSuccessHandler",
+                  "verb": "검증된 인증 전달",
+                  "payload": "Authentication",
+                  "kind": "transform"
+                }
+              ]
+            },
+            {
+              "id": "local-account-collision",
+              "label": "LOCAL 계정 충돌",
+              "description": "providerId 식별 뒤 같은 email의 LOCAL 계정이 발견되면 자동 연결하지 않습니다.",
+              "steps": [
+                {
+                  "from": "oauthSuccessHandler",
+                  "to": "oauthAccountService",
+                  "verb": "내부 로그인 요청",
+                  "payload": "OAuthUserProfile",
+                  "kind": "call",
+                  "codePointIds": [
+                    "oauth-link"
+                  ]
+                },
+                {
+                  "from": "oauthAccountService",
+                  "to": "userRepository",
+                  "verb": "provider와 email 조회",
+                  "payload": "provider + providerId, then email",
+                  "kind": "call",
+                  "concept": "Account ownership"
+                },
+                {
+                  "from": "userRepository",
+                  "to": "oauthAccountService",
+                  "verb": "충돌 상태 반환",
+                  "payload": "OAuth user 없음 + 동일 email LOCAL user 존재",
+                  "kind": "response"
+                },
+                {
+                  "from": "oauthAccountService",
+                  "to": "oauthSuccessHandler",
+                  "verb": "자동 연결 중단",
+                  "payload": "OAuthAccountLinkRequiredException",
+                  "kind": "failure",
+                  "check": "link_required는 연결 완료가 아니라 안전한 중단 결과입니다."
+                },
+                {
+                  "from": "oauthSuccessHandler",
+                  "to": "browser",
+                  "verb": "연결 필요 redirect",
+                  "payload": "?oauth=link_required",
+                  "kind": "response"
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "JwtTokenProvider",
+              "reason": "계정 소유 확인이 끝나지 않아 내부 JWT를 발급하지 않습니다."
+            }
+          ]
+        },
         "route": [
           "Browser",
           "Spring Security",
@@ -90,6 +538,143 @@ window.visualLabData = {
         "flowId": "smtp-recovery",
         "tone": "warning",
         "prompt": "현재 계정 복구 구현은 어디까지 책임지고 어떤 보안 단계는 후속으로 남겨둘까요?",
+        "diagram": {
+          "caption": "현재 범위는 계정 존재 여부를 숨긴 요청 처리, reset link 생성, 메일 발송 포트 위임까지입니다. 실제 password 변경 완료나 SMTP delivery를 보장하지 않습니다.",
+          "lanes": [
+            {
+              "id": "recovery-lookup",
+              "label": "복구 요청과 사용자 조회",
+              "description": "요청 email을 받되 Repository 조회 결과를 외부 응답에 직접 노출하지 않습니다.",
+              "steps": [
+                {
+                  "from": "recoveryClient",
+                  "to": "accountRecoveryController",
+                  "verb": "복구 메일 요청",
+                  "payload": "POST /account-recovery/password-reset + email",
+                  "kind": "request"
+                },
+                {
+                  "from": "accountRecoveryController",
+                  "to": "accountRecoveryService",
+                  "verb": "복구 흐름 위임",
+                  "payload": "requestPasswordReset(email)",
+                  "kind": "call",
+                  "codePointIds": [
+                    "smtp-reset"
+                  ]
+                },
+                {
+                  "from": "accountRecoveryService",
+                  "to": "userRepository",
+                  "verb": "사용자 조회",
+                  "payload": "findByEmail(email)",
+                  "kind": "call",
+                  "concept": "Account enumeration resistance"
+                }
+              ]
+            },
+            {
+              "id": "existing-user-mail",
+              "label": "User 존재 · 발송 위임 후 202",
+              "description": "User가 있는 정상 경로만 reset link를 만들고 메일 포트에 위임합니다. SMTP 호출의 정상 반환은 실제 수신 증거가 아닙니다.",
+              "steps": [
+                {
+                  "from": "userRepository",
+                  "to": "accountRecoveryService",
+                  "verb": "사용자 반환",
+                  "payload": "User",
+                  "kind": "response"
+                },
+                {
+                  "from": "accountRecoveryService",
+                  "to": "recoveryMailSender",
+                  "verb": "복구 메일 발송 요청",
+                  "payload": "recipient + reset link(UUID token)",
+                  "kind": "call",
+                  "concept": "Port abstraction",
+                  "codePointIds": [
+                    "smtp-reset"
+                  ]
+                },
+                {
+                  "from": "recoveryMailSender",
+                  "to": "smtpAdapter",
+                  "verb": "SMTP 요청으로 변환",
+                  "payload": "recipient + subject + body + reset link",
+                  "kind": "transform"
+                },
+                {
+                  "from": "smtpAdapter",
+                  "to": "recoveryMailSender",
+                  "verb": "발송 호출 정상 반환",
+                  "payload": "호출 완료 · 실제 delivery 미확인",
+                  "kind": "response"
+                },
+                {
+                  "from": "recoveryMailSender",
+                  "to": "accountRecoveryService",
+                  "verb": "위임 완료",
+                  "payload": "normal return",
+                  "kind": "response"
+                },
+                {
+                  "from": "accountRecoveryService",
+                  "to": "accountRecoveryController",
+                  "verb": "정상 처리 종료",
+                  "payload": "mail delegation complete",
+                  "kind": "response"
+                },
+                {
+                  "from": "accountRecoveryController",
+                  "to": "recoveryClient",
+                  "verb": "중립 응답",
+                  "payload": "202 Accepted + empty body",
+                  "kind": "response",
+                  "check": "발송 호출 정상 반환과 실제 SMTP delivery 증거를 구분합니다."
+                }
+              ]
+            },
+            {
+              "id": "missing-user-neutral-response",
+              "label": "User 없음 · 발송 없이 같은 202",
+              "description": "User가 없으면 reset link와 sender 호출을 만들지 않지만 외부 응답은 User 존재 경로와 같습니다.",
+              "steps": [
+                {
+                  "from": "userRepository",
+                  "to": "accountRecoveryService",
+                  "verb": "사용자 없음 반환",
+                  "payload": "Optional.empty",
+                  "kind": "response"
+                },
+                {
+                  "from": "accountRecoveryService",
+                  "to": "accountRecoveryController",
+                  "verb": "조용히 종료",
+                  "payload": "sender 호출 없음",
+                  "kind": "response"
+                },
+                {
+                  "from": "accountRecoveryController",
+                  "to": "recoveryClient",
+                  "verb": "동일한 중립 응답",
+                  "payload": "202 Accepted + empty body",
+                  "kind": "response",
+                  "check": "계정 존재 여부에 따라 status나 body를 다르게 만들지 않습니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "Password reset completion",
+              "reason": "token 저장, 만료, 재사용 차단, password 변경은 현재 범위 밖입니다."
+            },
+            {
+              "label": "External SMTP delivery evidence",
+              "reason": "발송 포트 위임만으로 실제 메일 수신까지 자동 검증되지는 않습니다."
+            }
+          ]
+        },
         "route": [
           "Client",
           "AccountRecoveryController",

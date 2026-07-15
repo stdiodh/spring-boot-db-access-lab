@@ -14,6 +14,53 @@ window.visualLabData = {
     "kind": "persistence",
     "title": "영속성 경계 워크벤치",
     "instruction": "CRUD 시나리오를 선택하고 Request DTO가 Entity로 바뀌어 MySQL에 남는 경로와 DB 변경이 멈추는 지점을 확인하세요.",
+    "nodes": {
+      "client": {
+        "label": "Client",
+        "icon": "client",
+        "kind": "client",
+        "role": "HTTP 요청을 보내고 API 응답을 읽습니다.",
+        "boundary": "HTTP 외부"
+      },
+      "controller": {
+        "label": "PostController",
+        "icon": "api",
+        "kind": "api",
+        "role": "HTTP 요청을 Service 호출과 연결합니다.",
+        "boundary": "HTTP 입구"
+      },
+      "service": {
+        "label": "PostService",
+        "icon": "service",
+        "kind": "service",
+        "role": "DTO와 Entity 변환 및 CRUD 순서를 조립합니다.",
+        "boundary": "애플리케이션 처리",
+        "codePointIds": ["entity-table", "repository-save"]
+      },
+      "repository": {
+        "label": "PostRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "JpaRepository를 통해 Entity 저장과 조회를 요청합니다.",
+        "boundary": "JPA 영속성 경계",
+        "codePointIds": ["repository-save"]
+      },
+      "database": {
+        "label": "MySQL",
+        "icon": "database",
+        "kind": "database",
+        "role": "posts table의 row를 애플리케이션 프로세스 밖에 보관합니다.",
+        "boundary": "영속 저장소",
+        "codePointIds": ["entity-table"]
+      },
+      "default-error": {
+        "label": "Spring 기본 오류 경로",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "03의 공통 handler를 도입하기 전 처리되지 않은 예외를 HTTP 오류로 전달합니다.",
+        "boundary": "기본 HTTP 오류 경계"
+      }
+    },
     "scenarios": [
       {
         "id": "persist-post",
@@ -21,6 +68,108 @@ window.visualLabData = {
         "flowId": "create-read",
         "tone": "recovered",
         "prompt": "POST 요청은 어떤 변환과 저장 경계를 지나 MySQL row가 될까요?",
+        "diagram": {
+          "caption": "Service가 Request DTO를 Entity로 바꾸고 Repository가 JPA 저장을 요청해 MySQL에 row를 남깁니다.",
+          "lanes": [
+            {
+              "id": "create-persist",
+              "label": "요청과 영속화",
+              "description": "HTTP 생성 요청이 JPA 영속성 경계를 지나 INSERT로 이어집니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "controller",
+                  "verb": "요청",
+                  "payload": "POST /posts + JSON body",
+                  "kind": "request",
+                  "concept": "HTTP request",
+                  "check": "Swagger의 method, path, body를 확인합니다."
+                },
+                {
+                  "from": "controller",
+                  "to": "service",
+                  "verb": "호출",
+                  "payload": "create(PostCreateRequest)",
+                  "kind": "call",
+                  "concept": "Request DTO",
+                  "check": "Controller가 Repository를 직접 호출하지 않는지 확인합니다."
+                },
+                {
+                  "from": "service",
+                  "to": "service",
+                  "verb": "변환",
+                  "payload": "PostCreateRequest → PostEntity",
+                  "kind": "transform",
+                  "concept": "DTO / Entity 경계",
+                  "check": "Entity가 DB 저장 모양을 갖는지 확인합니다.",
+                  "codePointIds": ["entity-table"]
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "저장",
+                  "payload": "save(PostEntity)",
+                  "kind": "persist",
+                  "concept": "JpaRepository",
+                  "check": "Service가 저장 세부 구현을 Repository에 맡기는지 확인합니다.",
+                  "codePointIds": ["repository-save"]
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "영속화",
+                  "payload": "INSERT posts row",
+                  "kind": "persist",
+                  "concept": "JPA → SQL",
+                  "check": "MySQL posts table에 row가 생겼는지 확인합니다."
+                }
+              ]
+            },
+            {
+              "id": "create-response",
+              "label": "저장 결과와 응답",
+              "description": "생성된 id가 Entity와 Response DTO를 거쳐 Client로 돌아옵니다.",
+              "steps": [
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "generated id + persisted row",
+                  "kind": "response",
+                  "concept": "DB 저장 결과",
+                  "check": "생성된 id를 확인합니다."
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "saved PostEntity { id }",
+                  "kind": "response",
+                  "concept": "saved Entity",
+                  "check": "save 반환값이 id를 가지는지 확인합니다."
+                },
+                {
+                  "from": "service",
+                  "to": "controller",
+                  "verb": "변환",
+                  "payload": "PostEntity → PostResponse",
+                  "kind": "transform",
+                  "concept": "Response DTO",
+                  "check": "Entity를 그대로 밖으로 내보내지 않는지 확인합니다."
+                },
+                {
+                  "from": "controller",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "201 Created + PostResponse JSON",
+                  "kind": "response",
+                  "concept": "HTTP response",
+                  "check": "Swagger id와 MySQL row id를 비교합니다."
+                }
+              ]
+            }
+          ]
+        },
         "route": [
           "Client",
           "PostController",
@@ -46,6 +195,84 @@ window.visualLabData = {
         "flowId": "create-read",
         "tone": "recovered",
         "prompt": "애플리케이션이 다시 시작돼도 같은 데이터를 찾을 수 있다는 증거는 무엇일까요?",
+        "diagram": {
+          "caption": "애플리케이션만 재시작하고 MySQL 서비스와 volume을 유지하면 같은 row를 다시 조회할 수 있습니다.",
+          "lanes": [
+            {
+              "id": "restart-read-request",
+              "label": "재시작 후 조회 요청",
+              "description": "새 애플리케이션 프로세스가 기존 id를 다시 조회합니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "controller",
+                  "verb": "요청",
+                  "payload": "GET /posts/{id}",
+                  "kind": "request"
+                },
+                {
+                  "from": "controller",
+                  "to": "service",
+                  "verb": "호출",
+                  "payload": "getById(id)",
+                  "kind": "call"
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "조회",
+                  "payload": "findById(id)",
+                  "kind": "call",
+                  "concept": "영속 데이터 재조회",
+                  "check": "재시작 전 생성한 id를 사용합니다."
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "질의",
+                  "payload": "SELECT posts row by id",
+                  "kind": "call"
+                }
+              ]
+            },
+            {
+              "id": "restart-read-response",
+              "label": "기존 row 반환",
+              "description": "프로세스 밖에 남은 row가 API 응답으로 돌아옵니다.",
+              "steps": [
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "existing posts row",
+                  "kind": "response"
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "PostEntity",
+                  "kind": "response"
+                },
+                {
+                  "from": "service",
+                  "to": "controller",
+                  "verb": "변환",
+                  "payload": "PostEntity → PostResponse",
+                  "kind": "transform"
+                },
+                {
+                  "from": "controller",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "200 OK + 같은 id의 JSON",
+                  "kind": "response",
+                  "check": "재시작 전후 id와 row가 같은지 확인합니다."
+                }
+              ]
+            }
+          ]
+        },
         "route": [
           "Client",
           "PostController",
@@ -70,6 +297,121 @@ window.visualLabData = {
         "flowId": "update-delete",
         "tone": "signal",
         "prompt": "PUT 요청은 왜 먼저 기존 Entity를 찾은 뒤 값을 바꿔야 할까요?",
+        "diagram": {
+          "caption": "수정은 id로 기존 Entity를 찾은 뒤 값을 바꾸고, 02 시퀀스의 save 흐름으로 UPDATE를 요청합니다.",
+          "lanes": [
+            {
+              "id": "update-lookup",
+              "label": "대상 조회",
+              "description": "수정 전에 id로 기존 row와 Entity를 찾습니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "controller",
+                  "verb": "요청",
+                  "payload": "PUT /posts/{id} + PostUpdateRequest",
+                  "kind": "request"
+                },
+                {
+                  "from": "controller",
+                  "to": "service",
+                  "verb": "호출",
+                  "payload": "update(id, request)",
+                  "kind": "call"
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "조회",
+                  "payload": "findById(id)",
+                  "kind": "call"
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "질의",
+                  "payload": "SELECT posts row by id",
+                  "kind": "call"
+                },
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "posts row",
+                  "kind": "response"
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "PostEntity",
+                  "kind": "response"
+                }
+              ]
+            },
+            {
+              "id": "update-persist",
+              "label": "값 변경과 저장",
+              "description": "찾은 Entity의 값을 바꾼 뒤 현재 02 구현의 명시적 save로 반영합니다.",
+              "steps": [
+                {
+                  "from": "service",
+                  "to": "service",
+                  "verb": "변경",
+                  "payload": "PostUpdateRequest → Entity fields",
+                  "kind": "transform",
+                  "concept": "Entity update",
+                  "check": "title, content, author가 요청 값으로 바뀌는지 확인합니다."
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "저장",
+                  "payload": "save(PostEntity)",
+                  "kind": "persist",
+                  "concept": "02 시퀀스의 명시적 save",
+                  "check": "이 단계는 이후 transaction dirty checking과 구분합니다."
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "반영",
+                  "payload": "UPDATE posts row",
+                  "kind": "persist"
+                },
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "updated row",
+                  "kind": "response"
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "updated PostEntity",
+                  "kind": "response"
+                },
+                {
+                  "from": "service",
+                  "to": "controller",
+                  "verb": "변환",
+                  "payload": "PostEntity → PostResponse",
+                  "kind": "transform"
+                },
+                {
+                  "from": "controller",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "200 OK + updated JSON",
+                  "kind": "response",
+                  "check": "응답과 MySQL row를 비교합니다."
+                }
+              ]
+            }
+          ]
+        },
         "route": [
           "Client",
           "PostController",
@@ -95,6 +437,94 @@ window.visualLabData = {
         "flowId": "update-delete",
         "tone": "blocked",
         "prompt": "수정할 Entity를 찾지 못했다면 DB 변경은 어디에서 멈춰야 할까요?",
+        "diagram": {
+          "caption": "02 단계에서는 조회 결과가 비면 예외가 기본 오류 경로로 전파되고 Entity 변경과 UPDATE는 실행되지 않습니다.",
+          "lanes": [
+            {
+              "id": "missing-lookup",
+              "label": "없는 id 조회",
+              "description": "Repository와 MySQL까지 조회하지만 대상 row를 찾지 못합니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "controller",
+                  "verb": "요청",
+                  "payload": "PUT /posts/{id} + PostUpdateRequest",
+                  "kind": "request"
+                },
+                {
+                  "from": "controller",
+                  "to": "service",
+                  "verb": "호출",
+                  "payload": "update(id, request)",
+                  "kind": "call"
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "조회",
+                  "payload": "findById(id)",
+                  "kind": "call"
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "질의",
+                  "payload": "SELECT posts row by id",
+                  "kind": "call"
+                },
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "no row",
+                  "kind": "response"
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "Optional.empty",
+                  "kind": "response",
+                  "check": "대상이 없음을 확인합니다."
+                }
+              ]
+            },
+            {
+              "id": "missing-error",
+              "label": "02 범위의 실패 반환",
+              "description": "공통 ErrorResponse를 도입하기 전 예외가 Spring 기본 오류 경로로 전달됩니다.",
+              "steps": [
+                {
+                  "from": "service",
+                  "to": "default-error",
+                  "verb": "전파",
+                  "payload": "NoSuchElementException",
+                  "kind": "failure",
+                  "concept": "02 단계의 미처리 예외",
+                  "check": "404 공통 응답은 아직 03의 범위임을 구분합니다."
+                },
+                {
+                  "from": "default-error",
+                  "to": "client",
+                  "verb": "오류 응답",
+                  "payload": "기본 오류 응답 (상태·형식은 02 학습 범위 밖)",
+                  "kind": "response"
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "PostEntity 값 변경",
+              "reason": "조회 결과가 없어 변경할 Entity가 없습니다."
+            },
+            {
+              "label": "save / UPDATE",
+              "reason": "실패 후 Repository mutation은 실행되지 않습니다."
+            }
+          ]
+        },
         "route": [
           "Client",
           "PostController",

@@ -14,6 +14,122 @@ window.visualLabData = {
     "kind": "test",
     "title": "테스트 보장 범위 워크벤치",
     "instruction": "테스트 시나리오를 선택하고 fixture, mock, Service 실행, assertion이 무엇을 보장하며 HTTP 경계에서 무엇이 남는지 확인하세요.",
+    "nodes": {
+      "testMethod": {
+        "label": "JUnit Test method",
+        "icon": "test",
+        "kind": "test",
+        "role": "조건을 준비하고 Service를 실행한 뒤 실제 결과를 검증합니다.",
+        "boundary": "단위 테스트",
+        "codePointIds": [
+          "service-unit-test"
+        ]
+      },
+      "fixtureFactory": {
+        "label": "TestFixtureFactory",
+        "icon": "fixture",
+        "kind": "fixture",
+        "role": "반복되는 요청 DTO와 Entity 입력을 만듭니다.",
+        "boundary": "테스트 준비",
+        "codePointIds": [
+          "fixture-factory"
+        ]
+      },
+      "mockPostRepository": {
+        "label": "Mock PostRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "DB 연결 대신 PostRepository의 반환값을 테스트가 통제하게 합니다.",
+        "boundary": "테스트 대역"
+      },
+      "postService": {
+        "label": "PostService",
+        "icon": "service",
+        "kind": "service",
+        "role": "게시글 생성과 조회 실패 같은 비즈니스 판단을 실행하는 테스트 대상입니다.",
+        "boundary": "Service under test",
+        "codePointIds": [
+          "service-unit-test"
+        ]
+      },
+      "mockUserRepository": {
+        "label": "Mock UserRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "로그인 대상 사용자의 조회 결과를 테스트가 통제하게 합니다.",
+        "boundary": "테스트 대역"
+      },
+      "authService": {
+        "label": "AuthService",
+        "icon": "service",
+        "kind": "service",
+        "role": "사용자 종류와 비밀번호를 판단하고 성공 시 token을 만드는 테스트 대상입니다.",
+        "boundary": "Service under test"
+      },
+      "passwordEncoder": {
+        "label": "PasswordEncoder",
+        "icon": "security",
+        "kind": "security",
+        "role": "06 기준 단위 테스트에서 실제 구현으로 비밀번호 일치 여부를 계산합니다.",
+        "boundary": "실제 협력 객체"
+      },
+      "jwtTokenProvider": {
+        "label": "JwtTokenProvider",
+        "icon": "token",
+        "kind": "token",
+        "role": "인증 성공 시 access token을 만드는 실제 협력 객체입니다.",
+        "boundary": "실제 협력 객체"
+      },
+      "assertionOracle": {
+        "label": "Assertion oracle",
+        "icon": "evidence",
+        "kind": "evidence",
+        "role": "응답 필드나 기대 예외를 실제 결과와 비교해 PASS 또는 FAIL을 결정합니다.",
+        "boundary": "테스트 검증"
+      },
+      "httpClient": {
+        "label": "HTTP Client",
+        "icon": "client",
+        "kind": "client",
+        "role": "인증 header와 요청 body를 포함한 HTTP 요청을 보냅니다.",
+        "boundary": "HTTP 통합 경계"
+      },
+      "securityFilter": {
+        "label": "Security Filter",
+        "icon": "security",
+        "kind": "security",
+        "role": "Bearer token을 검사하고 인증되지 않은 요청을 Controller 전에 차단합니다.",
+        "boundary": "HTTP 통합 경계"
+      },
+      "authenticationEntryPoint": {
+        "label": "CustomAuthenticationEntryPoint",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "Security Filter의 인증 실패를 401 ErrorResponse로 변환합니다.",
+        "boundary": "HTTP 응답 경계"
+      },
+      "validation": {
+        "label": "DTO Validation",
+        "icon": "gate",
+        "kind": "gate",
+        "role": "요청 body의 형식과 제약을 검사합니다.",
+        "boundary": "HTTP 통합 경계"
+      },
+      "postController": {
+        "label": "PostController",
+        "icon": "api",
+        "kind": "api",
+        "role": "검증된 HTTP 요청과 현재 사용자를 PostService로 전달합니다.",
+        "boundary": "HTTP 통합 경계"
+      },
+      "globalExceptionHandler": {
+        "label": "GlobalExceptionHandler",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "Validation과 Service 예외를 HTTP status와 ErrorResponse로 변환합니다.",
+        "boundary": "HTTP 응답 경계"
+      }
+    },
     "scenarios": [
       {
         "id": "post-service-success",
@@ -21,6 +137,111 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "DB 연결 없이 Service의 생성 판단을 어떤 준비와 assertion으로 검증할까요?",
+        "diagram": {
+          "caption": "PostServiceTest는 Repository 결과를 mock으로 통제하고 반환 PostResponse의 필드를 검증합니다. 이 테스트는 실제 DB 연결을 검증하지 않습니다.",
+          "lanes": [
+            {
+              "id": "arrange",
+              "label": "Given · Arrange",
+              "description": "fixture로 입력을 만들고 mock Repository가 반환할 저장 결과를 준비합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "fixtureFactory",
+                  "verb": "테스트 입력 생성",
+                  "payload": "PostCreateRequest + saved PostEntity",
+                  "kind": "call",
+                  "concept": "Fixture",
+                  "codePointIds": [
+                    "fixture-factory"
+                  ]
+                },
+                {
+                  "from": "fixtureFactory",
+                  "to": "testMethod",
+                  "verb": "fixture 반환",
+                  "payload": "request + entity",
+                  "kind": "response"
+                },
+                {
+                  "from": "testMethod",
+                  "to": "mockPostRepository",
+                  "verb": "저장 결과 stub",
+                  "payload": "save(entity) → savedPost",
+                  "kind": "config",
+                  "concept": "Mock"
+                }
+              ]
+            },
+            {
+              "id": "act",
+              "label": "When · Act",
+              "description": "Service가 실제 Repository 대신 준비된 test double을 호출하고 응답을 조립합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "postService",
+                  "verb": "생성 흐름 실행",
+                  "payload": "create(request, owner@example.com)",
+                  "kind": "call",
+                  "codePointIds": [
+                    "service-unit-test"
+                  ]
+                },
+                {
+                  "from": "postService",
+                  "to": "mockPostRepository",
+                  "verb": "게시글 저장 호출",
+                  "payload": "save(PostEntity)",
+                  "kind": "call"
+                },
+                {
+                  "from": "mockPostRepository",
+                  "to": "postService",
+                  "verb": "준비한 결과 반환",
+                  "payload": "savedPost",
+                  "kind": "response"
+                },
+                {
+                  "from": "postService",
+                  "to": "testMethod",
+                  "verb": "응답 변환 결과 반환",
+                  "payload": "PostResponse",
+                  "kind": "response"
+                }
+              ]
+            },
+            {
+              "id": "assert",
+              "label": "Then · Assert",
+              "description": "현재 테스트가 실제로 assert하는 응답 필드만 보장 범위로 표시합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "assertionOracle",
+                  "verb": "응답 필드 비교",
+                  "payload": "id + title + content + author",
+                  "kind": "compare",
+                  "concept": "Assertion",
+                  "check": "create 테스트는 save 호출 횟수를 별도로 verify하지 않습니다."
+                },
+                {
+                  "from": "assertionOracle",
+                  "to": "testMethod",
+                  "verb": "검증 결과",
+                  "payload": "PASS | FAIL",
+                  "kind": "response"
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "실제 Database",
+              "reason": "PostRepository가 mock이므로 DB 연결과 SQL은 이 단위 테스트 범위 밖입니다."
+            }
+          ]
+        },
         "route": [
           "Test method",
           "TestFixtureFactory",
@@ -42,6 +263,86 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "Service가 예외를 던진 결과도 왜 올바른 테스트 성공이 될 수 있을까요?",
+        "diagram": {
+          "caption": "없는 게시글 조건에서 PostNotFoundException이 정확히 발생하면 실패 분기 테스트는 PASS입니다.",
+          "lanes": [
+            {
+              "id": "not-found-act",
+              "label": "Given + When",
+              "description": "Repository가 empty를 반환하도록 통제한 뒤 실제 Service 조회 분기를 실행합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "mockPostRepository",
+                  "verb": "조회 실패 stub",
+                  "payload": "findById(999) → Optional.empty",
+                  "kind": "config",
+                  "concept": "Mock"
+                },
+                {
+                  "from": "testMethod",
+                  "to": "postService",
+                  "verb": "없는 게시글 조회",
+                  "payload": "getById(999)",
+                  "kind": "call",
+                  "codePointIds": [
+                    "service-unit-test"
+                  ]
+                },
+                {
+                  "from": "postService",
+                  "to": "mockPostRepository",
+                  "verb": "게시글 조회 호출",
+                  "payload": "findById(999)",
+                  "kind": "call"
+                },
+                {
+                  "from": "mockPostRepository",
+                  "to": "postService",
+                  "verb": "조회 결과 없음",
+                  "payload": "Optional.empty",
+                  "kind": "response"
+                },
+                {
+                  "from": "postService",
+                  "to": "testMethod",
+                  "verb": "기대 실패 반환",
+                  "payload": "throw PostNotFoundException",
+                  "kind": "failure"
+                }
+              ]
+            },
+            {
+              "id": "not-found-assert",
+              "label": "Then · Assert",
+              "description": "예외가 발생했다는 사실이 아니라 기대한 타입과 일치하는지를 검증합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "assertionOracle",
+                  "verb": "예외 타입 비교",
+                  "payload": "assertThrows(PostNotFoundException)",
+                  "kind": "compare",
+                  "concept": "Expected failure"
+                },
+                {
+                  "from": "assertionOracle",
+                  "to": "testMethod",
+                  "verb": "기대 실패 확인",
+                  "payload": "PASS",
+                  "kind": "response",
+                  "check": "다른 예외이거나 예외가 없으면 FAIL입니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "실제 Database",
+              "reason": "없는 데이터 조건은 mock 반환값으로 재현합니다."
+            }
+          ]
+        },
         "route": [
           "Test method",
           "TestFixtureFactory",
@@ -63,6 +364,135 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "로그인 실패 테스트는 외부 인증 환경 없이 어떤 Service 판단을 고정할까요?",
+        "diagram": {
+          "caption": "06 기준 단위 테스트는 UserRepository만 mock으로 두고 실제 PasswordEncoder로 잘못된 비밀번호 분기를 실행합니다. JWT는 이 실패 경로에 도달하지 않습니다.",
+          "lanes": [
+            {
+              "id": "auth-arrange",
+              "label": "Given · Arrange",
+              "description": "LOCAL 사용자와 잘못된 login request를 fixture로 만들고 저장된 비밀번호만 실제 encoder로 준비합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "fixtureFactory",
+                  "verb": "인증 실패 입력 생성",
+                  "payload": "LOCAL User + wrong-password LoginRequest",
+                  "kind": "call",
+                  "codePointIds": [
+                    "fixture-factory"
+                  ]
+                },
+                {
+                  "from": "fixtureFactory",
+                  "to": "testMethod",
+                  "verb": "fixture 반환",
+                  "payload": "savedUser + wrongPasswordRequest",
+                  "kind": "response"
+                },
+                {
+                  "from": "testMethod",
+                  "to": "passwordEncoder",
+                  "verb": "저장 비밀번호 encoding",
+                  "payload": "password123",
+                  "kind": "call",
+                  "concept": "Real collaborator"
+                },
+                {
+                  "from": "passwordEncoder",
+                  "to": "testMethod",
+                  "verb": "encoded password 반환",
+                  "payload": "bcrypt hash",
+                  "kind": "response"
+                },
+                {
+                  "from": "testMethod",
+                  "to": "mockUserRepository",
+                  "verb": "사용자 조회 stub",
+                  "payload": "findByEmail → LOCAL user",
+                  "kind": "config",
+                  "concept": "Mock"
+                }
+              ]
+            },
+            {
+              "id": "auth-act",
+              "label": "When · Act",
+              "description": "AuthService가 mock 사용자와 실제 PasswordEncoder를 사용해 자격 정보 불일치를 판단합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "authService",
+                  "verb": "로그인 실행",
+                  "payload": "login(wrongPasswordRequest)",
+                  "kind": "call"
+                },
+                {
+                  "from": "authService",
+                  "to": "mockUserRepository",
+                  "verb": "사용자 조회",
+                  "payload": "findByEmail(tester@example.com)",
+                  "kind": "call"
+                },
+                {
+                  "from": "mockUserRepository",
+                  "to": "authService",
+                  "verb": "LOCAL 사용자 반환",
+                  "payload": "savedUser",
+                  "kind": "response"
+                },
+                {
+                  "from": "authService",
+                  "to": "passwordEncoder",
+                  "verb": "비밀번호 비교",
+                  "payload": "matches(wrong-password, bcrypt hash)",
+                  "kind": "compare",
+                  "concept": "Credential verification"
+                },
+                {
+                  "from": "passwordEncoder",
+                  "to": "authService",
+                  "verb": "불일치 반환",
+                  "payload": "false",
+                  "kind": "response"
+                },
+                {
+                  "from": "authService",
+                  "to": "testMethod",
+                  "verb": "인증 실패 반환",
+                  "payload": "throw InvalidCredentialsException",
+                  "kind": "failure"
+                }
+              ]
+            },
+            {
+              "id": "auth-assert",
+              "label": "Then · Assert",
+              "description": "기대 예외 타입과 실제 결과를 비교합니다.",
+              "steps": [
+                {
+                  "from": "testMethod",
+                  "to": "assertionOracle",
+                  "verb": "예외 타입 비교",
+                  "payload": "assertThrows(InvalidCredentialsException)",
+                  "kind": "compare"
+                },
+                {
+                  "from": "assertionOracle",
+                  "to": "testMethod",
+                  "verb": "실패 정책 확인",
+                  "payload": "PASS",
+                  "kind": "response"
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "JwtTokenProvider",
+              "reason": "PasswordEncoder가 false를 반환해 token 발급 분기 전에 예외가 발생합니다. 현재 테스트는 token provider 미호출을 별도 verify하지 않습니다."
+            }
+          ]
+        },
         "route": [
           "Test method",
           "TestFixtureFactory",
@@ -85,6 +515,133 @@ window.visualLabData = {
         "flowId": "status-code-view",
         "tone": "warning",
         "prompt": "Service 단위 테스트가 통과해도 400·401·403을 보장했다고 말할 수 없는 이유는 무엇일까요?",
+        "diagram": {
+          "caption": "아래 세 lane은 06 필수 Service 단위 테스트가 직접 보장하지 않는 HTTP 정책 경계의 개념 지도입니다. 각 status를 보장하려면 별도 HTTP 통합 테스트 증거가 필요합니다.",
+          "lanes": [
+            {
+              "id": "http-401",
+              "label": "401 · 인증 실패",
+              "description": "유효한 token이 없는 보호 요청은 Controller 전에 Security Filter에서 끝납니다.",
+              "steps": [
+                {
+                  "from": "httpClient",
+                  "to": "securityFilter",
+                  "verb": "보호 API 요청",
+                  "payload": "missing | invalid Bearer token",
+                  "kind": "request",
+                  "concept": "Authentication"
+                },
+                {
+                  "from": "securityFilter",
+                  "to": "authenticationEntryPoint",
+                  "verb": "인증 실패 처리 위임",
+                  "payload": "missing | invalid authentication",
+                  "kind": "failure",
+                  "check": "06 Service 단위 테스트만으로는 이 status를 보장하지 않습니다."
+                },
+                {
+                  "from": "authenticationEntryPoint",
+                  "to": "httpClient",
+                  "verb": "인증 실패 응답",
+                  "payload": "401 Unauthorized + ErrorResponse",
+                  "kind": "response"
+                }
+              ]
+            },
+            {
+              "id": "http-400",
+              "label": "400 · Validation 실패",
+              "description": "인증된 요청이라도 DTO 제약을 통과하지 못하면 Service 전에 중단됩니다.",
+              "steps": [
+                {
+                  "from": "httpClient",
+                  "to": "securityFilter",
+                  "verb": "인증된 요청",
+                  "payload": "valid Bearer + invalid request body",
+                  "kind": "request"
+                },
+                {
+                  "from": "securityFilter",
+                  "to": "validation",
+                  "verb": "인증 통과",
+                  "payload": "request DTO",
+                  "kind": "call"
+                },
+                {
+                  "from": "validation",
+                  "to": "globalExceptionHandler",
+                  "verb": "DTO 제약 위반",
+                  "payload": "validation error",
+                  "kind": "failure",
+                  "concept": "Validation"
+                },
+                {
+                  "from": "globalExceptionHandler",
+                  "to": "httpClient",
+                  "verb": "검증 실패 응답",
+                  "payload": "400 Bad Request + ErrorResponse",
+                  "kind": "response"
+                }
+              ]
+            },
+            {
+              "id": "http-403",
+              "label": "403 · 인가 실패",
+              "description": "인증과 Validation은 통과했지만 작성자 정책에 맞지 않으면 Service 예외가 403으로 변환됩니다.",
+              "steps": [
+                {
+                  "from": "httpClient",
+                  "to": "securityFilter",
+                  "verb": "다른 사용자의 수정 요청",
+                  "payload": "valid Bearer + PUT /posts/{id}",
+                  "kind": "request"
+                },
+                {
+                  "from": "securityFilter",
+                  "to": "validation",
+                  "verb": "인증 통과",
+                  "payload": "authenticated request",
+                  "kind": "call"
+                },
+                {
+                  "from": "validation",
+                  "to": "postController",
+                  "verb": "요청 형식 통과",
+                  "payload": "valid PostUpdateRequest",
+                  "kind": "call"
+                },
+                {
+                  "from": "postController",
+                  "to": "postService",
+                  "verb": "작성자 정책 확인 요청",
+                  "payload": "id + request + currentUserEmail",
+                  "kind": "call"
+                },
+                {
+                  "from": "postService",
+                  "to": "globalExceptionHandler",
+                  "verb": "인가 실패",
+                  "payload": "ForbiddenPostAccessException",
+                  "kind": "failure",
+                  "concept": "Authorization"
+                },
+                {
+                  "from": "globalExceptionHandler",
+                  "to": "httpClient",
+                  "verb": "인가 실패 응답",
+                  "payload": "403 Forbidden + ErrorResponse",
+                  "kind": "response"
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "06 Service unit-test guarantee",
+              "reason": "이 diagram은 필요한 HTTP 경계를 구분하지만 06 필수 단위 테스트 자체의 실행 증거는 아닙니다."
+            }
+          ]
+        },
         "route": [
           "HTTP Client",
           "Security Filter",
