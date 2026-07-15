@@ -12,7 +12,7 @@ window.visualLabData = {
   "defaultSequence": "03",
   "workbench": {
     "kind": "gate",
-    "title": "요청 실패 게이트",
+    "title": "잘못된 요청이 멈추는 경계",
     "instruction": "요청 상태를 선택해 DTO 검증과 비즈니스 예외가 저장 흐름을 어디에서 차단하고 어떤 ErrorResponse를 남기는지 확인하세요.",
     "visual": {
       "src": "../../assets/diagrams/03-request-gates.svg",
@@ -53,10 +53,10 @@ window.visualLabData = {
         "boundary": "HTTP 외부"
       },
       "request-gate": {
-        "label": "Spring MVC + Bean Validation",
+        "label": "Spring MVC request binding",
         "icon": "gate",
         "kind": "gate",
-        "role": "Controller method body 전에 request binding과 DTO 제약을 확인합니다.",
+        "role": "body 또는 path variable을 바인딩하고 `@Valid` DTO에만 Bean Validation을 적용합니다.",
         "boundary": "요청 형식 경계",
         "codePointIds": ["request-validation"]
       },
@@ -100,10 +100,16 @@ window.visualLabData = {
     "scenarios": [
       {
         "id": "valid-create",
-        "label": "title·content가 채워진 POST",
+        "label": "title·content·author가 채워진 POST",
         "flowId": "valid-create",
         "tone": "recovered",
         "prompt": "title과 content가 채워진 POST 요청은 저장 전에 어느 경계를 먼저 만날까요?",
+        "observationTitle": "유효한 title과 content가 Validation gate를 통과해 저장되는가?",
+        "reflection": {
+          "prompt": "유효한 요청이 Validation에서 DB 저장까지 진행되는 조건을 적어 보세요.",
+          "hint": "모든 제약 통과가 Service 호출과 INSERT를 허용하는 gate입니다."
+        },
+        "theoryRef": "../../../theory.md#seq-03",
         "prediction": {
           "prompt": "이 입력은 DB 저장 전에 어떤 순서로 처리될까요?",
           "options": [
@@ -120,7 +126,7 @@ window.visualLabData = {
           "explanation": "요청 형식을 먼저 검증해야 잘못된 입력이 Service와 DB 변경으로 이어지지 않습니다."
         },
         "diagram": {
-          "caption": "Spring MVC가 DTO를 바인딩하고 Bean Validation을 통과시킨 요청만 Controller method와 저장 흐름으로 들어갑니다.",
+          "caption": "Spring MVC가 세 필드 DTO를 바인딩하고 Bean Validation을 통과시킨 요청만 Controller method와 저장 흐름으로 들어갑니다.",
           "lanes": [
             {
               "id": "valid-request",
@@ -133,6 +139,13 @@ window.visualLabData = {
                   "verb": "요청·바인딩",
                   "payload": "POST /posts + JSON → PostCreateRequest",
                   "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "POST /posts + JSON → PostCreateRequest",
+                    "before": "Client: POST /posts + JSON → PostCreateRequest 전송 준비",
+                    "after": "Spring MVC request binding: POST /posts + JSON → PostCreateRequest 수신"
+                  },
+                  "evidenceScope": "manual",
                   "concept": "Spring MVC argument resolution",
                   "check": "JSON field가 Request DTO에 바인딩되는지 확인합니다."
                 },
@@ -140,11 +153,20 @@ window.visualLabData = {
                   "from": "request-gate",
                   "to": "controller",
                   "verb": "검증 통과",
-                  "payload": "@Valid + DTO constraints",
+                  "payload": "@Valid + title/content/author constraints 통과",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "@Valid + title/content/author constraints 통과",
+                    "before": "PostController method: 세 필드 제약 통과 여부가 정해지지 않음",
+                    "after": "PostController method: title·content·author가 모두 non-blank인 DTO로 진입"
+                  },
+                  "evidenceScope": "code",
                   "concept": "Bean Validation",
                   "check": "Controller method body가 실행 가능한 상태인지 확인합니다.",
-                  "codePointIds": ["request-validation"]
+                  "codePointIds": [
+                    "request-validation"
+                  ]
                 },
                 {
                   "from": "controller",
@@ -152,6 +174,13 @@ window.visualLabData = {
                   "verb": "호출",
                   "payload": "create(validated request)",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "create(validated request)",
+                    "before": "PostController: method argument create(validated request) 구성",
+                    "after": "PostService: create(validated request) method 진입"
+                  },
+                  "evidenceScope": "code",
                   "concept": "검증 책임 분리",
                   "check": "Service가 request null/blank를 다시 검사하지 않는지 확인합니다."
                 },
@@ -160,7 +189,14 @@ window.visualLabData = {
                   "to": "repository",
                   "verb": "저장",
                   "payload": "save(PostEntity)",
-                  "kind": "persist"
+                  "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "save(PostEntity)",
+                    "before": "PostRepository: 저장할 Entity는 있으나 DB 반영 전",
+                    "after": "PostRepository: Entity save가 영속성 경계에 전달됨"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "repository",
@@ -168,6 +204,13 @@ window.visualLabData = {
                   "verb": "영속화",
                   "payload": "INSERT posts row",
                   "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "INSERT posts row",
+                    "before": "MySQL posts table: 생성 요청 row 0건",
+                    "after": "MySQL posts table: 생성 id를 가진 row 1건"
+                  },
+                  "evidenceScope": "runtime",
                   "check": "정상 요청만 DB row로 이어지는지 확인합니다."
                 }
               ]
@@ -182,21 +225,42 @@ window.visualLabData = {
                   "to": "repository",
                   "verb": "반환",
                   "payload": "persisted row + id",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "persisted row + id",
+                    "before": "PostRepository: id 없는 생성 Entity를 저장 중",
+                    "after": "PostRepository: MySQL 생성 id를 가진 persisted Entity 확보"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "repository",
                   "to": "service",
                   "verb": "반환",
                   "payload": "saved PostEntity",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "saved PostEntity",
+                    "before": "PostService: id가 확정된 Post 없음",
+                    "after": "PostService: 새 id가 있는 saved Post 확보"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
                   "to": "controller",
                   "verb": "변환",
                   "payload": "PostEntity → PostResponse",
-                  "kind": "transform"
+                  "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "PostEntity → PostResponse",
+                    "before": "PostService: PostEntity",
+                    "after": "PostController: PostResponse"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "controller",
@@ -204,6 +268,13 @@ window.visualLabData = {
                   "verb": "응답",
                   "payload": "201 Created + PostResponse",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "201 Created + PostResponse",
+                    "before": "Client: HTTP status와 body 미확정",
+                    "after": "Client: 201 Created + PostResponse"
+                  },
+                  "evidenceScope": "runtime",
                   "check": "Swagger 정상 응답과 DB row를 확인합니다."
                 }
               ]
@@ -233,6 +304,12 @@ window.visualLabData = {
         "flowId": "failure-flow",
         "tone": "blocked",
         "prompt": "빈 필수 값은 저장 계층에 닿기 전에 어느 게이트에서 멈춰야 할까요?",
+        "observationTitle": "빈 title이 Service 호출 전에 400으로 끝나는가?",
+        "reflection": {
+          "prompt": "필수 값 위반이 DB 변경을 막고 400 응답을 만드는 규칙은 무엇인가요?",
+          "hint": "`@NotBlank` 실패, Validation 예외, 전역 handler 응답을 순서대로 연결하세요."
+        },
+        "theoryRef": "../../../theory.md#seq-03",
         "prediction": {
           "prompt": "빈 title 요청은 어디까지 도달해야 할까요?",
           "options": [
@@ -262,6 +339,13 @@ window.visualLabData = {
                   "verb": "요청·바인딩",
                   "payload": "POST /posts + { title: blank }",
                   "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "POST /posts + { title: blank }",
+                    "before": "Client: POST /posts + { title: blank } 전송 준비",
+                    "after": "Spring MVC request binding: POST /posts + { title: blank } 수신"
+                  },
+                  "evidenceScope": "manual",
                   "concept": "invalid Request DTO",
                   "check": "빈 title 조건을 확인합니다."
                 },
@@ -271,9 +355,19 @@ window.visualLabData = {
                   "verb": "던짐",
                   "payload": "MethodArgumentNotValidException",
                   "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "MethodArgumentNotValidException",
+                    "before": "PostController method와 DB INSERT가 실행 가능한 후보 상태",
+                    "after": "DTO 제약 실패로 Controller method·Service·DB INSERT 미도달"
+                  },
+                  "evidenceScope": "code",
                   "concept": "Bean Validation failure",
                   "check": "Controller method body가 실행되지 않는지 확인합니다.",
-                  "codePointIds": ["request-validation", "global-handler"]
+                  "codePointIds": [
+                    "request-validation",
+                    "global-handler"
+                  ]
                 },
                 {
                   "from": "exception-handler",
@@ -281,6 +375,13 @@ window.visualLabData = {
                   "verb": "응답",
                   "payload": "400 ErrorResponse { VALIDATION_ERROR, errors }",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "400 ErrorResponse { VALIDATION_ERROR, errors }",
+                    "before": "Client: HTTP status와 body 미확정",
+                    "after": "Client: 400 ErrorResponse { VALIDATION_ERROR, errors }"
+                  },
+                  "evidenceScope": "runtime",
                   "concept": "일관된 실패 응답",
                   "check": "status, code, field errors를 확인합니다."
                 }
@@ -321,6 +422,12 @@ window.visualLabData = {
         "flowId": "failure-flow",
         "tone": "blocked",
         "prompt": "형식은 맞지만 대상이 없다면 DTO 검증과 다른 어느 책임에서 실패해야 할까요?",
+        "observationTitle": "형식이 맞아도 조회 row가 없으면 404가 되는가?",
+        "reflection": {
+          "prompt": "Validation 400과 대상 없음 404를 실패 위치로 구분해 보세요.",
+          "hint": "400은 요청 binding 경계, 404는 Repository 조회 이후의 대상 존재 경계입니다."
+        },
+        "theoryRef": "../../../theory.md#seq-03",
         "prediction": {
           "prompt": "형식이 맞는 요청에서 게시글 id만 없다면 어떤 실패로 구분할까요?",
           "options": [
@@ -348,10 +455,17 @@ window.visualLabData = {
                   "from": "client",
                   "to": "request-gate",
                   "verb": "요청·바인딩",
-                  "payload": "GET /posts/{id}",
+                  "payload": "GET /posts/{id} + path variable binding",
                   "kind": "request",
-                  "concept": "PathVariable binding",
-                  "check": "id가 올바른 타입으로 바인딩되는지 확인합니다."
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "GET /posts/{id} + path variable binding",
+                    "before": "Client: GET /posts/{id} + path variable binding 전송 준비",
+                    "after": "Spring MVC request binding: GET /posts/{id} + path variable binding 수신"
+                  },
+                  "evidenceScope": "manual",
+                  "concept": "Spring MVC type conversion",
+                  "check": "`@PathVariable Long` 변환이 DTO Bean Validation과 다른 경계임을 확인합니다."
                 },
                 {
                   "from": "request-gate",
@@ -359,35 +473,70 @@ window.visualLabData = {
                   "verb": "전달",
                   "payload": "id",
                   "kind": "transform",
-                  "concept": "형식 통과"
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "id",
+                    "before": "Spring MVC: path 문자열을 Long으로 바꾸기 전",
+                    "after": "PostController: Long id argument 사용 가능"
+                  },
+                  "evidenceScope": "code",
+                  "concept": "PathVariable Long binding"
                 },
                 {
                   "from": "controller",
                   "to": "service",
                   "verb": "호출",
                   "payload": "getById(id)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "getById(id)",
+                    "before": "PostController: method argument getById(id) 구성",
+                    "after": "PostService: getById(id) method 진입"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
                   "to": "repository",
                   "verb": "조회",
                   "payload": "findById(id)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "findById(id)",
+                    "before": "PostService: findById(id)에 사용할 id 또는 email 보유",
+                    "after": "PostRepository: findById(id) 조회 실행"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "repository",
                   "to": "database",
                   "verb": "질의",
                   "payload": "SELECT posts row by id",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "SELECT posts row by id",
+                    "before": "PostRepository: SELECT posts row by id에 사용할 id 또는 email 보유",
+                    "after": "MySQL: SELECT posts row by id 조회 실행"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "database",
                   "to": "repository",
                   "verb": "반환",
                   "payload": "no row",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "no row",
+                    "before": "PostRepository: SELECT 결과 건수 미확정",
+                    "after": "PostRepository: SELECT 결과 0 rows"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "repository",
@@ -395,6 +544,13 @@ window.visualLabData = {
                   "verb": "반환",
                   "payload": "Optional.empty",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "Optional.empty",
+                    "before": "PostService: 대상 존재 여부 미확정",
+                    "after": "PostService: Optional.empty로 대상 없음 확정"
+                  },
+                  "evidenceScope": "code",
                   "check": "형식 문제가 아니라 대상 부재임을 확인합니다."
                 }
               ]
@@ -410,6 +566,13 @@ window.visualLabData = {
                   "verb": "던짐",
                   "payload": "PostNotFoundException",
                   "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "PostNotFoundException",
+                    "before": "PostService: Optional.empty를 받은 조회 흐름",
+                    "after": "PostNotFoundException 발생; PostResponse 생성 없이 handler로 이동"
+                  },
+                  "evidenceScope": "code",
                   "concept": "도메인 예외",
                   "check": "Service가 빈 결과를 정상 PostResponse로 만들지 않는지 확인합니다."
                 },
@@ -419,9 +582,18 @@ window.visualLabData = {
                   "verb": "응답",
                   "payload": "404 ErrorResponse { POST_NOT_FOUND }",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "404 ErrorResponse { POST_NOT_FOUND }",
+                    "before": "Client: HTTP status와 body 미확정",
+                    "after": "Client: 404 ErrorResponse { POST_NOT_FOUND }"
+                  },
+                  "evidenceScope": "runtime",
                   "concept": "Not Found 응답",
                   "check": "status와 error code를 확인합니다.",
-                  "codePointIds": ["global-handler"]
+                  "codePointIds": [
+                    "global-handler"
+                  ]
                 }
               ]
             }
@@ -558,7 +730,7 @@ window.visualLabData = {
           "message": "결과와 실패 지점을 확인합니다.",
           "messageKind": "response",
           "problem": "구현 후 실제로 어느 지점이 통과했는지 확인해야 합니다.",
-          "concept": "Verification",
+          "concept": "실패 응답 확인",
           "action": "문서의 확인 명령이나 화면에서 결과를 검증합니다.",
           "check": "성공 흐름과 실패 흐름을 말로 설명합니다.",
           "note": "Visual Lab은 코드를 대신 완성하지 않고 확인 지점을 고정합니다.",
@@ -704,7 +876,7 @@ window.visualLabData = {
       "id": "valid-create-check-4",
       "label": "확인 지점",
       "problem": "구현 후 실제로 어느 지점이 통과했는지 확인해야 합니다.",
-      "concept": "Verification",
+      "concept": "실행 결과 확인",
       "action": "문서의 확인 명령이나 화면에서 결과를 검증합니다.",
       "check": "성공 흐름과 실패 흐름을 말로 설명합니다.",
       "codePointIds": [
@@ -718,7 +890,7 @@ window.visualLabData = {
       "title": "Request DTO에서 입력 형식을 먼저 막습니다",
       "file": "src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt",
       "language": "kotlin",
-      "snippet": "data class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\")\n    val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\")\n    val content: String\n)",
+      "snippet": "// 제목, 본문, 작성자 중 빈 필드는 Service 호출 전에 막습니다.\ndata class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\") val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\") val content: String,\n    @field:NotBlank(message = \"author는 비어 있을 수 없습니다.\") val author: String\n)",
       "explanation": "형식 오류는 Service와 DB까지 내려가기 전에 요청 입구에서 멈춥니다.",
       "check": "빈 title 요청이 저장 로직까지 내려가지 않는지 확인합니다."
     },
@@ -727,7 +899,7 @@ window.visualLabData = {
       "title": "전역 handler는 실패를 같은 응답 형식으로 바꿉니다",
       "file": "src/main/kotlin/com/andi/rest_crud/exception/GlobalExceptionHandler.kt",
       "language": "kotlin",
-      "snippet": "@ExceptionHandler(MethodArgumentNotValidException::class)\n@ResponseStatus(HttpStatus.BAD_REQUEST)\nfun handleValidationException(exception: MethodArgumentNotValidException): ErrorResponse {\n    val errors = exception.bindingResult.fieldErrors\n        .associate { fieldError ->\n            fieldError.field to (fieldError.defaultMessage ?: \"잘못된 요청입니다.\")\n        }\n\n    return ErrorResponse(\n        code = \"VALIDATION_ERROR\",\n        message = \"입력값 검증에 실패했습니다.\",\n        errors = errors\n    )\n}",
+      "snippet": "// Validation 예외를 field 오류가 있는 400 응답 계약으로 바꿉니다.\n@ExceptionHandler(MethodArgumentNotValidException::class)\n@ResponseStatus(HttpStatus.BAD_REQUEST)\nfun handleValidationException(exception: MethodArgumentNotValidException): ErrorResponse {\n    val errors = exception.bindingResult.fieldErrors\n        .associate { it.field to (it.defaultMessage ?: \"잘못된 요청입니다.\") }\n    return ErrorResponse(\n        code = \"VALIDATION_ERROR\",\n        message = \"입력값 검증에 실패했습니다.\",\n        errors = errors\n    )\n}",
       "explanation": "클라이언트가 실패 이유를 안정적으로 읽도록 에러 응답을 통일합니다.",
       "check": "Validation 실패와 없는 데이터 실패의 응답 code가 구분되는지 봅니다."
     }
