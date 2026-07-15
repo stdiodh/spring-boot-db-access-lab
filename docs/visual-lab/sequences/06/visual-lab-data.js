@@ -12,7 +12,7 @@ window.visualLabData = {
   "defaultSequence": "06",
   "workbench": {
     "kind": "test",
-    "title": "테스트 보장 범위 워크벤치",
+    "title": "테스트가 실제로 보장하는 범위",
     "instruction": "테스트 시나리오를 선택하고 fixture, mock, Service 실행, assertion이 무엇을 보장하며 HTTP 경계에서 무엇이 남는지 확인하세요.",
     "visual": {
       "src": "../../assets/diagrams/06-test-scope.svg",
@@ -178,6 +178,12 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "create(request, ownerEmail)의 반환 값을 재현 가능하게 비교하려면 어떤 협력 상태가 필요할까요?",
+        "observationTitle": "고정한 Repository 결과가 네 응답 필드로 보존되는가?",
+        "reflection": {
+          "prompt": "fixture와 stub이 성공 테스트를 재현 가능하게 만드는 규칙을 설명해 보세요.",
+          "hint": "입력과 협력자 반환을 고정한 뒤 id, title, content, author를 비교합니다."
+        },
+        "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
           "prompt": "이 Service 호출을 단위 테스트하려면 어느 입력과 협력 결과를 준비할까요?",
           "options": [
@@ -207,6 +213,13 @@ window.visualLabData = {
                   "verb": "테스트 입력 생성",
                   "payload": "PostCreateRequest + saved PostEntity",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "PostCreateRequest + saved PostEntity",
+                    "before": "JUnit Test method: 생성 request와 저장 결과 fixture 없음",
+                    "after": "TestFixtureFactory: request와 id=1인 saved PostEntity 생성"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Fixture",
                   "codePointIds": [
                     "fixture-factory"
@@ -217,7 +230,14 @@ window.visualLabData = {
                   "to": "testMethod",
                   "verb": "fixture 반환",
                   "payload": "request + entity",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "request + entity",
+                    "before": "JUnit Test method: fixture 변수 미생성",
+                    "after": "JUnit Test method: request와 savedPost fixture 확보"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "testMethod",
@@ -225,6 +245,13 @@ window.visualLabData = {
                   "verb": "저장 결과 stub",
                   "payload": "save(entity) → savedPost",
                   "kind": "config",
+                  "effect": {
+                    "kind": "preserve",
+                    "subject": "save(entity) → savedPost",
+                    "before": "Mock collaborator: save(entity) 결과 미설정",
+                    "after": "Mock collaborator: save(entity) 호출 시 savedPost 반환"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Mock"
                 }
               ]
@@ -240,6 +267,13 @@ window.visualLabData = {
                   "verb": "생성 흐름 실행",
                   "payload": "create(request, owner@example.com)",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "create(request, owner@example.com)",
+                    "before": "JUnit Test method: method argument create(request, owner@example.com) 구성",
+                    "after": "PostService: create(request, owner@example.com) method 진입"
+                  },
+                  "evidenceScope": "test",
                   "codePointIds": [
                     "service-unit-test"
                   ]
@@ -249,21 +283,42 @@ window.visualLabData = {
                   "to": "mockPostRepository",
                   "verb": "게시글 저장 호출",
                   "payload": "save(PostEntity)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "save(PostEntity)",
+                    "before": "PostService: 저장할 Entity 또는 Post 구성 완료",
+                    "after": "Mock PostRepository: save(PostEntity) 실행"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "mockPostRepository",
                   "to": "postService",
                   "verb": "준비한 결과 반환",
                   "payload": "savedPost",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "savedPost",
+                    "before": "PostService: mock save 결과 없음",
+                    "after": "PostService: id가 있는 savedPost 확보"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "postService",
                   "to": "testMethod",
                   "verb": "응답 변환 결과 반환",
                   "payload": "PostResponse",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "PostResponse",
+                    "before": "JUnit Test method: Service 실행 결과 없음",
+                    "after": "JUnit Test method: PostResponse 확보"
+                  },
+                  "evidenceScope": "test"
                 }
               ]
             },
@@ -278,6 +333,13 @@ window.visualLabData = {
                   "verb": "응답 필드 비교",
                   "payload": "id + title + content + author",
                   "kind": "compare",
+                  "effect": {
+                    "kind": "verify",
+                    "subject": "id + title + content + author",
+                    "before": "PostResponse 네 필드 assertion: 미실행",
+                    "after": "id·title·content·author 각각 기대값과 비교됨"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Assertion",
                   "check": "create 테스트는 save 호출 횟수를 별도로 verify하지 않습니다."
                 },
@@ -286,7 +348,14 @@ window.visualLabData = {
                   "to": "testMethod",
                   "verb": "검증 결과",
                   "payload": "PASS | FAIL",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "PASS | FAIL",
+                    "before": "Assertion: 실제 결과 비교 미실행",
+                    "after": "Assertion: 필드 일치 여부에 따라 PASS 또는 FAIL 결정"
+                  },
+                  "evidenceScope": "test"
                 }
               ]
             }
@@ -319,6 +388,12 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "Repository가 Optional.empty()를 반환하도록 준비한 뒤 Service 호출에서 무엇을 관찰할까요?",
+        "observationTitle": "Optional.empty()가 PostNotFoundException으로 관찰되는가?",
+        "reflection": {
+          "prompt": "없는 게시글 테스트에서 stub과 예외 assertion의 인과 관계를 적어 보세요.",
+          "hint": "`findById(999)`의 반환을 empty로 고정했기 때문에 Service의 not-found 분기가 실행됩니다."
+        },
+        "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
           "prompt": "이 반환 조건에서 assertion 대상은 반환 값과 예외 중 무엇일까요?",
           "options": [
@@ -348,6 +423,13 @@ window.visualLabData = {
                   "verb": "조회 실패 stub",
                   "payload": "findById(999) → Optional.empty",
                   "kind": "config",
+                  "effect": {
+                    "kind": "preserve",
+                    "subject": "findById(999) → Optional.empty",
+                    "before": "Mock collaborator: findById(999) 결과 미설정",
+                    "after": "Mock collaborator: findById(999) 호출 시 Optional.empty 반환"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Mock"
                 },
                 {
@@ -356,6 +438,13 @@ window.visualLabData = {
                   "verb": "없는 게시글 조회",
                   "payload": "getById(999)",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "getById(999)",
+                    "before": "JUnit Test method: method argument getById(999) 구성",
+                    "after": "PostService: getById(999) method 진입"
+                  },
+                  "evidenceScope": "test",
                   "codePointIds": [
                     "service-unit-test"
                   ]
@@ -365,21 +454,42 @@ window.visualLabData = {
                   "to": "mockPostRepository",
                   "verb": "게시글 조회 호출",
                   "payload": "findById(999)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "findById(999)",
+                    "before": "PostService: findById(999)에 사용할 id 또는 email 보유",
+                    "after": "Mock PostRepository: findById(999) 조회 실행"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "mockPostRepository",
                   "to": "postService",
                   "verb": "조회 결과 없음",
                   "payload": "Optional.empty",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "Optional.empty",
+                    "before": "PostService: 대상 존재 여부 미확정",
+                    "after": "PostService: Optional.empty로 대상 없음 확정"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "postService",
                   "to": "testMethod",
                   "verb": "기대 실패 반환",
                   "payload": "throw PostNotFoundException",
-                  "kind": "failure"
+                  "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "throw PostNotFoundException",
+                    "before": "PostService: Optional.empty를 받은 조회 흐름",
+                    "after": "PostNotFoundException 발생; PostResponse 생성 없이 handler로 이동"
+                  },
+                  "evidenceScope": "test"
                 }
               ]
             },
@@ -394,6 +504,13 @@ window.visualLabData = {
                   "verb": "예외 타입 비교",
                   "payload": "assertThrows(PostNotFoundException)",
                   "kind": "compare",
+                  "effect": {
+                    "kind": "verify",
+                    "subject": "assertThrows(PostNotFoundException)",
+                    "before": "기대 예외와 실제 실행 결과: 비교 전",
+                    "after": "assertThrows(PostNotFoundException): 실제 예외 타입과 일치"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Expected failure"
                 },
                 {
@@ -402,6 +519,13 @@ window.visualLabData = {
                   "verb": "기대 실패 확인",
                   "payload": "PASS",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "PASS",
+                    "before": "Assertion: 실제 결과 비교 미실행",
+                    "after": "Assertion: 기대 조건과 일치해 PASS 결정"
+                  },
+                  "evidenceScope": "test",
                   "check": "다른 예외이거나 예외가 없으면 FAIL입니다."
                 }
               ]
@@ -431,39 +555,52 @@ window.visualLabData = {
       },
       {
         "id": "auth-service-failure",
-        "label": "GOOGLE 계정의 password 로그인",
+        "label": "저장된 비밀번호와 다른 password 로그인",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "UserRepository가 GOOGLE 사용자를 반환할 때 LOCAL login 요청은 어느 협력 단계까지 진행할까요?",
+        "prompt": "저장된 hash와 다른 password로 login하면 어느 협력 단계에서 멈출까요?",
+        "observationTitle": "`wrong-password`가 JWT 생성 전에 InvalidCredentialsException으로 바뀌는가?",
+        "reflection": {
+          "prompt": "실제 encoder를 쓰는 테스트에서 저장 hash와 요청 password가 실패 분기를 정하는 규칙은 무엇인가요?",
+          "hint": "`password123`의 hash와 `wrong-password`를 `matches`하면 false이며 token은 생성되지 않습니다."
+        },
+        "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "이 계정 유형에서 AuthService.login 호출의 관찰 대상은 무엇일까요?",
+          "prompt": "잘못된 password로 AuthService.login을 호출할 때 무엇을 관찰할까요?",
           "options": [
             {
-              "id": "continue-credentials",
-              "label": "비밀번호를 비교하고 access token을 만든다"
+              "id": "continue-token",
+              "label": "불일치여도 access token을 만든다"
             },
             {
-              "id": "stop-at-provider-policy",
-              "label": "계정 유형 확인 뒤 기대 예외와 비교한다"
+              "id": "stop-at-password",
+              "label": "password 비교 실패 뒤 기대 예외와 비교한다"
             }
           ],
-          "answer": "stop-at-provider-policy",
-          "explanation": "AuthService는 password 로그인에서 LOCAL 계정만 허용하므로 GOOGLE 사용자는 비밀번호 비교 전에 InvalidCredentialsException으로 전환됩니다."
+          "answer": "stop-at-password",
+          "explanation": "AuthService는 BCrypt `matches`가 false이면 InvalidCredentialsException을 던지고 JWT를 만들지 않습니다."
         },
         "diagram": {
-          "caption": "AuthServiceTest는 UserRepository만 mock으로 두고 실제 BCryptPasswordEncoder와 JwtTokenProvider를 주입합니다. GOOGLE 계정 fixture는 provider 정책에서 거절되므로 Service의 password 비교와 token 생성에는 도달하지 않습니다.",
+          "caption": "AuthServiceTest는 UserRepository만 mock으로 두고 실제 BCryptPasswordEncoder와 JwtTokenProvider를 사용합니다. 저장된 `password123` hash와 요청의 `wrong-password` 비교가 실패해 token 생성 전에 멈춥니다.",
           "lanes": [
             {
               "id": "auth-arrange",
               "label": "Given · Arrange",
-              "description": "login request와 GOOGLE 사용자 fixture를 만들고 UserRepository 조회 결과만 stub으로 준비합니다.",
+              "description": "`wrong-password` 요청과 `password123` hash를 가진 사용자를 만들고 UserRepository 조회만 stub합니다.",
               "steps": [
                 {
                   "from": "testMethod",
                   "to": "fixtureFactory",
                   "verb": "로그인 입력 생성",
-                  "payload": "LoginRequest",
+                  "payload": "LoginRequest(password = wrong-password)",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "LoginRequest(password = wrong-password)",
+                    "before": "JUnit Test method: 비밀번호 불일치 요청 없음",
+                    "after": "TestFixtureFactory: tester@example.com과 wrong-password 요청 생성"
+                  },
+                  "evidenceScope": "test",
                   "codePointIds": [
                     "fixture-factory"
                   ]
@@ -472,15 +609,29 @@ window.visualLabData = {
                   "from": "fixtureFactory",
                   "to": "testMethod",
                   "verb": "request 반환",
-                  "payload": "email + password",
-                  "kind": "response"
+                  "payload": "tester@example.com + wrong-password",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "tester@example.com + wrong-password",
+                    "before": "JUnit Test method: 로그인 실패 입력 미생성",
+                    "after": "JUnit Test method: tester email과 wrong-password request 확보"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "testMethod",
                   "to": "passwordEncoder",
                   "verb": "fixture 비밀번호 encoding",
-                  "payload": "request.password",
+                  "payload": "password123",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "password123",
+                    "before": "JUnit Test method: 저장 사용자용 원문 password123만 존재",
+                    "after": "PasswordEncoder: password123의 BCrypt hash 생성"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Real collaborator"
                 },
                 {
@@ -488,28 +639,56 @@ window.visualLabData = {
                   "to": "testMethod",
                   "verb": "encoded password 반환",
                   "payload": "bcrypt hash",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "bcrypt hash",
+                    "before": "JUnit Test method: 저장 password hash 없음",
+                    "after": "JUnit Test method: password123의 bcrypt hash 확보"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "testMethod",
                   "to": "fixtureFactory",
-                  "verb": "GOOGLE 사용자 생성",
-                  "payload": "authProvider = GOOGLE + providerId",
-                  "kind": "call"
+                  "verb": "저장 사용자 생성",
+                  "payload": "User(email, bcrypt(password123))",
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "User(email, bcrypt(password123))",
+                    "before": "JUnit Test method: email과 encoded password는 있으나 User fixture 없음",
+                    "after": "TestFixtureFactory: tester email과 password123 hash를 가진 User 생성"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "fixtureFactory",
                   "to": "testMethod",
                   "verb": "사용자 fixture 반환",
-                  "payload": "oauthUser",
-                  "kind": "response"
+                  "payload": "savedUser",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "savedUser",
+                    "before": "JUnit Test method: Repository가 돌려줄 User 없음",
+                    "after": "JUnit Test method: password123 hash를 가진 savedUser 확보"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "testMethod",
                   "to": "mockUserRepository",
                   "verb": "사용자 조회 stub",
-                  "payload": "findByEmail → GOOGLE user",
+                  "payload": "findByEmail(wrongPasswordRequest.email) → savedUser",
                   "kind": "config",
+                  "effect": {
+                    "kind": "preserve",
+                    "subject": "findByEmail(wrongPasswordRequest.email) → savedUser",
+                    "before": "Mock collaborator: findByEmail(wrongPasswordRequest.email) 결과 미설정",
+                    "after": "Mock collaborator: findByEmail(wrongPasswordRequest.email) 호출 시 savedUser 반환"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Mock"
                 }
               ]
@@ -517,36 +696,94 @@ window.visualLabData = {
             {
               "id": "auth-act",
               "label": "When · Act",
-              "description": "AuthService가 조회한 사용자의 AuthProvider를 password 로그인 정책과 비교합니다.",
+              "description": "AuthService가 조회한 사용자의 hash와 요청의 `wrong-password`를 실제 encoder로 비교합니다.",
               "steps": [
                 {
                   "from": "testMethod",
                   "to": "authService",
                   "verb": "로그인 실행",
                   "payload": "login(request)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "login(request)",
+                    "before": "JUnit Test method: method argument login(request) 구성",
+                    "after": "AuthService: login(request) method 진입"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["auth-wrong-password-test"]
                 },
                 {
                   "from": "authService",
                   "to": "mockUserRepository",
                   "verb": "사용자 조회",
                   "payload": "findByEmail(tester@example.com)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "findByEmail(tester@example.com)",
+                    "before": "AuthService: findByEmail(tester@example.com)에 사용할 id 또는 email 보유",
+                    "after": "Mock UserRepository: findByEmail(tester@example.com) 조회 실행"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "mockUserRepository",
                   "to": "authService",
                   "verb": "GOOGLE 사용자 반환",
-                  "payload": "oauthUser",
-                  "kind": "response"
+                  "payload": "savedUser",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "savedUser",
+                    "before": "AuthService: Repository가 돌려줄 User 없음",
+                    "after": "AuthService: password123 hash를 가진 savedUser 확보"
+                  },
+                  "evidenceScope": "test"
+                },
+                {
+                  "from": "authService",
+                  "to": "passwordEncoder",
+                  "verb": "비밀번호 비교",
+                  "payload": "matches(wrong-password, bcrypt(password123))",
+                  "kind": "compare",
+                  "effect": {
+                    "kind": "verify",
+                    "subject": "matches(wrong-password, bcrypt(password123))",
+                    "before": "raw password와 저장 hash: 일치 여부 미평가",
+                    "after": "PasswordEncoder.matches: false"
+                  },
+                  "evidenceScope": "test",
+                  "concept": "Real collaborator"
+                },
+                {
+                  "from": "passwordEncoder",
+                  "to": "authService",
+                  "verb": "불일치 반환",
+                  "payload": "false",
+                  "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "false",
+                    "before": "저장 hash와 요청 password의 일치 여부 미평가",
+                    "after": "PasswordEncoder.matches=false; JWT 생성 조건 불충족"
+                  },
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "authService",
                   "to": "testMethod",
-                  "verb": "계정 유형 거절",
+                  "verb": "인증 실패 예외",
                   "payload": "throw InvalidCredentialsException",
                   "kind": "failure",
-                  "concept": "AuthProvider policy"
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "throw InvalidCredentialsException",
+                    "before": "AuthService: JWT 발급 분기 진입 가능",
+                    "after": "InvalidCredentialsException 발생; createToken 호출과 token 응답 차단"
+                  },
+                  "evidenceScope": "test",
+                  "concept": "Password mismatch"
                 }
               ]
             },
@@ -561,6 +798,13 @@ window.visualLabData = {
                   "verb": "예외 타입 비교",
                   "payload": "assertThrows(InvalidCredentialsException)",
                   "kind": "compare",
+                  "effect": {
+                    "kind": "verify",
+                    "subject": "assertThrows(InvalidCredentialsException)",
+                    "before": "기대 예외와 실제 실행 결과: 비교 전",
+                    "after": "assertThrows(InvalidCredentialsException): 실제 예외 타입과 일치"
+                  },
+                  "evidenceScope": "test",
                   "concept": "Expected failure"
                 },
                 {
@@ -568,19 +812,22 @@ window.visualLabData = {
                   "to": "testMethod",
                   "verb": "정책 결과 확인",
                   "payload": "PASS",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "PASS",
+                    "before": "Assertion: 실제 결과 비교 미실행",
+                    "after": "Assertion: 기대 조건과 일치해 PASS 결정"
+                  },
+                  "evidenceScope": "test"
                 }
               ]
             }
           ],
           "notReached": [
             {
-              "label": "PasswordEncoder.matches",
-              "reason": "AuthProvider가 LOCAL이 아닌 분기에서 먼저 예외가 발생합니다. 실제 encoder는 fixture hash 생성에만 사용됩니다."
-            },
-            {
               "label": "JwtTokenProvider",
-              "reason": "계정 유형 확인에서 예외가 발생해 token 생성 코드에 도달하지 않습니다. 현재 테스트는 token provider 미호출을 별도 verify하지 않습니다."
+              "reason": "password 불일치에서 예외가 발생해 token 생성 코드에 도달하지 않습니다. 현재 테스트는 token provider 미호출을 별도 verify하지 않습니다."
             }
           ]
         },
@@ -593,12 +840,12 @@ window.visualLabData = {
           "Assertion"
         ],
         "snapshot": [
-          { "label": "Repository 반환", "value": "AuthProvider.GOOGLE" },
-          { "label": "PasswordEncoder.matches", "value": "도달하지 않음" },
+          { "label": "Repository 반환", "value": "password123 hash를 가진 User" },
+          { "label": "PasswordEncoder.matches", "value": "false" },
           { "label": "Assertion", "value": "InvalidCredentialsException", "tone": "recovered" }
         ],
-        "evidence": "AuthServiceTest는 UserRepository만 mock으로 두고 실제 BCryptPasswordEncoder와 JwtTokenProvider를 주입합니다. GOOGLE 사용자 fixture를 반환하도록 stub한 뒤 login 호출이 InvalidCredentialsException을 던지는지 assertThrows로 확인합니다.",
-        "outcome": "OAuth 계정의 password 로그인을 거절하는 AuthService 정책을 외부 OAuth Provider 호출 없이 검증합니다."
+        "evidence": "AuthServiceTest는 `password123`을 실제 encoder로 저장 hash로 만들고 요청에는 `wrong-password`를 넣습니다. Repository만 stub한 뒤 login이 InvalidCredentialsException을 던지는지 확인합니다.",
+        "outcome": "저장 hash와 다른 password는 실제 BCrypt 비교에서 실패하고 JWT 발급 전에 InvalidCredentialsException으로 끝납니다."
       },
       {
         "id": "http-policy-gap",
@@ -606,6 +853,12 @@ window.visualLabData = {
         "flowId": "status-code-view",
         "tone": "warning",
         "prompt": "이 세 HTTP 요청 조건의 status를 관찰하려면 어느 실행 경계가 필요할까요?",
+        "observationTitle": "400·401·403을 증명하려면 Service 단위 밖의 HTTP 실행이 필요한가?",
+        "reflection": {
+          "prompt": "현재 단위 테스트 증거와 앞으로 필요한 HTTP 통합 증거의 경계를 설명해 보세요.",
+          "hint": "Service 예외 assertion만으로 filter, handler, status serialization까지 실행됐다고 볼 수 없습니다."
+        },
+        "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
           "prompt": "현재 Service 단위 테스트 결과와 별도로 확인해야 할 경계는 무엇일까요?",
           "options": [
@@ -635,6 +888,13 @@ window.visualLabData = {
                   "verb": "보호 API 요청",
                   "payload": "Authorization header 없음",
                   "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "Authorization header 없음",
+                    "before": "HTTP Client: Authorization header 없음 전송 준비",
+                    "after": "Security Filter: Authorization header 없음 수신"
+                  },
+                  "evidenceScope": "concept",
                   "concept": "Authentication"
                 },
                 {
@@ -643,6 +903,13 @@ window.visualLabData = {
                   "verb": "chain 계속",
                   "payload": "Authentication 없이 filterChain.doFilter",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "Authentication 없이 filterChain.doFilter",
+                    "before": "Security Filter: Authentication을 만들지 못한 요청",
+                    "after": "Spring Security authorization: principal 없는 요청의 authorization 평가 시작"
+                  },
+                  "evidenceScope": "concept",
                   "concept": "JwtAuthenticationFilter"
                 },
                 {
@@ -651,6 +918,13 @@ window.visualLabData = {
                   "verb": "미인증 접근 거절",
                   "payload": "보호 endpoint authorization 실패",
                   "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "보호 endpoint authorization 실패",
+                    "before": "보호 endpoint: 인증된 principal 없이 접근 시도",
+                    "after": "authorization 거절; Controller method는 실행되지 않음"
+                  },
+                  "evidenceScope": "concept",
                   "check": "06 Service 단위 테스트만으로는 이 status를 보장하지 않습니다."
                 },
                 {
@@ -658,7 +932,14 @@ window.visualLabData = {
                   "to": "httpClient",
                   "verb": "인증 실패 응답",
                   "payload": "401 Unauthorized + ErrorResponse",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "401 Unauthorized + ErrorResponse",
+                    "before": "HTTP Client: HTTP status와 body 미확정",
+                    "after": "HTTP Client: 401 Unauthorized + ErrorResponse"
+                  },
+                  "evidenceScope": "concept"
                 }
               ]
             },
@@ -672,14 +953,28 @@ window.visualLabData = {
                   "to": "securityFilter",
                   "verb": "인증된 요청",
                   "payload": "valid Bearer + invalid request body",
-                  "kind": "request"
+                  "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "valid Bearer + invalid request body",
+                    "before": "HTTP Client: valid Bearer + invalid request body 전송 준비",
+                    "after": "Security Filter: valid Bearer + invalid request body 수신"
+                  },
+                  "evidenceScope": "concept"
                 },
                 {
                   "from": "securityFilter",
                   "to": "validation",
                   "verb": "인증 통과",
                   "payload": "request DTO",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "request DTO",
+                    "before": "Security Filter: 테스트 입력 request DTO 구성",
+                    "after": "DTO Validation: request DTO 실행"
+                  },
+                  "evidenceScope": "concept"
                 },
                 {
                   "from": "validation",
@@ -687,6 +982,13 @@ window.visualLabData = {
                   "verb": "DTO 제약 위반",
                   "payload": "validation error",
                   "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "validation error",
+                    "before": "invalid request body: Controller 진입 후보",
+                    "after": "Validation 실패; Service와 DB 호출 차단"
+                  },
+                  "evidenceScope": "concept",
                   "concept": "Validation"
                 },
                 {
@@ -694,7 +996,14 @@ window.visualLabData = {
                   "to": "httpClient",
                   "verb": "검증 실패 응답",
                   "payload": "400 Bad Request + ErrorResponse",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "400 Bad Request + ErrorResponse",
+                    "before": "HTTP Client: HTTP status와 body 미확정",
+                    "after": "HTTP Client: 400 Bad Request + ErrorResponse"
+                  },
+                  "evidenceScope": "concept"
                 }
               ]
             },
@@ -708,28 +1017,56 @@ window.visualLabData = {
                   "to": "securityFilter",
                   "verb": "다른 사용자의 수정 요청",
                   "payload": "valid Bearer + PUT /posts/{id}",
-                  "kind": "request"
+                  "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "valid Bearer + PUT /posts/{id}",
+                    "before": "HTTP Client: valid Bearer + PUT /posts/{id} 전송 준비",
+                    "after": "Security Filter: valid Bearer + PUT /posts/{id} 수신"
+                  },
+                  "evidenceScope": "concept"
                 },
                 {
                   "from": "securityFilter",
                   "to": "validation",
                   "verb": "인증 통과",
                   "payload": "authenticated request",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "authenticated request",
+                    "before": "Security Filter: 테스트 입력 authenticated request 구성",
+                    "after": "DTO Validation: authenticated request 실행"
+                  },
+                  "evidenceScope": "concept"
                 },
                 {
                   "from": "validation",
                   "to": "postController",
                   "verb": "요청 형식 통과",
                   "payload": "valid PostUpdateRequest",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "valid PostUpdateRequest",
+                    "before": "DTO Validation: 테스트 입력 valid PostUpdateRequest 구성",
+                    "after": "PostController: valid PostUpdateRequest 실행"
+                  },
+                  "evidenceScope": "concept"
                 },
                 {
                   "from": "postController",
                   "to": "postService",
                   "verb": "작성자 정책 확인 요청",
                   "payload": "id + request + currentUserEmail",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "id + request + currentUserEmail",
+                    "before": "PostController: 테스트 입력 id + request + currentUserEmail 구성",
+                    "after": "PostService: id + request + currentUserEmail 실행"
+                  },
+                  "evidenceScope": "concept"
                 },
                 {
                   "from": "postService",
@@ -737,6 +1074,13 @@ window.visualLabData = {
                   "verb": "인가 실패",
                   "payload": "ForbiddenPostAccessException",
                   "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "ForbiddenPostAccessException",
+                    "before": "PostEntity: 다른 작성자의 기존 값 유지",
+                    "after": "작성자 불일치 예외 발생; UPDATE와 save 호출 차단"
+                  },
+                  "evidenceScope": "concept",
                   "concept": "Authorization"
                 },
                 {
@@ -744,7 +1088,14 @@ window.visualLabData = {
                   "to": "httpClient",
                   "verb": "인가 실패 응답",
                   "payload": "403 Forbidden + ErrorResponse",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "403 Forbidden + ErrorResponse",
+                    "before": "HTTP Client: HTTP status와 body 미확정",
+                    "after": "HTTP Client: 403 Forbidden + ErrorResponse"
+                  },
+                  "evidenceScope": "concept"
                 }
               ]
             }
@@ -972,7 +1323,7 @@ window.visualLabData = {
           "message": "결과와 실패 지점을 확인합니다.",
           "messageKind": "response",
           "problem": "구현 후 실제로 어느 지점이 통과했는지 확인해야 합니다.",
-          "concept": "Verification",
+          "concept": "테스트 결과 확인",
           "action": "문서의 확인 명령이나 화면에서 결과를 검증합니다.",
           "check": "성공 흐름과 실패 흐름을 말로 설명합니다.",
           "note": "Visual Lab은 코드를 대신 완성하지 않고 확인 지점을 고정합니다.",
@@ -1040,8 +1391,8 @@ window.visualLabData = {
       "title": "Service 단위 테스트는 성공 흐름을 고정합니다",
       "file": "src/test/kotlin/com/andi/rest_crud/service/PostServiceTest.kt",
       "language": "kotlin",
-      "snippet": "@Test\nfun `create는 현재 로그인 사용자를 작성자로 저장한다`() {\n    val request = TestFixtureFactory.postCreateRequest()\n    val savedPost = TestFixtureFactory.postEntity(\n        id = 1L,\n        title = request.title,\n        content = request.content,\n        author = \"owner@example.com\"\n    )\n    `when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\n\n    val result = postService.create(request, \"owner@example.com\")\n\n    assertEquals(1L, result.id)\n    assertEquals(\"owner@example.com\", result.author)\n}",
-      "explanation": "테스트는 Service가 어떤 입력을 어떤 응답으로 바꿔야 하는지 고정합니다.",
+      "snippet": "// stub한 저장 결과가 응답의 네 필드로 보존되는지 비교합니다.\n`when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\nval result = postService.create(request, \"owner@example.com\")\nassertEquals(1L, result.id)\nassertEquals(request.title, result.title)\nassertEquals(request.content, result.content)\nassertEquals(\"owner@example.com\", result.author)",
+      "explanation": "고정한 savedPost는 Service 실행 뒤 id·title·content·author가 보존된 PostResponse로 관찰됩니다.",
       "check": "테스트가 DB 연결이 아니라 Service 판단을 검증하는지 확인합니다."
     },
     {
@@ -1049,9 +1400,18 @@ window.visualLabData = {
       "title": "Fixture는 반복 입력을 한 곳에서 만듭니다",
       "file": "src/test/kotlin/com/andi/rest_crud/support/TestFixtureFactory.kt",
       "language": "kotlin",
-      "snippet": "fun postCreateRequest(\n    title: String = \"테스트 제목\",\n    content: String = \"테스트 내용\"\n): PostCreateRequest = PostCreateRequest(\n    title = title,\n    content = content\n)",
+      "snippet": "// 기본 title과 content로 반복 가능한 생성 요청 fixture를 만듭니다.\nfun postCreateRequest(\n    title: String = \"테스트 제목\",\n    content: String = \"테스트 내용\"\n): PostCreateRequest = PostCreateRequest(\n    title = title,\n    content = content\n)",
       "explanation": "반복되는 테스트 입력을 fixture로 만들면 실패 케이스만 선명하게 바꿀 수 있습니다.",
       "check": "fixture 기본값과 테스트별 override 값을 구분합니다."
+    },
+    {
+      "id": "auth-wrong-password-test",
+      "title": "password 불일치 Service test는 예외를 검증합니다",
+      "file": "src/test/kotlin/com/andi/rest_crud/service/AuthServiceTest.kt",
+      "language": "kotlin",
+      "snippet": "// 저장 hash와 다른 요청 password가 인증 실패 예외가 되는지 확인합니다.\nval savedUser = TestFixtureFactory.user(\n    email = \"tester@example.com\",\n    password = requireNotNull(passwordEncoder.encode(\"password123\"))\n)\nval request = TestFixtureFactory.loginRequest(password = \"wrong-password\")\n`when`(userRepository.findByEmail(request.email)).thenReturn(Optional.of(savedUser))\nassertThrows(InvalidCredentialsException::class.java) {\n    authService.login(request)\n}",
+      "explanation": "Repository만 mock하고 실제 BCryptPasswordEncoder로 불일치 분기를 실행합니다.",
+      "check": "AuthProvider 분기가 아니라 `matches=false`가 예외를 만드는지 확인합니다."
     }
   ],
   "concepts": [

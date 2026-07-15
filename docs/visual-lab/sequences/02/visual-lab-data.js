@@ -12,7 +12,7 @@ window.visualLabData = {
   "defaultSequence": "02",
   "workbench": {
     "kind": "persistence",
-    "title": "영속성 경계 워크벤치",
+    "title": "요청이 DB row로 남는 과정",
     "instruction": "CRUD 시나리오를 선택하고 Request DTO가 Entity로 바뀌어 MySQL에 남는 경로와 DB 변경이 멈추는 지점을 확인하세요.",
     "visual": {
       "src": "../../assets/diagrams/02-persistence-boundary.svg",
@@ -67,6 +67,13 @@ window.visualLabData = {
         "boundary": "애플리케이션 처리",
         "codePointIds": ["entity-table", "repository-save"]
       },
+      "app-runtime": {
+        "label": "Spring Boot process",
+        "icon": "service",
+        "kind": "service",
+        "role": "애플리케이션 인스턴스를 시작하고 종료하며 외부 MySQL과 다시 연결합니다.",
+        "boundary": "애플리케이션 프로세스"
+      },
       "repository": {
         "label": "PostRepository",
         "icon": "repository",
@@ -98,6 +105,12 @@ window.visualLabData = {
         "flowId": "create-read",
         "tone": "recovered",
         "prompt": "POST 요청은 어떤 변환과 저장 경계를 지나 MySQL row가 될까요?",
+        "observationTitle": "생성 요청이 INSERT와 생성 id를 거쳐 영속 응답이 되는가?",
+        "reflection": {
+          "prompt": "요청 DTO가 재시작 뒤에도 남는 row가 되는 규칙을 설명해 보세요.",
+          "hint": "Entity 변환, Repository 저장, INSERT, 생성 id 반환의 경계를 순서대로 적으세요."
+        },
+        "theoryRef": "../../../theory.md#seq-02",
         "prediction": {
           "prompt": "POST 요청이 MySQL row가 될 때 중심 변환과 저장 책임은 어디에 있을까요?",
           "options": [
@@ -127,6 +140,13 @@ window.visualLabData = {
                   "verb": "요청",
                   "payload": "POST /posts + JSON body",
                   "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "POST /posts + JSON body",
+                    "before": "Client: POST /posts + JSON body 전송 준비",
+                    "after": "PostController: POST /posts + JSON body 수신"
+                  },
+                  "evidenceScope": "manual",
                   "concept": "HTTP request",
                   "check": "Swagger의 method, path, body를 확인합니다."
                 },
@@ -136,6 +156,13 @@ window.visualLabData = {
                   "verb": "호출",
                   "payload": "create(PostCreateRequest)",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "create(PostCreateRequest)",
+                    "before": "PostController: method argument create(PostCreateRequest) 구성",
+                    "after": "PostService: create(PostCreateRequest) method 진입"
+                  },
+                  "evidenceScope": "code",
                   "concept": "Request DTO",
                   "check": "Controller가 Repository를 직접 호출하지 않는지 확인합니다."
                 },
@@ -145,9 +172,18 @@ window.visualLabData = {
                   "verb": "변환",
                   "payload": "PostCreateRequest → PostEntity",
                   "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "PostCreateRequest → PostEntity",
+                    "before": "PostService: PostCreateRequest",
+                    "after": "PostService: PostEntity"
+                  },
+                  "evidenceScope": "code",
                   "concept": "DTO / Entity 경계",
                   "check": "Entity가 DB 저장 모양을 갖는지 확인합니다.",
-                  "codePointIds": ["entity-table"]
+                  "codePointIds": [
+                    "entity-table"
+                  ]
                 },
                 {
                   "from": "service",
@@ -155,9 +191,18 @@ window.visualLabData = {
                   "verb": "저장",
                   "payload": "save(PostEntity)",
                   "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "save(PostEntity)",
+                    "before": "PostRepository: 저장할 Entity는 있으나 DB 반영 전",
+                    "after": "PostRepository: Entity save가 영속성 경계에 전달됨"
+                  },
+                  "evidenceScope": "code",
                   "concept": "JpaRepository",
                   "check": "Service가 저장 세부 구현을 Repository에 맡기는지 확인합니다.",
-                  "codePointIds": ["repository-save"]
+                  "codePointIds": [
+                    "repository-save"
+                  ]
                 },
                 {
                   "from": "repository",
@@ -165,6 +210,13 @@ window.visualLabData = {
                   "verb": "영속화",
                   "payload": "INSERT posts row",
                   "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "INSERT posts row",
+                    "before": "MySQL posts table: 생성 요청 row 0건",
+                    "after": "MySQL posts table: 생성 id를 가진 row 1건"
+                  },
+                  "evidenceScope": "runtime",
                   "concept": "JPA → SQL",
                   "check": "MySQL posts table에 row가 생겼는지 확인합니다."
                 }
@@ -181,6 +233,13 @@ window.visualLabData = {
                   "verb": "반환",
                   "payload": "generated id + persisted row",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "generated id + persisted row",
+                    "before": "PostRepository: 생성 id 없는 저장 요청",
+                    "after": "PostRepository: MySQL이 만든 id와 persisted row 확보"
+                  },
+                  "evidenceScope": "runtime",
                   "concept": "DB 저장 결과",
                   "check": "생성된 id를 확인합니다."
                 },
@@ -190,6 +249,13 @@ window.visualLabData = {
                   "verb": "반환",
                   "payload": "saved PostEntity { id }",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "saved PostEntity { id }",
+                    "before": "PostService: id가 확정된 Post 없음",
+                    "after": "PostService: 새 id가 있는 saved Post 확보"
+                  },
+                  "evidenceScope": "code",
                   "concept": "saved Entity",
                   "check": "save 반환값이 id를 가지는지 확인합니다."
                 },
@@ -199,6 +265,13 @@ window.visualLabData = {
                   "verb": "변환",
                   "payload": "PostEntity → PostResponse",
                   "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "PostEntity → PostResponse",
+                    "before": "PostService: PostEntity",
+                    "after": "PostController: PostResponse"
+                  },
+                  "evidenceScope": "code",
                   "concept": "Response DTO",
                   "check": "Entity를 그대로 밖으로 내보내지 않는지 확인합니다."
                 },
@@ -208,6 +281,13 @@ window.visualLabData = {
                   "verb": "응답",
                   "payload": "201 Created + PostResponse JSON",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "201 Created + PostResponse JSON",
+                    "before": "Client: HTTP status와 body 미확정",
+                    "after": "Client: 201 Created + PostResponse JSON"
+                  },
+                  "evidenceScope": "runtime",
                   "concept": "HTTP response",
                   "check": "Swagger id와 MySQL row id를 비교합니다."
                 }
@@ -240,6 +320,12 @@ window.visualLabData = {
         "flowId": "create-read",
         "tone": "recovered",
         "prompt": "애플리케이션이 다시 시작돼도 같은 데이터를 찾을 수 있다는 증거는 무엇일까요?",
+        "observationTitle": "새 프로세스의 SELECT가 이전에 저장한 row를 다시 찾는가?",
+        "reflection": {
+          "prompt": "애플리케이션 재시작 뒤에도 조회가 가능한 이유를 상태의 소유자로 설명해 보세요.",
+          "hint": "데이터를 보유한 주체가 애플리케이션 메모리가 아니라 MySQL이라는 점을 사용하세요."
+        },
+        "theoryRef": "../../../theory.md#seq-02",
         "prediction": {
           "prompt": "서버 재시작 뒤 같은 게시글을 다시 찾게 하는 상태는 어디에 남아 있을까요?",
           "options": [
@@ -264,18 +350,61 @@ window.visualLabData = {
               "description": "새 애플리케이션 프로세스가 기존 id를 다시 조회합니다.",
               "steps": [
                 {
+                  "from": "app-runtime",
+                  "to": "app-runtime",
+                  "verb": "프로세스 재시작",
+                  "payload": "application process 종료 → 새 process 시작",
+                  "kind": "event",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "application process 종료 → 새 process 시작",
+                    "before": "기존 애플리케이션 process와 그 인스턴스가 실행 중",
+                    "after": "기존 process 종료 후 새 process와 새 인스턴스 실행"
+                  },
+                  "evidenceScope": "manual"
+                },
+                {
+                  "from": "app-runtime",
+                  "to": "database",
+                  "verb": "외부 상태 확인",
+                  "payload": "MySQL posts row의 같은 id",
+                  "kind": "compare",
+                  "effect": {
+                    "kind": "verify",
+                    "subject": "MySQL posts row의 같은 id",
+                    "before": "애플리케이션 종료 전: id를 가진 MySQL row 존재",
+                    "after": "새 애플리케이션 시작 후: 별도 MySQL process에 같은 row 존재"
+                  },
+                  "evidenceScope": "runtime",
+                  "concept": "프로세스 밖 영속성"
+                },
+                {
                   "from": "client",
                   "to": "controller",
                   "verb": "요청",
                   "payload": "GET /posts/{id}",
-                  "kind": "request"
+                  "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "GET /posts/{id}",
+                    "before": "Client: GET /posts/{id} 전송 준비",
+                    "after": "PostController: GET /posts/{id} 수신"
+                  },
+                  "evidenceScope": "manual"
                 },
                 {
                   "from": "controller",
                   "to": "service",
                   "verb": "호출",
                   "payload": "getById(id)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "getById(id)",
+                    "before": "PostController: method argument getById(id) 구성",
+                    "after": "PostService: getById(id) method 진입"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
@@ -283,6 +412,13 @@ window.visualLabData = {
                   "verb": "조회",
                   "payload": "findById(id)",
                   "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "findById(id)",
+                    "before": "PostService: findById(id)에 사용할 id 또는 email 보유",
+                    "after": "PostRepository: findById(id) 조회 실행"
+                  },
+                  "evidenceScope": "code",
                   "concept": "영속 데이터 재조회",
                   "check": "재시작 전 생성한 id를 사용합니다."
                 },
@@ -291,7 +427,14 @@ window.visualLabData = {
                   "to": "database",
                   "verb": "질의",
                   "payload": "SELECT posts row by id",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "SELECT posts row by id",
+                    "before": "PostRepository: SELECT posts row by id에 사용할 id 또는 email 보유",
+                    "after": "MySQL: SELECT posts row by id 조회 실행"
+                  },
+                  "evidenceScope": "runtime"
                 }
               ]
             },
@@ -305,21 +448,42 @@ window.visualLabData = {
                   "to": "repository",
                   "verb": "반환",
                   "payload": "existing posts row",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "existing posts row",
+                    "before": "PostRepository: 대상 row 또는 Entity 없음",
+                    "after": "PostRepository: existing posts row 확보"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "repository",
                   "to": "service",
                   "verb": "반환",
                   "payload": "PostEntity",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "PostEntity",
+                    "before": "PostService: 대상 row 또는 Entity 없음",
+                    "after": "PostService: PostEntity 확보"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
                   "to": "controller",
                   "verb": "변환",
                   "payload": "PostEntity → PostResponse",
-                  "kind": "transform"
+                  "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "PostEntity → PostResponse",
+                    "before": "PostService: PostEntity",
+                    "after": "PostController: PostResponse"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "controller",
@@ -327,6 +491,13 @@ window.visualLabData = {
                   "verb": "응답",
                   "payload": "200 OK + 같은 id의 JSON",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "200 OK + 같은 id의 JSON",
+                    "before": "Client: HTTP status와 body 미확정",
+                    "after": "Client: 200 OK + 같은 id의 JSON"
+                  },
+                  "evidenceScope": "runtime",
                   "check": "재시작 전후 id와 row가 같은지 확인합니다."
                 }
               ]
@@ -357,6 +528,12 @@ window.visualLabData = {
         "flowId": "update-delete",
         "tone": "signal",
         "prompt": "PUT 요청은 왜 먼저 기존 Entity를 찾은 뒤 값을 바꿔야 할까요?",
+        "observationTitle": "기존 Entity를 찾은 뒤에만 UPDATE가 실행되는가?",
+        "reflection": {
+          "prompt": "수정이 조회와 변경을 순서대로 요구하는 인과 규칙은 무엇인가요?",
+          "hint": "대상 Entity의 존재가 확인되어야 어떤 row를 바꿀지 결정할 수 있습니다."
+        },
+        "theoryRef": "../../../theory.md#seq-02",
         "prediction": {
           "prompt": "PUT으로 기존 게시글을 수정할 때 저장 전에 먼저 해야 할 일은 무엇일까요?",
           "options": [
@@ -385,42 +562,84 @@ window.visualLabData = {
                   "to": "controller",
                   "verb": "요청",
                   "payload": "PUT /posts/{id} + PostUpdateRequest",
-                  "kind": "request"
+                  "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "PUT /posts/{id} + PostUpdateRequest",
+                    "before": "Client: PUT /posts/{id} + PostUpdateRequest 전송 준비",
+                    "after": "PostController: PUT /posts/{id} + PostUpdateRequest 수신"
+                  },
+                  "evidenceScope": "manual"
                 },
                 {
                   "from": "controller",
                   "to": "service",
                   "verb": "호출",
                   "payload": "update(id, request)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "update(id, request)",
+                    "before": "PostController: method argument update(id, request) 구성",
+                    "after": "PostService: update(id, request) method 진입"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
                   "to": "repository",
                   "verb": "조회",
                   "payload": "findById(id)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "findById(id)",
+                    "before": "PostService: findById(id)에 사용할 id 또는 email 보유",
+                    "after": "PostRepository: findById(id) 조회 실행"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "repository",
                   "to": "database",
                   "verb": "질의",
                   "payload": "SELECT posts row by id",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "SELECT posts row by id",
+                    "before": "PostRepository: SELECT posts row by id에 사용할 id 또는 email 보유",
+                    "after": "MySQL: SELECT posts row by id 조회 실행"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "database",
                   "to": "repository",
                   "verb": "반환",
                   "payload": "posts row",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "posts row",
+                    "before": "PostRepository: 대상 row 또는 Entity 없음",
+                    "after": "PostRepository: posts row 확보"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "repository",
                   "to": "service",
                   "verb": "반환",
                   "payload": "PostEntity",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "PostEntity",
+                    "before": "PostService: 대상 row 또는 Entity 없음",
+                    "after": "PostService: PostEntity 확보"
+                  },
+                  "evidenceScope": "code"
                 }
               ]
             },
@@ -435,6 +654,13 @@ window.visualLabData = {
                   "verb": "변경",
                   "payload": "PostUpdateRequest → Entity fields",
                   "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "PostUpdateRequest → Entity fields",
+                    "before": "PostEntity: 조회 당시 title·content·author 유지",
+                    "after": "PostEntity: request의 title·content·author로 변경"
+                  },
+                  "evidenceScope": "code",
                   "concept": "Entity update",
                   "check": "title, content, author가 요청 값으로 바뀌는지 확인합니다."
                 },
@@ -444,6 +670,13 @@ window.visualLabData = {
                   "verb": "저장",
                   "payload": "save(PostEntity)",
                   "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "save(PostEntity)",
+                    "before": "PostRepository: 저장할 Entity는 있으나 DB 반영 전",
+                    "after": "PostRepository: Entity save가 영속성 경계에 전달됨"
+                  },
+                  "evidenceScope": "code",
                   "concept": "02 시퀀스의 명시적 save",
                   "check": "이 단계는 이후 transaction dirty checking과 구분합니다."
                 },
@@ -452,28 +685,56 @@ window.visualLabData = {
                   "to": "database",
                   "verb": "반영",
                   "payload": "UPDATE posts row",
-                  "kind": "persist"
+                  "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "UPDATE posts row",
+                    "before": "MySQL posts row: 이전 title·content·author",
+                    "after": "MySQL posts row: PostUpdateRequest 값으로 갱신"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "database",
                   "to": "repository",
                   "verb": "반환",
                   "payload": "updated row",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "updated row",
+                    "before": "PostRepository: 대상 row 또는 Entity 없음",
+                    "after": "PostRepository: updated row 확보"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "repository",
                   "to": "service",
                   "verb": "반환",
                   "payload": "updated PostEntity",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "updated PostEntity",
+                    "before": "PostService: 대상 row 또는 Entity 없음",
+                    "after": "PostService: updated PostEntity 확보"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
                   "to": "controller",
                   "verb": "변환",
                   "payload": "PostEntity → PostResponse",
-                  "kind": "transform"
+                  "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "PostEntity → PostResponse",
+                    "before": "PostService: PostEntity",
+                    "after": "PostController: PostResponse"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "controller",
@@ -481,6 +742,13 @@ window.visualLabData = {
                   "verb": "응답",
                   "payload": "200 OK + updated JSON",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "200 OK + updated JSON",
+                    "before": "Client: HTTP status와 body 미확정",
+                    "after": "Client: 200 OK + updated JSON"
+                  },
+                  "evidenceScope": "runtime",
                   "check": "응답과 MySQL row를 비교합니다."
                 }
               ]
@@ -512,6 +780,12 @@ window.visualLabData = {
         "flowId": "update-delete",
         "tone": "blocked",
         "prompt": "수정할 Entity를 찾지 못했다면 DB 변경은 어디에서 멈춰야 할까요?",
+        "observationTitle": "Optional.empty()에서 DB 변경 없이 흐름이 멈추는가?",
+        "reflection": {
+          "prompt": "없는 id가 수정 SQL까지 도달하지 못하게 하는 규칙을 설명해 보세요.",
+          "hint": "조회 결과 없음과 예외 발생을 연결하되, 이 시퀀스가 아직 404 계약을 확정하지 않는다는 범위를 지키세요."
+        },
+        "theoryRef": "../../../theory.md#seq-02",
         "prediction": {
           "prompt": "수정할 id가 DB에 없다면 save 호출은 어떻게 되어야 할까요?",
           "options": [
@@ -540,35 +814,70 @@ window.visualLabData = {
                   "to": "controller",
                   "verb": "요청",
                   "payload": "PUT /posts/{id} + PostUpdateRequest",
-                  "kind": "request"
+                  "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "PUT /posts/{id} + PostUpdateRequest",
+                    "before": "Client: PUT /posts/{id} + PostUpdateRequest 전송 준비",
+                    "after": "PostController: PUT /posts/{id} + PostUpdateRequest 수신"
+                  },
+                  "evidenceScope": "manual"
                 },
                 {
                   "from": "controller",
                   "to": "service",
                   "verb": "호출",
                   "payload": "update(id, request)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "update(id, request)",
+                    "before": "PostController: method argument update(id, request) 구성",
+                    "after": "PostService: update(id, request) method 진입"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "service",
                   "to": "repository",
                   "verb": "조회",
                   "payload": "findById(id)",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "findById(id)",
+                    "before": "PostService: findById(id)에 사용할 id 또는 email 보유",
+                    "after": "PostRepository: findById(id) 조회 실행"
+                  },
+                  "evidenceScope": "code"
                 },
                 {
                   "from": "repository",
                   "to": "database",
                   "verb": "질의",
                   "payload": "SELECT posts row by id",
-                  "kind": "call"
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "SELECT posts row by id",
+                    "before": "PostRepository: SELECT posts row by id에 사용할 id 또는 email 보유",
+                    "after": "MySQL: SELECT posts row by id 조회 실행"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "database",
                   "to": "repository",
                   "verb": "반환",
                   "payload": "no row",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "no row",
+                    "before": "PostRepository: SELECT 결과 건수 미확정",
+                    "after": "PostRepository: SELECT 결과 0 rows"
+                  },
+                  "evidenceScope": "runtime"
                 },
                 {
                   "from": "repository",
@@ -576,6 +885,13 @@ window.visualLabData = {
                   "verb": "반환",
                   "payload": "Optional.empty",
                   "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "Optional.empty",
+                    "before": "PostService: 대상 존재 여부 미확정",
+                    "after": "PostService: Optional.empty로 대상 없음 확정"
+                  },
+                  "evidenceScope": "code",
                   "check": "대상이 없음을 확인합니다."
                 }
               ]
@@ -591,6 +907,13 @@ window.visualLabData = {
                   "verb": "전파",
                   "payload": "NoSuchElementException",
                   "kind": "failure",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "NoSuchElementException",
+                    "before": "PostService: 수정 대상 Entity를 확보하지 못함",
+                    "after": "NoSuchElementException 발생; Entity field와 DB row 변경 없음"
+                  },
+                  "evidenceScope": "code",
                   "concept": "02 단계의 미처리 예외",
                   "check": "404 공통 응답은 아직 03의 범위임을 구분합니다."
                 },
@@ -599,7 +922,14 @@ window.visualLabData = {
                   "to": "client",
                   "verb": "오류 응답",
                   "payload": "기본 오류 응답 (상태·형식은 02 학습 범위 밖)",
-                  "kind": "response"
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "기본 오류 응답 (상태·형식은 02 학습 범위 밖)",
+                    "before": "Client: 수정 성공 JSON을 아직 받지 못함",
+                    "after": "Client: 처리되지 않은 예외의 기본 오류 응답 관찰; status·body 계약은 02에서 미정"
+                  },
+                  "evidenceScope": "runtime"
                 }
               ]
             }
@@ -672,7 +1002,7 @@ window.visualLabData = {
       "id": "create-read",
       "title": "생성/조회 흐름",
       "summary": "요청 DTO는 DB에 직접 저장되지 않고 Service에서 Entity로 바뀐 뒤 Repository에 저장됩니다.",
-      "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as PostController\n  participant Service as PostService\n  participant Repository as PostRepository\n  participant DB as MySQL\n  Client->>Controller: POST /posts + PostCreateRequest\n  Controller->>Service: create(request, authorEmail)\n  Service->>Repository: save(PostEntity)\n  Repository->>DB: insert row\n  DB-->>Repository: saved entity\n  Repository-->>Service: PostEntity\n  Service-->>Controller: PostResponse\n  Controller-->>Client: JSON response",
+      "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as PostController\n  participant Service as PostService\n  participant Repository as PostRepository\n  participant DB as MySQL\n  Client->>Controller: POST /posts + PostCreateRequest\n  Controller->>Service: create(request)\n  Service->>Repository: save(PostEntity from request.author)\n  Repository->>DB: insert row\n  DB-->>Repository: saved entity\n  Repository-->>Service: PostEntity\n  Service-->>Controller: PostResponse\n  Controller-->>Client: JSON response",
       "steps": [
         {
           "order": 1,
@@ -860,7 +1190,7 @@ window.visualLabData = {
           "message": "결과와 실패 지점을 확인합니다.",
           "messageKind": "response",
           "problem": "구현 후 실제로 어느 지점이 통과했는지 확인해야 합니다.",
-          "concept": "Verification",
+          "concept": "DB 저장 결과 확인",
           "action": "문서의 확인 명령이나 화면에서 결과를 검증합니다.",
           "check": "성공 흐름과 실패 흐름을 말로 설명합니다.",
           "note": "Visual Lab은 코드를 대신 완성하지 않고 확인 지점을 고정합니다.",
@@ -940,7 +1270,7 @@ window.visualLabData = {
       "title": "Entity는 DB 테이블과 연결되는 저장 모델입니다",
       "file": "src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt",
       "language": "kotlin",
-      "snippet": "@Entity\n@Table(name = \"posts\")\nclass PostEntity(\n    @Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    val id: Long = 0L,\n    var title: String,\n    var content: String,\n    var author: String\n)",
+      "snippet": "// Entity 속성을 posts table의 row 구조와 연결합니다.\n@Entity\n@Table(name = \"posts\")\nclass PostEntity(\n    @Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    val id: Long = 0L,\n    var title: String,\n    var content: String,\n    var author: String\n)",
       "explanation": "외부 요청 DTO가 아니라 DB row로 저장되는 내부 데이터 구조입니다.",
       "check": "Entity와 Request DTO를 같은 책임으로 보지 않습니다."
     },
@@ -949,7 +1279,7 @@ window.visualLabData = {
       "title": "Service는 Repository에 DB 저장을 요청합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/service/PostService.kt",
       "language": "kotlin",
-      "snippet": "fun create(request: PostCreateRequest, authorEmail: String): PostResponse {\n    val savedPost = postRepository.save(\n        PostEntity(\n            title = request.title,\n            content = request.content,\n            author = authorEmail\n        )\n    )\n\n    return PostResponse.from(savedPost)\n}",
+      "snippet": "// 02에서는 요청 DTO의 세 필드를 Entity로 만들어 저장합니다.\nfun create(request: PostCreateRequest): PostResponse {\n    val savedPost = postRepository.save(\n        PostEntity(\n            title = request.title,\n            content = request.content,\n            author = request.author\n        )\n    )\n    return PostResponse.from(savedPost)\n}",
       "explanation": "Service는 DTO를 Entity로 바꾸고 Repository 호출 순서를 조립합니다.",
       "check": "DB 접근 코드가 Controller에 들어가지 않았는지 확인합니다."
     }
