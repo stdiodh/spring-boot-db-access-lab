@@ -10,6 +10,101 @@ window.visualLabData = {
     "path": "spring-boot-db-access-lab"
   },
   "defaultSequence": "04",
+  "workbench": {
+    "kind": "auth",
+    "title": "인증·인가 경계 워크벤치",
+    "instruction": "로그인과 보호 API 시나리오를 바꾸며 token 발급, 요청 인증, 작성자 인가가 서로 다른 경계에서 판단되는지 확인하세요.",
+    "scenarios": [
+      {
+        "id": "login-success",
+        "label": "로그인 성공",
+        "flowId": "login-token",
+        "tone": "recovered",
+        "prompt": "올바른 자격 정보는 어떻게 다음 요청에 사용할 JWT가 될까요?",
+        "route": [
+          "Client",
+          "AuthController",
+          "AuthService",
+          "UserRepository",
+          "PasswordEncoder",
+          "JwtTokenProvider",
+          "Client"
+        ],
+        "snapshot": [
+          { "label": "Credential", "value": "일치" },
+          { "label": "인증 결과", "value": "사용자 확인", "tone": "recovered" },
+          { "label": "Response", "value": "JWT" }
+        ],
+        "evidence": "로그인 성공 응답의 token과 AuthService의 사용자 조회·비밀번호 확인·token 발급 순서를 확인합니다.",
+        "outcome": "로그인 결과로 발급한 JWT가 이후 보호 API 요청에서 사용자를 확인할 근거가 됩니다."
+      },
+      {
+        "id": "login-failure",
+        "label": "비밀번호 불일치",
+        "flowId": "login-token",
+        "tone": "blocked",
+        "prompt": "비밀번호가 맞지 않을 때 token 발급은 어느 판단 뒤에 멈춰야 할까요?",
+        "route": [
+          "Client",
+          "AuthController",
+          "AuthService",
+          "JwtTokenProvider",
+          "Client"
+        ],
+        "snapshot": [
+          { "label": "Credential", "value": "불일치", "tone": "blocked" },
+          { "label": "Token", "value": "발급하지 않음" },
+          { "label": "인증", "value": "실패" }
+        ],
+        "evidence": "로그인 실패 테스트에서 성공 응답이나 JWT가 생성되지 않는지 확인합니다.",
+        "outcome": "사용자 확인에 실패하면 JwtTokenProvider까지 신호를 보내지 않습니다.",
+        "stopAfter": 2
+      },
+      {
+        "id": "missing-token",
+        "label": "토큰 없는 보호 요청",
+        "flowId": "protected-api",
+        "tone": "blocked",
+        "prompt": "Authorization header가 없으면 보호 API 요청은 어디에서 차단될까요?",
+        "route": [
+          "Client",
+          "JwtAuthenticationFilter",
+          "Security boundary",
+          "Protected API"
+        ],
+        "snapshot": [
+          { "label": "Authorization", "value": "없음", "tone": "blocked" },
+          { "label": "Authentication", "value": "만들지 않음" },
+          { "label": "Response", "value": "401 Unauthorized" }
+        ],
+        "evidence": "토큰 없이 보호 API를 호출해 401이 반환되고 Controller 로직이 실행되지 않는지 확인합니다.",
+        "outcome": "인증되지 않은 요청은 Security 경계에서 끝나며 보호된 쓰기 흐름에 진입하지 않습니다.",
+        "stopAfter": 2
+      },
+      {
+        "id": "foreign-author",
+        "label": "다른 작성자의 글 수정",
+        "flowId": "protected-api",
+        "tone": "blocked",
+        "prompt": "유효한 token이 있어도 게시글을 수정할 수 없는 경우는 어느 정책에서 결정될까요?",
+        "route": [
+          "Client",
+          "JwtAuthenticationFilter",
+          "Security Context",
+          "PostService 작성자 검증",
+          "PostRepository"
+        ],
+        "snapshot": [
+          { "label": "Authentication", "value": "성공" },
+          { "label": "작성자 일치", "value": "아님", "tone": "blocked" },
+          { "label": "Response", "value": "403 Forbidden" }
+        ],
+        "evidence": "현재 사용자 email과 게시글 작성자가 다를 때 작성자 정책 테스트가 403을 반환하는지 확인합니다.",
+        "outcome": "인증은 통과하지만 인가에 실패하므로 Repository 변경은 실행하지 않습니다.",
+        "stopAfter": 3
+      }
+    ]
+  },
   "actors": [
     {
       "id": "user",

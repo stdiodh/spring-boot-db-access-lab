@@ -10,6 +10,111 @@ window.visualLabData = {
     "path": "spring-boot-db-access-lab"
   },
   "defaultSequence": "02",
+  "workbench": {
+    "kind": "persistence",
+    "title": "영속성 경계 워크벤치",
+    "instruction": "CRUD 시나리오를 선택하고 Request DTO가 Entity로 바뀌어 MySQL에 남는 경로와 DB 변경이 멈추는 지점을 확인하세요.",
+    "scenarios": [
+      {
+        "id": "persist-post",
+        "label": "DB에 게시글 저장",
+        "flowId": "create-read",
+        "tone": "recovered",
+        "prompt": "POST 요청은 어떤 변환과 저장 경계를 지나 MySQL row가 될까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "PostCreateRequest",
+          "PostService",
+          "PostEntity",
+          "PostRepository",
+          "MySQL",
+          "PostResponse",
+          "Client"
+        ],
+        "snapshot": [
+          { "label": "Request", "value": "POST /posts" },
+          { "label": "저장 모델", "value": "PostEntity" },
+          { "label": "DB 증거", "value": "posts table row", "tone": "recovered" }
+        ],
+        "evidence": "Swagger 생성 응답의 id와 MySQL posts table의 저장 row를 함께 확인합니다.",
+        "outcome": "Service가 Request DTO를 Entity로 바꾸고 Repository가 DB 접근을 맡은 뒤 Response DTO로 되돌립니다."
+      },
+      {
+        "id": "survive-restart",
+        "label": "재시작 뒤 다시 조회",
+        "flowId": "create-read",
+        "tone": "recovered",
+        "prompt": "애플리케이션이 다시 시작돼도 같은 데이터를 찾을 수 있다는 증거는 무엇일까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "PostService",
+          "PostRepository",
+          "MySQL",
+          "애플리케이션 재시작",
+          "MySQL",
+          "Client"
+        ],
+        "snapshot": [
+          { "label": "프로세스", "value": "재시작됨" },
+          { "label": "저장 위치", "value": "MySQL" },
+          { "label": "조회 결과", "value": "같은 row 확인", "tone": "recovered" }
+        ],
+        "evidence": "서버 재시작 전후 GET 요청과 MySQL table 조회에서 같은 저장 데이터를 확인합니다.",
+        "outcome": "데이터 수명은 애플리케이션 메모리가 아니라 DB의 영속 저장에 연결됩니다."
+      },
+      {
+        "id": "update-post",
+        "label": "기존 게시글 수정",
+        "flowId": "update-delete",
+        "tone": "signal",
+        "prompt": "PUT 요청은 왜 먼저 기존 Entity를 찾은 뒤 값을 바꿔야 할까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "PostUpdateRequest",
+          "PostService",
+          "PostRepository.findById",
+          "PostEntity 변경",
+          "PostRepository.save",
+          "MySQL",
+          "PostResponse"
+        ],
+        "snapshot": [
+          { "label": "Request", "value": "PUT /posts/{id}" },
+          { "label": "조회 기준", "value": "id" },
+          { "label": "DB 결과", "value": "변경된 row" }
+        ],
+        "evidence": "수정 응답과 MySQL row를 비교하고 findById → 값 변경 → save 순서를 확인합니다.",
+        "outcome": "대상 Entity를 식별한 뒤 변경을 저장하고 결과를 Response DTO로 반환합니다."
+      },
+      {
+        "id": "missing-update-target",
+        "label": "없는 id 수정",
+        "flowId": "update-delete",
+        "tone": "blocked",
+        "prompt": "수정할 Entity를 찾지 못했다면 DB 변경은 어디에서 멈춰야 할까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "PostService",
+          "PostRepository.findById",
+          "PostEntity 변경",
+          "PostRepository.save",
+          "MySQL"
+        ],
+        "snapshot": [
+          { "label": "조회 결과", "value": "대상 없음", "tone": "blocked" },
+          { "label": "Entity 변경", "value": "실행하지 않음" },
+          { "label": "DB mutation", "value": "없음" }
+        ],
+        "evidence": "findById 결과가 없을 때 이후 변경·save가 호출되지 않는 흐름을 확인합니다.",
+        "outcome": "없는 데이터를 새 row처럼 저장하지 않고 실패 흐름으로 분리합니다.",
+        "stopAfter": 3
+      }
+    ]
+  },
   "actors": [
     {
       "id": "client",

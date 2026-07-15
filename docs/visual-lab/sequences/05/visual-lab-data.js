@@ -10,6 +10,103 @@ window.visualLabData = {
     "path": "spring-boot-db-access-lab"
   },
   "defaultSequence": "05",
+  "workbench": {
+    "kind": "trust",
+    "title": "외부 신뢰 경계 워크벤치",
+    "instruction": "OAuth profile과 계정 복구 상태를 선택해 외부 제공자의 결과를 어디까지 신뢰하고, 우리 서비스가 무엇을 다시 판단하는지 확인하세요.",
+    "scenarios": [
+      {
+        "id": "verified-oauth",
+        "label": "검증된 OAuth 사용자",
+        "flowId": "oauth-login",
+        "tone": "recovered",
+        "prompt": "외부 인증 성공 결과는 어떤 식별과 충돌 확인을 거쳐 우리 서비스 token이 될까요?",
+        "route": [
+          "Browser",
+          "Spring Security",
+          "Google OAuth",
+          "OAuth profile loader",
+          "OAuthAccountService",
+          "JwtTokenProvider",
+          "Browser"
+        ],
+        "snapshot": [
+          { "label": "email_verified", "value": "true", "tone": "recovered" },
+          { "label": "사용자 식별", "value": "provider + providerId" },
+          { "label": "결과 전달", "value": "URL fragment의 JWT" }
+        ],
+        "evidence": "OAuth profile의 provider, providerId, email, emailVerified와 성공 redirect의 fragment 전달을 확인합니다.",
+        "outcome": "외부 인증 결과를 내부 사용자와 안전하게 연결한 경우에만 우리 서비스 JWT를 발급합니다."
+      },
+      {
+        "id": "unverified-email",
+        "label": "검증되지 않은 email",
+        "flowId": "oauth-login",
+        "tone": "blocked",
+        "prompt": "외부 profile에 email이 있어도 verified가 아니라면 신뢰 경계는 어디에서 멈춰야 할까요?",
+        "route": [
+          "Browser",
+          "Spring Security",
+          "Google OAuth",
+          "OAuth profile loader",
+          "OAuthAccountService",
+          "JwtTokenProvider"
+        ],
+        "snapshot": [
+          { "label": "email_verified", "value": "false", "tone": "blocked" },
+          { "label": "계정 연결", "value": "실행하지 않음" },
+          { "label": "JWT", "value": "발급하지 않음" }
+        ],
+        "evidence": "profile loader가 email_verified를 확인하고 검증되지 않은 email을 내부 식별에 사용하지 않는지 봅니다.",
+        "outcome": "검증되지 않은 외부 email은 내부 계정 생성·연결과 token 발급으로 이어지지 않습니다.",
+        "stopAfter": 3
+      },
+      {
+        "id": "local-email-collision",
+        "label": "LOCAL 계정 email 충돌",
+        "flowId": "oauth-login",
+        "tone": "blocked",
+        "prompt": "같은 email의 LOCAL 사용자가 있으면 왜 자동 연결 대신 별도 확인이 필요할까요?",
+        "route": [
+          "Browser",
+          "Spring Security",
+          "Google OAuth",
+          "OAuth profile loader",
+          "OAuthAccountService",
+          "JwtTokenProvider"
+        ],
+        "snapshot": [
+          { "label": "OAuth email", "value": "기존 LOCAL email과 동일" },
+          { "label": "연결 결과", "value": "link_required", "tone": "blocked" },
+          { "label": "JWT", "value": "발급하지 않음" }
+        ],
+        "evidence": "OAuthAccountService가 providerId로 식별하고 동일 email LOCAL 계정을 자동 연결하지 않는 분기를 확인합니다.",
+        "outcome": "email 문자열만으로 계정 소유를 단정하지 않고 명시적인 연결 확인 전까지 인증을 멈춥니다.",
+        "stopAfter": 4
+      },
+      {
+        "id": "recovery-mail",
+        "label": "복구 메일 위임",
+        "flowId": "smtp-recovery",
+        "tone": "warning",
+        "prompt": "현재 계정 복구 구현은 어디까지 책임지고 어떤 보안 단계는 후속으로 남겨둘까요?",
+        "route": [
+          "Client",
+          "AccountRecoveryController",
+          "AccountRecoveryService",
+          "RecoveryMailSender",
+          "SMTP adapter"
+        ],
+        "snapshot": [
+          { "label": "API 응답", "value": "계정 존재 여부 비공개" },
+          { "label": "발송 책임", "value": "RecoveryMailSender 위임" },
+          { "label": "후속 범위", "value": "토큰 저장 · 만료 · 재사용 차단", "tone": "warning" }
+        ],
+        "evidence": "AccountRecoveryService의 reset link 생성과 sender 호출을 fake/local profile로 확인하고 secret은 환경변수에 둡니다.",
+        "outcome": "현재 범위는 복구 요청과 메일 발송 위임까지이며 실제 비밀번호 재설정 완료로 오해하지 않습니다."
+      }
+    ]
+  },
   "actors": [
     {
       "id": "user",

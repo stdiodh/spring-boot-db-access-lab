@@ -10,6 +10,82 @@ window.visualLabData = {
     "path": "spring-boot-db-access-lab"
   },
   "defaultSequence": "03",
+  "workbench": {
+    "kind": "gate",
+    "title": "요청 실패 게이트",
+    "instruction": "요청 상태를 선택해 DTO 검증과 비즈니스 예외가 저장 흐름을 어디에서 차단하고 어떤 ErrorResponse를 남기는지 확인하세요.",
+    "scenarios": [
+      {
+        "id": "valid-create",
+        "label": "검증을 통과한 생성",
+        "flowId": "valid-create",
+        "tone": "recovered",
+        "prompt": "정상 요청은 어떤 게이트를 통과한 뒤 기존 DB 저장 흐름으로 들어갈까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "Validation",
+          "PostService",
+          "PostRepository",
+          "MySQL",
+          "PostResponse"
+        ],
+        "snapshot": [
+          { "label": "Request DTO", "value": "필수 값 충족" },
+          { "label": "Validation", "value": "통과", "tone": "recovered" },
+          { "label": "저장 흐름", "value": "실행" }
+        ],
+        "evidence": "Swagger 정상 생성 응답과 DB 저장 결과로 Validation 통과 이후의 흐름을 확인합니다.",
+        "outcome": "형식 검증을 통과한 요청만 Service의 저장 판단으로 전달됩니다."
+      },
+      {
+        "id": "empty-title",
+        "label": "빈 title 요청",
+        "flowId": "failure-flow",
+        "tone": "blocked",
+        "prompt": "빈 필수 값은 저장 계층에 닿기 전에 어느 게이트에서 멈춰야 할까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "Validation",
+          "PostService",
+          "PostRepository",
+          "MySQL"
+        ],
+        "snapshot": [
+          { "label": "Request", "value": "빈 title", "tone": "blocked" },
+          { "label": "Response", "value": "400 Bad Request" },
+          { "label": "DB 저장", "value": "실행하지 않음" }
+        ],
+        "evidence": "Request DTO 제약과 Controller의 @Valid가 실패 정보를 GlobalExceptionHandler의 ErrorResponse로 바꾸는지 확인합니다.",
+        "outcome": "잘못된 요청은 Validation에서 차단되고 Service와 DB 저장 로직에 진입하지 않습니다.",
+        "stopAfter": 2
+      },
+      {
+        "id": "missing-post",
+        "label": "없는 게시글 요청",
+        "flowId": "failure-flow",
+        "tone": "blocked",
+        "prompt": "형식은 맞지만 대상이 없다면 DTO 검증과 다른 어느 책임에서 실패해야 할까요?",
+        "route": [
+          "Client",
+          "PostController",
+          "Validation",
+          "PostService",
+          "PostRepository",
+          "DB mutation"
+        ],
+        "snapshot": [
+          { "label": "Validation", "value": "통과" },
+          { "label": "조회 결과", "value": "대상 없음", "tone": "blocked" },
+          { "label": "Response", "value": "공통 ErrorResponse" }
+        ],
+        "evidence": "Repository 조회 결과가 없을 때 Service의 도메인 예외가 GlobalExceptionHandler로 전달되는지 확인합니다.",
+        "outcome": "요청 형식 문제가 아닌 비즈니스 실패로 구분하고 DB 변경 없이 일관된 실패 응답을 반환합니다.",
+        "stopAfter": 4
+      }
+    ]
+  },
   "actors": [
     {
       "id": "client",

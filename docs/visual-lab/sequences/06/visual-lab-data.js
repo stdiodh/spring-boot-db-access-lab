@@ -10,6 +10,99 @@ window.visualLabData = {
     "path": "spring-boot-db-access-lab"
   },
   "defaultSequence": "06",
+  "workbench": {
+    "kind": "test",
+    "title": "테스트 보장 범위 워크벤치",
+    "instruction": "테스트 시나리오를 선택하고 fixture, mock, Service 실행, assertion이 무엇을 보장하며 HTTP 경계에서 무엇이 남는지 확인하세요.",
+    "scenarios": [
+      {
+        "id": "post-service-success",
+        "label": "PostService 정상 케이스",
+        "flowId": "service-unit-test",
+        "tone": "recovered",
+        "prompt": "DB 연결 없이 Service의 생성 판단을 어떤 준비와 assertion으로 검증할까요?",
+        "route": [
+          "Test method",
+          "TestFixtureFactory",
+          "Mock Repository",
+          "PostService",
+          "Assertion"
+        ],
+        "snapshot": [
+          { "label": "Given", "value": "fixture + mock 저장 결과" },
+          { "label": "When", "value": "PostService 호출" },
+          { "label": "Then", "value": "응답·호출 검증 PASS", "tone": "recovered" }
+        ],
+        "evidence": "PostServiceTest에서 준비한 Repository 결과와 반환 PostResponse, mock 호출을 assertion으로 확인합니다.",
+        "outcome": "DB 연결 문제와 분리해 Service가 요청을 저장 흐름과 응답으로 조립하는 책임을 보장합니다."
+      },
+      {
+        "id": "post-service-not-found",
+        "label": "조회 실패도 PASS",
+        "flowId": "service-unit-test",
+        "tone": "recovered",
+        "prompt": "Service가 예외를 던진 결과도 왜 올바른 테스트 성공이 될 수 있을까요?",
+        "route": [
+          "Test method",
+          "TestFixtureFactory",
+          "Mock Repository",
+          "PostService",
+          "Assertion"
+        ],
+        "snapshot": [
+          { "label": "Mock 결과", "value": "조회 대상 없음" },
+          { "label": "Service 결과", "value": "기대 예외" },
+          { "label": "Test", "value": "PASS", "tone": "recovered" }
+        ],
+        "evidence": "PostServiceTest가 없는 게시글 조건과 기대 예외 타입을 명시해 실패 분기를 검증하는지 확인합니다.",
+        "outcome": "예상한 실패가 정확히 발생하면 테스트는 통과하고 Service의 실패 정책을 실행 가능한 문서로 남깁니다."
+      },
+      {
+        "id": "auth-service-failure",
+        "label": "AuthService 인증 실패",
+        "flowId": "service-unit-test",
+        "tone": "recovered",
+        "prompt": "로그인 실패 테스트는 외부 인증 환경 없이 어떤 Service 판단을 고정할까요?",
+        "route": [
+          "Test method",
+          "TestFixtureFactory",
+          "Mock UserRepository",
+          "Mock PasswordEncoder",
+          "AuthService",
+          "Assertion"
+        ],
+        "snapshot": [
+          { "label": "Given", "value": "사용자·비밀번호 조건" },
+          { "label": "Service 결과", "value": "인증 실패" },
+          { "label": "JWT", "value": "발급되지 않음", "tone": "recovered" }
+        ],
+        "evidence": "AuthServiceTest에서 사용자 조회와 PasswordEncoder 결과를 mock으로 통제하고 기대 실패를 검증합니다.",
+        "outcome": "외부 시스템과 분리해 잘못된 자격 정보가 token 발급으로 이어지지 않는 Service 판단을 보장합니다."
+      },
+      {
+        "id": "http-policy-gap",
+        "label": "HTTP 정책은 별도 검증",
+        "flowId": "status-code-view",
+        "tone": "warning",
+        "prompt": "Service 단위 테스트가 통과해도 400·401·403을 보장했다고 말할 수 없는 이유는 무엇일까요?",
+        "route": [
+          "HTTP Client",
+          "Security Filter",
+          "Validation",
+          "Controller",
+          "Service policy",
+          "HTTP response"
+        ],
+        "snapshot": [
+          { "label": "현재 보장", "value": "Service 비즈니스 판단" },
+          { "label": "미검증 경계", "value": "HTTP · Validation · Security", "tone": "warning" },
+          { "label": "후속 후보", "value": "400 · 401 · 403 통합 테스트" }
+        ],
+        "evidence": "현재 단위 테스트 대상과 status-code-view의 Security Filter·Validation·HTTP 응답 경계를 대조합니다.",
+        "outcome": "Service 테스트 결과를 HTTP 정책 보장으로 과장하지 않고 작은 통합 테스트가 필요한 범위를 구분합니다."
+      }
+    ]
+  },
   "actors": [
     {
       "id": "student",
