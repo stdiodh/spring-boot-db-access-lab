@@ -10,6 +10,448 @@ window.visualLabData = {
     "path": "spring-boot-db-access-lab"
   },
   "defaultSequence": "03",
+  "workbench": {
+    "kind": "gate",
+    "title": "요청 실패 게이트",
+    "instruction": "요청 상태를 선택해 DTO 검증과 비즈니스 예외가 저장 흐름을 어디에서 차단하고 어떤 ErrorResponse를 남기는지 확인하세요.",
+    "visual": {
+      "src": "../../assets/diagrams/03-request-gates.svg",
+      "alt": "요청 형식 검증과 Service 도메인 판단이 각각 400과 404 실패 경로를 만드는 게이트 지도",
+      "caption": "입력 형식 실패와 대상 부재 실패가 서로 다른 책임에서 멈춥니다."
+    },
+    "terms": [
+      {
+        "term": "Validation",
+        "meaning": "요청 DTO의 필수 값과 형식을 Service 진입 전에 검사하는 과정입니다."
+      },
+      {
+        "term": "GlobalExceptionHandler",
+        "meaning": "여러 실패를 일관된 HTTP 오류 응답으로 바꾸는 공통 경계입니다."
+      },
+      {
+        "term": "400 / 404",
+        "meaning": "400은 요청 형식 문제, 404는 찾는 대상이 없음을 나타내는 응답 상태입니다."
+      }
+    ],
+    "comparison": {
+      "label": "실패가 멈추는 두 게이트",
+      "left": {
+        "title": "Validation · 400",
+        "body": "요청 값이 제약을 어기면 Service와 DB에 닿기 전에 차단합니다."
+      },
+      "right": {
+        "title": "도메인 조회 · 404",
+        "body": "형식은 맞지만 대상이 없으면 Service 판단에서 DB 변경 없이 실패합니다."
+      }
+    },
+    "nodes": {
+      "client": {
+        "label": "Client",
+        "icon": "client",
+        "kind": "client",
+        "role": "정상 또는 실패 조건의 HTTP 요청을 보냅니다.",
+        "boundary": "HTTP 외부"
+      },
+      "request-gate": {
+        "label": "Spring MVC + Bean Validation",
+        "icon": "gate",
+        "kind": "gate",
+        "role": "Controller method body 전에 request binding과 DTO 제약을 확인합니다.",
+        "boundary": "요청 형식 경계",
+        "codePointIds": ["request-validation"]
+      },
+      "controller": {
+        "label": "PostController",
+        "icon": "api",
+        "kind": "api",
+        "role": "검증을 통과한 요청을 Service에 전달합니다.",
+        "boundary": "HTTP 입구"
+      },
+      "service": {
+        "label": "PostService",
+        "icon": "service",
+        "kind": "service",
+        "role": "저장 흐름과 대상 존재 여부를 판단합니다.",
+        "boundary": "비즈니스 판단"
+      },
+      "repository": {
+        "label": "PostRepository",
+        "icon": "repository",
+        "kind": "repository",
+        "role": "게시글 저장과 id 조회를 수행합니다.",
+        "boundary": "영속성 경계"
+      },
+      "database": {
+        "label": "MySQL",
+        "icon": "database",
+        "kind": "database",
+        "role": "posts row를 저장하고 조회 결과를 반환합니다.",
+        "boundary": "영속 저장소"
+      },
+      "exception-handler": {
+        "label": "GlobalExceptionHandler",
+        "icon": "handler",
+        "kind": "handler",
+        "role": "검증·도메인 예외를 상태 코드와 ErrorResponse로 변환합니다.",
+        "boundary": "공통 실패 응답",
+        "codePointIds": ["global-handler"]
+      }
+    },
+    "scenarios": [
+      {
+        "id": "valid-create",
+        "label": "title·content가 채워진 POST",
+        "flowId": "valid-create",
+        "tone": "recovered",
+        "prompt": "title과 content가 채워진 POST 요청은 저장 전에 어느 경계를 먼저 만날까요?",
+        "prediction": {
+          "prompt": "이 입력은 DB 저장 전에 어떤 순서로 처리될까요?",
+          "options": [
+            {
+              "id": "save-before-validation",
+              "label": "DB 저장 뒤 Validation을 확인한다"
+            },
+            {
+              "id": "validation-then-service",
+              "label": "Validation 통과 뒤 Service 저장 흐름으로 간다"
+            }
+          ],
+          "answer": "validation-then-service",
+          "explanation": "요청 형식을 먼저 검증해야 잘못된 입력이 Service와 DB 변경으로 이어지지 않습니다."
+        },
+        "diagram": {
+          "caption": "Spring MVC가 DTO를 바인딩하고 Bean Validation을 통과시킨 요청만 Controller method와 저장 흐름으로 들어갑니다.",
+          "lanes": [
+            {
+              "id": "valid-request",
+              "label": "요청 검증과 저장",
+              "description": "정상 JSON이 DTO 제약을 통과해 기존 DB 저장 흐름으로 이어집니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "request-gate",
+                  "verb": "요청·바인딩",
+                  "payload": "POST /posts + JSON → PostCreateRequest",
+                  "kind": "request",
+                  "concept": "Spring MVC argument resolution",
+                  "check": "JSON field가 Request DTO에 바인딩되는지 확인합니다."
+                },
+                {
+                  "from": "request-gate",
+                  "to": "controller",
+                  "verb": "검증 통과",
+                  "payload": "@Valid + DTO constraints",
+                  "kind": "response",
+                  "concept": "Bean Validation",
+                  "check": "Controller method body가 실행 가능한 상태인지 확인합니다.",
+                  "codePointIds": ["request-validation"]
+                },
+                {
+                  "from": "controller",
+                  "to": "service",
+                  "verb": "호출",
+                  "payload": "create(validated request)",
+                  "kind": "call",
+                  "concept": "검증 책임 분리",
+                  "check": "Service가 request null/blank를 다시 검사하지 않는지 확인합니다."
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "저장",
+                  "payload": "save(PostEntity)",
+                  "kind": "persist"
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "영속화",
+                  "payload": "INSERT posts row",
+                  "kind": "persist",
+                  "check": "정상 요청만 DB row로 이어지는지 확인합니다."
+                }
+              ]
+            },
+            {
+              "id": "valid-response",
+              "label": "정상 응답",
+              "description": "저장 결과를 Response DTO로 변환해 Client로 돌려줍니다.",
+              "steps": [
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "persisted row + id",
+                  "kind": "response"
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "saved PostEntity",
+                  "kind": "response"
+                },
+                {
+                  "from": "service",
+                  "to": "controller",
+                  "verb": "변환",
+                  "payload": "PostEntity → PostResponse",
+                  "kind": "transform"
+                },
+                {
+                  "from": "controller",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "201 Created + PostResponse",
+                  "kind": "response",
+                  "check": "Swagger 정상 응답과 DB row를 확인합니다."
+                }
+              ]
+            }
+          ]
+        },
+        "route": [
+          "Client",
+          "PostController",
+          "Validation",
+          "PostService",
+          "PostRepository",
+          "MySQL",
+          "PostResponse"
+        ],
+        "snapshot": [
+          { "label": "Request DTO", "value": "필수 값 충족" },
+          { "label": "Validation", "value": "통과", "tone": "recovered" },
+          { "label": "저장 흐름", "value": "실행" }
+        ],
+        "evidence": "Swagger 정상 생성 응답과 DB 저장 결과로 Validation 통과 이후의 흐름을 확인합니다.",
+        "outcome": "형식 검증을 통과한 요청만 Service의 저장 판단으로 전달됩니다."
+      },
+      {
+        "id": "empty-title",
+        "label": "빈 title 요청",
+        "flowId": "failure-flow",
+        "tone": "blocked",
+        "prompt": "빈 필수 값은 저장 계층에 닿기 전에 어느 게이트에서 멈춰야 할까요?",
+        "prediction": {
+          "prompt": "빈 title 요청은 어디까지 도달해야 할까요?",
+          "options": [
+            {
+              "id": "database",
+              "label": "Service와 Repository를 지나 DB에서 실패한다"
+            },
+            {
+              "id": "validation",
+              "label": "Controller 진입 전후의 Validation 경계에서 멈춘다"
+            }
+          ],
+          "answer": "validation",
+          "explanation": "@Valid가 DTO 제약 위반을 감지하면 Service와 DB 저장 로직은 실행되지 않습니다."
+        },
+        "diagram": {
+          "caption": "빈 필수 값은 Controller method body와 Service에 도달하기 전에 검증 예외로 바뀌어 400 ErrorResponse로 돌아갑니다.",
+          "lanes": [
+            {
+              "id": "validation-failure-return",
+              "label": "DTO 검증 실패 반환",
+              "description": "요청 형식 경계에서 실패하고 공통 handler가 오류 응답을 만듭니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "request-gate",
+                  "verb": "요청·바인딩",
+                  "payload": "POST /posts + { title: blank }",
+                  "kind": "request",
+                  "concept": "invalid Request DTO",
+                  "check": "빈 title 조건을 확인합니다."
+                },
+                {
+                  "from": "request-gate",
+                  "to": "exception-handler",
+                  "verb": "던짐",
+                  "payload": "MethodArgumentNotValidException",
+                  "kind": "failure",
+                  "concept": "Bean Validation failure",
+                  "check": "Controller method body가 실행되지 않는지 확인합니다.",
+                  "codePointIds": ["request-validation", "global-handler"]
+                },
+                {
+                  "from": "exception-handler",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "400 ErrorResponse { VALIDATION_ERROR, errors }",
+                  "kind": "response",
+                  "concept": "일관된 실패 응답",
+                  "check": "status, code, field errors를 확인합니다."
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "PostController method body",
+              "reason": "argument validation에서 실패해 호출되지 않습니다."
+            },
+            {
+              "label": "PostService / Repository / MySQL mutation",
+              "reason": "요청 형식 게이트에서 차단되어 저장 흐름이 시작되지 않습니다."
+            }
+          ]
+        },
+        "route": [
+          "Client",
+          "PostController",
+          "Validation",
+          "PostService",
+          "PostRepository",
+          "MySQL"
+        ],
+        "snapshot": [
+          { "label": "Request", "value": "빈 title", "tone": "blocked" },
+          { "label": "Response", "value": "400 Bad Request" },
+          { "label": "DB 저장", "value": "실행하지 않음" }
+        ],
+        "evidence": "Request DTO 제약과 Controller의 @Valid가 실패 정보를 GlobalExceptionHandler의 ErrorResponse로 바꾸는지 확인합니다.",
+        "outcome": "잘못된 요청은 Validation에서 차단되고 Service와 DB 저장 로직에 진입하지 않습니다.",
+        "stopAfter": 2
+      },
+      {
+        "id": "missing-post",
+        "label": "없는 게시글 요청",
+        "flowId": "failure-flow",
+        "tone": "blocked",
+        "prompt": "형식은 맞지만 대상이 없다면 DTO 검증과 다른 어느 책임에서 실패해야 할까요?",
+        "prediction": {
+          "prompt": "형식이 맞는 요청에서 게시글 id만 없다면 어떤 실패로 구분할까요?",
+          "options": [
+            {
+              "id": "bad-request",
+              "label": "Validation의 400 실패"
+            },
+            {
+              "id": "not-found",
+              "label": "Service 조회 판단의 404 실패"
+            }
+          ],
+          "answer": "not-found",
+          "explanation": "요청 형식은 유효하므로 Repository 조회 결과를 해석하는 도메인 책임에서 실패합니다."
+        },
+        "diagram": {
+          "caption": "형식이 맞는 요청도 id에 해당하는 row가 없으면 Service가 도메인 예외를 만들고 handler가 404 ErrorResponse로 변환합니다.",
+          "lanes": [
+            {
+              "id": "missing-post-lookup",
+              "label": "정상 형식의 조회",
+              "description": "path variable을 바인딩한 뒤 Repository와 DB에서 대상을 찾습니다.",
+              "steps": [
+                {
+                  "from": "client",
+                  "to": "request-gate",
+                  "verb": "요청·바인딩",
+                  "payload": "GET /posts/{id}",
+                  "kind": "request",
+                  "concept": "PathVariable binding",
+                  "check": "id가 올바른 타입으로 바인딩되는지 확인합니다."
+                },
+                {
+                  "from": "request-gate",
+                  "to": "controller",
+                  "verb": "전달",
+                  "payload": "id",
+                  "kind": "transform",
+                  "concept": "형식 통과"
+                },
+                {
+                  "from": "controller",
+                  "to": "service",
+                  "verb": "호출",
+                  "payload": "getById(id)",
+                  "kind": "call"
+                },
+                {
+                  "from": "service",
+                  "to": "repository",
+                  "verb": "조회",
+                  "payload": "findById(id)",
+                  "kind": "call"
+                },
+                {
+                  "from": "repository",
+                  "to": "database",
+                  "verb": "질의",
+                  "payload": "SELECT posts row by id",
+                  "kind": "call"
+                },
+                {
+                  "from": "database",
+                  "to": "repository",
+                  "verb": "반환",
+                  "payload": "no row",
+                  "kind": "response"
+                },
+                {
+                  "from": "repository",
+                  "to": "service",
+                  "verb": "반환",
+                  "payload": "Optional.empty",
+                  "kind": "response",
+                  "check": "형식 문제가 아니라 대상 부재임을 확인합니다."
+                }
+              ]
+            },
+            {
+              "id": "missing-post-error",
+              "label": "도메인 실패 반환",
+              "description": "Service의 존재 여부 판단이 404 공통 응답으로 돌아갑니다.",
+              "steps": [
+                {
+                  "from": "service",
+                  "to": "exception-handler",
+                  "verb": "던짐",
+                  "payload": "PostNotFoundException",
+                  "kind": "failure",
+                  "concept": "도메인 예외",
+                  "check": "Service가 빈 결과를 정상 PostResponse로 만들지 않는지 확인합니다."
+                },
+                {
+                  "from": "exception-handler",
+                  "to": "client",
+                  "verb": "응답",
+                  "payload": "404 ErrorResponse { POST_NOT_FOUND }",
+                  "kind": "response",
+                  "concept": "Not Found 응답",
+                  "check": "status와 error code를 확인합니다.",
+                  "codePointIds": ["global-handler"]
+                }
+              ]
+            }
+          ],
+          "notReached": [
+            {
+              "label": "DB mutation",
+              "reason": "조회 결과가 없어 수정·삭제·저장은 실행되지 않습니다."
+            }
+          ]
+        },
+        "route": [
+          "Client",
+          "PostController",
+          "Validation",
+          "PostService",
+          "PostRepository",
+          "DB mutation"
+        ],
+        "snapshot": [
+          { "label": "Validation", "value": "통과" },
+          { "label": "조회 결과", "value": "대상 없음", "tone": "blocked" },
+          { "label": "Response", "value": "공통 ErrorResponse" }
+        ],
+        "evidence": "Repository 조회 결과가 없을 때 Service의 도메인 예외가 GlobalExceptionHandler로 전달되는지 확인합니다.",
+        "outcome": "요청 형식 문제가 아닌 비즈니스 실패로 구분하고 DB 변경 없이 일관된 실패 응답을 반환합니다.",
+        "stopAfter": 4
+      }
+    ]
+  },
   "actors": [
     {
       "id": "client",

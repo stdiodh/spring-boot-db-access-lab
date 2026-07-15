@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" role="img" aria-labelledby="seq04-title seq04-desc">
+  <title id="seq04-title">04 인증과 인가 경계 지도</title>
+  <desc id="seq04-desc">로그인 자격 확인과 JWT 발급, 보호 요청의 401 인증 실패와 403 인가 실패를 구분한 지도</desc>
+  <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#2955E4"/></marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#176F72"/></marker>
+    <style>.frame{fill:#fff;stroke:#6f82b8;stroke-width:2}.node{fill:#fff;stroke:#6f82b8;stroke-width:2}.soft{fill:#ecfbfa;stroke:#176f72;stroke-width:2}.warning{fill:#eef4ff;stroke:#2955e4;stroke-width:2}.boundary{fill:#eaf0fb;stroke:#6f82b8;stroke-width:2;stroke-dasharray:7 5}.boundary-strong{fill:#ecfbfa;stroke:#176f72;stroke-width:3}.arrow{fill:none;stroke:#2955e4;stroke-width:3;marker-end:url(#arrow)}.return{fill:none;stroke:#176f72;stroke-width:3;marker-end:url(#arrow-teal)}.stop{fill:none;stroke:#2955e4;stroke-width:2;stroke-dasharray:6 4}.divider{stroke:#c9d6f3;stroke-width:2}.title{fill:#111b3f;font:700 26px system-ui,-apple-system,sans-serif;text-anchor:middle}.copy{fill:#4b587c;font:600 24px system-ui,-apple-system,sans-serif;text-anchor:middle}.label{fill:#0c2691;font:800 24px system-ui,-apple-system,sans-serif}.teal{fill:#176f72}</style>
+  </defs>
+  <rect width="720" height="300" fill="#F8F9FB"/>
+
+  <rect x="20" y="20" width="680" height="260" rx="18" class="frame"/>
+  <text x="42" y="56" class="label">로그인</text>
+  <rect x="42" y="72" width="154" height="56" rx="9" class="node"/><text x="119" y="108" class="title">자격 정보</text>
+  <path d="M196 100h48" class="arrow"/>
+  <rect x="244" y="72" width="120" height="56" rx="9" class="node"/><text x="304" y="108" class="title">인증</text>
+  <path d="M364 100h48" class="arrow"/>
+  <rect x="412" y="72" width="156" height="56" rx="9" class="soft"/><text x="490" y="108" class="title">JWT 발급</text>
+  <text x="42" y="166" class="label">보호 요청</text>
+  <rect x="42" y="182" width="160" height="56" rx="9" class="node"/><text x="122" y="218" class="title">Bearer token</text>
+  <path d="M202 210h34" class="arrow"/>
+  <rect x="236" y="182" width="134" height="56" rx="9" class="warning"/><text x="303" y="218" class="title">인증 · 401</text>
+  <path d="M370 210h34" class="arrow"/>
+  <rect x="404" y="182" width="134" height="56" rx="9" class="warning"/><text x="471" y="218" class="title">인가 · 403</text>
+  <path d="M538 210h28" class="arrow"/>
+  <rect x="566" y="182" width="116" height="56" rx="9" class="soft"/><text x="624" y="218" class="title">허용</text>
+</svg>
