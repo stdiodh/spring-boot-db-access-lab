@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 350" role="img" aria-labelledby="seq05-title seq05-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-labelledby="seq05-title seq05-desc">
   <title id="seq05-title">05 외부 인증 신뢰 경계 지도</title>
   <desc id="seq05-desc">시스템 밖 OAuth Provider 결과가 외부 신뢰 경계를 넘어 서비스·정책의 email 신뢰 판단을 통과할 때만 내부 JWT로 이어지고, 충돌은 차단되는 지도</desc>
   <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
@@ -20,46 +20,44 @@
       .boundary{stroke:#94A3B8;stroke-width:2.5;stroke-dasharray:8 6}
       .stop{stroke:#B4233C;stroke-width:2.5;stroke-dasharray:6 4}
       .failure{fill:#FFF1F2;stroke:#B4233C;stroke-width:2.5}
-      .group{font-size:24px;font-weight:850;fill:#0C2691}
-      .boundary-name{font-size:24px;font-weight:800;fill:#52627A;text-anchor:middle}
-      .layer{font-size:24px;font-weight:800;fill:#4B587C;text-anchor:middle}
-      .name{font-size:24px;font-weight:800;text-anchor:middle}
-      .body{font-size:24px;font-weight:650;fill:#4B587C;text-anchor:middle}
-      .danger{font-size:24px;font-weight:850;fill:#8F1830;text-anchor:middle}
+      .boundary-name{font-size:25px;font-weight:800;fill:#52627A;text-anchor:middle}
+      .layer{font-size:25px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:28px;font-weight:800;text-anchor:middle}
+      .body{font-size:25px;font-weight:650;fill:#4B587C;text-anchor:middle}
+      .danger{font-size:27px;font-weight:850;fill:#8F1830;text-anchor:middle}
     </style>
   </defs>
-  <rect width="720" height="350" fill="#F8F9FB"/>
-  <rect x="20" y="20" width="680" height="310" rx="18" class="frame"/>
-  <text x="36" y="58" class="group">외부 결과를 내부 신원으로 바꾸기 전 확인</text>
+  <rect width="720" height="320" fill="#F8F9FB"/>
+  <rect x="20" y="16" width="680" height="288" rx="18" class="frame"/>
 
   <g data-layer="outside">
-    <rect x="34" y="94" width="175" height="100" rx="11" class="node layer-outside"/>
-    <text x="121.5" y="120" class="layer">시스템 밖</text>
-    <text x="121.5" y="151" class="name">Provider</text>
-    <text x="121.5" y="180" class="body">OAuth 인증 성공</text>
+    <rect x="36" y="36" width="174" height="138" rx="11" class="node layer-outside"/>
+    <text x="123" y="72" class="layer">시스템 밖</text>
+    <text x="123" y="108" class="name">Provider</text>
+    <text x="123" y="144" class="body">OAuth 성공</text>
   </g>
   <g data-semantic="boundary">
-    <line x1="238" y1="78" x2="238" y2="220" class="boundary"/>
-    <text x="238" y="245" class="boundary-name">외부 신뢰 경계</text>
+    <line x1="238" y1="36" x2="238" y2="184" class="boundary"/>
+    <text x="238" y="204" class="boundary-name">외부 신뢰 경계</text>
   </g>
-  <path d="M209 144h43" class="flow"/>
+  <path d="M210 105h42" class="flow"/>
   <g data-layer="application">
-    <rect x="257" y="84" width="200" height="120" rx="12" class="node layer-application"/>
-    <text x="357" y="112" class="layer">서비스·정책</text>
-    <text x="357" y="145" class="name">신뢰 판단</text>
-    <text x="357" y="176" class="body">email 확인</text>
+    <rect x="257" y="36" width="200" height="138" rx="12" class="node layer-application"/>
+    <text x="357" y="72" class="layer">서비스·정책</text>
+    <text x="357" y="108" class="name">신뢰 판단</text>
+    <text x="357" y="144" class="body">email 확인</text>
   </g>
-  <path d="M457 144h43" class="flow"/>
+  <path d="M457 105h42" class="flow"/>
   <g data-layer="application">
-    <rect x="505" y="94" width="180" height="100" rx="11" class="node layer-application"/>
-    <text x="595" y="120" class="layer">서비스·정책</text>
-    <text x="595" y="151" class="name">내부 JWT</text>
-    <text x="595" y="180" class="body">통과 뒤 발급</text>
+    <rect x="499" y="36" width="185" height="138" rx="11" class="node layer-application"/>
+    <text x="591.5" y="72" class="layer">서비스·정책</text>
+    <text x="591.5" y="108" class="name">내부 JWT</text>
+    <text x="591.5" y="144" class="body">통과 뒤 발급</text>
   </g>
 
-  <path d="M357 204v37" class="stop"/>
+  <path d="M357 174v41" class="stop"/>
   <g data-semantic="state">
-    <rect x="247" y="246" width="220" height="58" rx="10" class="failure"/>
-    <text x="357" y="282" class="danger">× 확인 또는 차단</text>
+    <rect x="237" y="222" width="240" height="60" rx="10" class="failure"/>
+    <text x="357" y="260" class="danger">× 확인 또는 차단</text>
   </g>
 </svg>

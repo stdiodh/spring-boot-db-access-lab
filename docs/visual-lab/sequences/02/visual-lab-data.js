@@ -111,15 +111,15 @@ window.visualLabData = {
         "label": "DB에 게시글 저장",
         "flowId": "create-read",
         "tone": "recovered",
-        "prompt": "POST 요청은 어떤 변환과 저장 경계를 지나 MySQL row가 될까요?",
-        "observationTitle": "생성 요청이 INSERT와 생성 id를 거쳐 영속 응답이 되는가?",
+        "prompt": "id가 없는 PostCreateRequest를 POST /posts로 보냅니다.",
+        "observationTitle": "요청 DTO가 MySQL row가 되는 경계",
         "reflection": {
-          "prompt": "요청 DTO가 재시작 뒤에도 남는 row가 되는 규칙을 설명해 보세요.",
+          "prompt": "DTO, Entity, row의 상태가 바뀌는 지점을 자기 말로 이어 보세요.",
           "hint": "Entity 변환, Repository 저장, INSERT, 생성 id 반환의 경계를 순서대로 적으세요."
         },
         "theoryRef": "../../../theory.md#seq-02",
         "prediction": {
-          "prompt": "POST 요청이 MySQL row가 될 때 중심 변환과 저장 책임은 어디에 있을까요?",
+          "prompt": "Entity 변환과 DB 접근 책임을 어디에 나누는 것이 맞을까요?",
           "options": [
             {
               "id": "controller-sql",
@@ -131,15 +131,15 @@ window.visualLabData = {
             }
           ],
           "answer": "service-repository",
-          "explanation": "Service가 경계 간 모델 변환을 조립하고 Repository가 JPA를 통한 DB 접근을 맡습니다."
+          "explanation": "모델 변환은 처리 순서를 아는 Service가, DB 접근은 Repository가 맡아야 경계가 분명합니다."
         },
         "diagram": {
-          "caption": "Service가 Request DTO를 Entity로 바꾸고 Repository가 JPA 저장을 요청해 MySQL에 row를 남깁니다.",
+          "caption": "Client → Controller → Service가 DTO를 Entity로 바꾸고 Repository가 MySQL에 INSERT해 id를 돌려줍니다.",
           "lanes": [
             {
               "id": "create-persist",
               "label": "요청과 영속화",
-              "description": "HTTP 생성 요청이 JPA 영속성 경계를 지나 INSERT로 이어집니다.",
+              "description": "요청 DTO를 Entity로 바꾸고 JPA INSERT까지 전달합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -232,7 +232,7 @@ window.visualLabData = {
             {
               "id": "create-response",
               "label": "저장 결과와 응답",
-              "description": "생성된 id가 Entity와 Response DTO를 거쳐 Client로 돌아옵니다.",
+              "description": "DB가 만든 id를 Entity와 Response DTO로 되돌립니다.",
               "steps": [
                 {
                   "from": "database",
@@ -318,16 +318,16 @@ window.visualLabData = {
           { "label": "저장 모델", "value": "PostEntity" },
           { "label": "DB 증거", "value": "posts table row", "tone": "recovered" }
         ],
-        "evidence": "Swagger 생성 응답의 id와 MySQL posts table의 저장 row를 함께 확인합니다.",
-        "outcome": "Service가 Request DTO를 Entity로 바꾸고 Repository가 DB 접근을 맡은 뒤 Response DTO로 되돌립니다."
+        "evidence": "Swagger의 생성 id와 MySQL posts row를 대조합니다.",
+        "outcome": "생성 id는 INSERT 뒤 DB 상태에서 확정되고 저장 row는 애플리케이션 프로세스 밖에 남습니다."
       },
       {
         "id": "survive-restart",
         "label": "재시작 뒤 다시 조회",
         "flowId": "create-read",
         "tone": "recovered",
-        "prompt": "애플리케이션이 다시 시작돼도 같은 데이터를 찾을 수 있다는 증거는 무엇일까요?",
-        "observationTitle": "새 프로세스의 SELECT가 이전에 저장한 row를 다시 찾는가?",
+        "prompt": "MySQL과 volume을 유지하고 애플리케이션만 재시작해 같은 id를 조회합니다.",
+        "observationTitle": "새 프로세스가 기존 row를 찾는 경로",
         "reflection": {
           "prompt": "애플리케이션 재시작 뒤에도 조회가 가능한 이유를 상태의 소유자로 설명해 보세요.",
           "hint": "데이터를 보유한 주체가 애플리케이션 메모리가 아니라 MySQL이라는 점을 사용하세요."
@@ -346,10 +346,10 @@ window.visualLabData = {
             }
           ],
           "answer": "database-row",
-          "explanation": "DB row는 애플리케이션 프로세스와 수명이 분리되어 재시작 뒤에도 조회할 수 있습니다."
+          "explanation": "상태의 소유자가 애플리케이션인지 DB인지가 재시작 뒤 보존 여부를 가릅니다."
         },
         "diagram": {
-          "caption": "애플리케이션만 재시작하고 MySQL 서비스와 volume을 유지하면 같은 row를 다시 조회할 수 있습니다.",
+          "caption": "새 애플리케이션 → Repository SELECT → 기존 MySQL row → API 응답으로 돌아옵니다.",
           "lanes": [
             {
               "id": "restart-read-request",
@@ -526,23 +526,23 @@ window.visualLabData = {
           { "label": "저장 위치", "value": "MySQL" },
           { "label": "조회 결과", "value": "같은 row 확인", "tone": "recovered" }
         ],
-        "evidence": "서버 재시작 전후 GET 요청과 MySQL table 조회에서 같은 저장 데이터를 확인합니다.",
-        "outcome": "데이터 수명은 애플리케이션 메모리가 아니라 DB의 영속 저장에 연결됩니다."
+        "evidence": "재시작 전후 GET과 MySQL의 같은 id를 대조합니다. DB나 volume을 지운 경우는 제외합니다.",
+        "outcome": "DB 저장을 유지하면 애플리케이션 프로세스가 바뀌어도 같은 row를 다시 조회할 수 있습니다."
       },
       {
         "id": "update-post",
         "label": "기존 게시글 수정",
         "flowId": "update-delete",
         "tone": "signal",
-        "prompt": "PUT 요청은 왜 먼저 기존 Entity를 찾은 뒤 값을 바꿔야 할까요?",
-        "observationTitle": "기존 Entity를 찾은 뒤에만 UPDATE가 실행되는가?",
+        "prompt": "PUT /posts/{id}에 대상 id와 바꿀 필드가 들어 있습니다.",
+        "observationTitle": "조회 성공 뒤 UPDATE가 시작되는 지점",
         "reflection": {
-          "prompt": "수정이 조회와 변경을 순서대로 요구하는 인과 규칙은 무엇인가요?",
+          "prompt": "수정 요청의 id를 어느 단계에 먼저 쓰는지 자기 말로 적어 보세요.",
           "hint": "대상 Entity의 존재가 확인되어야 어떤 row를 바꿀지 결정할 수 있습니다."
         },
         "theoryRef": "../../../theory.md#seq-02",
         "prediction": {
-          "prompt": "PUT으로 기존 게시글을 수정할 때 저장 전에 먼저 해야 할 일은 무엇일까요?",
+          "prompt": "기존 게시글을 수정하기 전에 먼저 무엇을 확인해야 할까요?",
           "options": [
             {
               "id": "insert-new",
@@ -557,12 +557,12 @@ window.visualLabData = {
           "explanation": "수정 대상의 정체성을 보존하려면 먼저 기존 Entity를 식별한 뒤 변경을 저장해야 합니다."
         },
         "diagram": {
-          "caption": "수정은 id로 기존 Entity를 찾은 뒤 값을 바꾸고, 02 시퀀스의 save 흐름으로 UPDATE를 요청합니다.",
+          "caption": "Controller → Service의 findById → 값 변경 → Repository.save → UPDATE → 응답 순서입니다.",
           "lanes": [
             {
               "id": "update-lookup",
               "label": "대상 조회",
-              "description": "수정 전에 id로 기존 row와 Entity를 찾습니다.",
+              "description": "대상 id가 기존 row와 Entity를 가리키는지 확인합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -653,7 +653,7 @@ window.visualLabData = {
             {
               "id": "update-persist",
               "label": "값 변경과 저장",
-              "description": "찾은 Entity의 값을 바꾼 뒤 현재 02 구현의 명시적 save로 반영합니다.",
+              "description": "식별된 Entity의 값을 바꾸고 02 구현의 명시적 save로 반영합니다.",
               "steps": [
                 {
                   "from": "service",
@@ -778,18 +778,18 @@ window.visualLabData = {
           { "label": "조회 기준", "value": "id" },
           { "label": "DB 결과", "value": "변경된 row" }
         ],
-        "evidence": "수정 응답과 MySQL row를 비교하고 findById → 값 변경 → save 순서를 확인합니다.",
-        "outcome": "대상 Entity를 식별한 뒤 변경을 저장하고 결과를 Response DTO로 반환합니다."
+        "evidence": "수정 응답·MySQL row와 findById → 값 변경 → save 순서를 대조합니다.",
+        "outcome": "조회로 기존 Entity의 정체성을 확인한 경우에만 UPDATE가 실행됩니다."
       },
       {
         "id": "missing-update-target",
         "label": "없는 id 수정",
         "flowId": "update-delete",
         "tone": "blocked",
-        "prompt": "수정할 Entity를 찾지 못했다면 DB 변경은 어디에서 멈춰야 할까요?",
-        "observationTitle": "Optional.empty()에서 DB 변경 없이 흐름이 멈추는가?",
+        "prompt": "PUT /posts/999를 보냈지만 해당 id의 row가 없습니다.",
+        "observationTitle": "빈 조회 결과가 UPDATE를 막는 지점",
         "reflection": {
-          "prompt": "없는 id가 수정 SQL까지 도달하지 못하게 하는 규칙을 설명해 보세요.",
+          "prompt": "존재하는 id와 없는 id의 흐름이 처음 갈라지는 지점을 적어 보세요.",
           "hint": "조회 결과 없음과 예외 발생을 연결하되, 이 시퀀스가 아직 404 계약을 확정하지 않는다는 범위를 지키세요."
         },
         "theoryRef": "../../../theory.md#seq-02",
@@ -806,15 +806,15 @@ window.visualLabData = {
             }
           ],
           "answer": "stop-before-save",
-          "explanation": "없는 수정 대상을 생성으로 바꾸지 않고 조회 실패와 DB 변경을 분리합니다."
+          "explanation": "수정 의미를 보존하려면 없는 대상을 생성으로 바꾸지 않고 조회 실패로 끝내야 합니다."
         },
         "diagram": {
-          "caption": "02 단계에서는 조회 결과가 비면 예외가 기본 오류 경로로 전파되고 Entity 변경과 UPDATE는 실행되지 않습니다.",
+          "caption": "SELECT가 empty이면 Service 예외가 기본 오류 경로로 가고 save는 실행되지 않습니다.",
           "lanes": [
             {
               "id": "missing-lookup",
               "label": "없는 id 조회",
-              "description": "Repository와 MySQL까지 조회하지만 대상 row를 찾지 못합니다.",
+              "description": "Repository와 MySQL이 대상 id의 부재를 확인합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -906,7 +906,7 @@ window.visualLabData = {
             {
               "id": "missing-error",
               "label": "02 범위의 실패 반환",
-              "description": "공통 ErrorResponse를 도입하기 전 예외가 Spring 기본 오류 경로로 전달됩니다.",
+              "description": "02 범위의 예외를 공통 ErrorResponse 없이 기본 오류 경로로 보냅니다.",
               "steps": [
                 {
                   "from": "service",
@@ -966,8 +966,8 @@ window.visualLabData = {
           { "label": "Entity 변경", "value": "실행하지 않음" },
           { "label": "DB mutation", "value": "없음" }
         ],
-        "evidence": "findById 결과가 없을 때 이후 변경·save가 호출되지 않는 흐름을 확인합니다.",
-        "outcome": "없는 데이터를 새 row처럼 저장하지 않고 실패 흐름으로 분리합니다.",
+        "evidence": "empty 뒤 값 변경·save 미호출을 확인합니다. 02에는 공통 ErrorResponse가 없습니다.",
+        "outcome": "빈 조회 결과는 UPDATE 경로를 DB 쓰기 전에 종료합니다.",
         "stopAfter": 3
       }
     ]

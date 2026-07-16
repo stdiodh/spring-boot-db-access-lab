@@ -166,10 +166,10 @@ window.visualLabData = {
         "label": "검증된 OAuth 사용자",
         "flowId": "oauth-login",
         "tone": "recovered",
-        "prompt": "외부 인증 성공 결과는 어떤 식별과 충돌 확인을 거쳐 우리 서비스 token이 될까요?",
-        "observationTitle": "검증된 외부 email이 충돌 확인 뒤 내부 사용자와 JWT가 되는가?",
+        "prompt": "Provider가 providerId, email, email_verified=true인 profile을 돌려줍니다.",
+        "observationTitle": "외부 profile을 내부 로그인으로 받는 경계",
         "reflection": {
-          "prompt": "OAuth profile을 내부 로그인으로 받아들이는 신뢰 규칙을 설명해 보세요.",
+          "prompt": "Provider 응답과 내부 로그인 사이의 판단을 자기 말로 순서대로 적어 보세요.",
           "hint": "`email_verified`, 내부 계정 조회, provider 사용자 저장, token 전달을 순서대로 연결하세요."
         },
         "theoryRef": "../../../theory.md#seq-05",
@@ -186,15 +186,15 @@ window.visualLabData = {
             }
           ],
           "answer": "internal-checks",
-          "explanation": "외부 인증 결과를 내부 사용자와 연결하는 판단은 우리 서비스의 별도 신뢰 경계입니다."
+          "explanation": "Provider 인증과 내부 계정 식별은 서로 다른 주체가 책임지는 판단입니다."
         },
         "diagram": {
-          "caption": "외부 인증 성공은 verified profile을 내부 계정과 연결한 뒤에야 우리 서비스 JWT가 되는 흐름입니다. 실제 Google 왕복은 수동 확인 범위입니다.",
+          "caption": "Browser ↔ Provider callback 뒤 profile loader → 내부 계정 판단 → JWT fragment redirect로 이어지는 완성 목표입니다.",
           "lanes": [
             {
               "id": "authorization-redirect",
               "label": "Browser redirect + callback",
-              "description": "Spring Security가 Browser에 authorization URL을 돌려주고 Browser가 Google과 callback URL을 왕복합니다.",
+              "description": "Browser·Provider·Spring Security 사이의 동의와 callback 왕복을 맡습니다.",
               "steps": [
                 {
                   "from": "browser",
@@ -273,7 +273,7 @@ window.visualLabData = {
             {
               "id": "provider-profile",
               "label": "Provider profile",
-              "description": "callback 처리 뒤 profile loader가 provider user-info를 읽고 email 신뢰 조건을 확인합니다.",
+              "description": "provider user-info에서 식별 값과 verified 상태를 추출합니다.",
               "steps": [
                 {
                   "from": "springSecurity",
@@ -324,7 +324,7 @@ window.visualLabData = {
             {
               "id": "internal-account",
               "label": "내부 계정 판단",
-              "description": "외부 식별 결과를 우리 서비스의 providerId와 email 충돌 정책으로 다시 판단합니다.",
+              "description": "providerId 식별과 동일 email 충돌을 우리 서비스 정책으로 판정합니다.",
               "steps": [
                 {
                   "from": "oauthProfileLoader",
@@ -394,7 +394,7 @@ window.visualLabData = {
             {
               "id": "internal-token-result",
               "label": "내부 token + redirect",
-              "description": "계정 판단이 성공한 경우에만 JWT를 발급하고 데모 redirect 결과를 Browser에 전달합니다.",
+              "description": "받아들인 내부 사용자에게만 JWT와 데모 fragment를 만듭니다.",
               "steps": [
                 {
                   "from": "oauthAccountService",
@@ -472,18 +472,18 @@ window.visualLabData = {
           { "label": "사용자 식별", "value": "provider + providerId" },
           { "label": "결과 전달", "value": "URL fragment의 JWT" }
         ],
-        "evidence": "starter의 public OAuth 처리 메서드는 TODO입니다. 구현된 `linkOrCreateUser`와 `createSuccessResponse` helper를 코드 근거로 보고, redirect까지의 종단 경로는 구현 목표로 구분합니다.",
-        "outcome": "외부 인증 결과를 내부 사용자와 안전하게 연결한 경우에만 우리 서비스 JWT를 발급합니다."
+        "evidence": "starter의 public OAuth 메서드는 TODO입니다. `linkOrCreateUser`·`createSuccessResponse`만 코드 근거이며 Google 왕복과 redirect는 완성 후 확인합니다.",
+        "outcome": "Provider 인증 성공만으로는 부족하며 내부 계정 정책까지 통과한 경우에만 우리 서비스 JWT가 생깁니다."
       },
       {
         "id": "unverified-email",
         "label": "검증되지 않은 email",
         "flowId": "oauth-login",
         "tone": "blocked",
-        "prompt": "외부 profile에 email이 있어도 verified가 아니라면 신뢰 경계는 어디에서 멈춰야 할까요?",
-        "observationTitle": "email_verified가 false이면 내부 식별 전에 로그인이 멈추는가?",
+        "prompt": "Provider profile에 email은 있지만 email_verified=false입니다.",
+        "observationTitle": "검증되지 않은 email이 멈추는 지점",
         "reflection": {
-          "prompt": "외부 email 문자열만으로 계정을 만들면 안 되는 인과 규칙은 무엇인가요?",
+          "prompt": "같은 email에서 verified 값만 달라질 때 두 경로가 어디서 갈리는지 적어 보세요.",
           "hint": "provider가 소유를 검증하지 않은 email은 내부 계정 식별 근거가 될 수 없습니다."
         },
         "theoryRef": "../../../theory.md#seq-05",
@@ -500,15 +500,15 @@ window.visualLabData = {
             }
           ],
           "answer": "stop-trust",
-          "explanation": "소유가 검증되지 않은 email을 내부 계정 근거로 사용하면 다른 사용자와 잘못 연결될 수 있습니다."
+          "explanation": "email 문자열과 Provider가 확인한 소유 상태는 서로 다른 증거입니다."
         },
         "diagram": {
-          "caption": "email_verified=false이면 profile loader에서 신뢰를 중단합니다. 이후 계정 조회와 JWT 발급은 도달하지 않습니다.",
+          "caption": "profile loader가 email_verified=false를 확인하면 내부 계정 조회와 JWT 발급 전에 경로를 중단합니다.",
           "lanes": [
             {
               "id": "verified-email-gate",
               "label": "Verified email gate",
-              "description": "외부 profile의 email 문자열이 아니라 provider가 검증한 상태를 확인합니다.",
+              "description": "email 문자열을 내부 식별에 넘길 수 있는 신뢰 상태인지 판정합니다.",
               "steps": [
                 {
                   "from": "browser",
@@ -642,7 +642,7 @@ window.visualLabData = {
           { "label": "JWT", "value": "발급하지 않음" }
         ],
         "evidence": "starter의 `CustomOAuthUserService.loadUser`는 TODO이므로 `email_verified=false` 거절은 현재 실행 결과가 아닌 구현 목표로 확인합니다.",
-        "outcome": "검증되지 않은 외부 email은 내부 계정 생성·연결과 token 발급으로 이어지지 않습니다.",
+        "outcome": "email_verified가 false이면 email 문자열은 내부 계정 생성·연결의 근거가 될 수 없습니다.",
         "stopAfter": 3
       },
       {
@@ -650,10 +650,10 @@ window.visualLabData = {
         "label": "LOCAL 계정 email 충돌",
         "flowId": "oauth-login",
         "tone": "blocked",
-        "prompt": "같은 email의 LOCAL 사용자가 있으면 왜 자동 연결 대신 별도 확인이 필요할까요?",
-        "observationTitle": "같은 email의 LOCAL 계정이 자동 병합 대신 확인 경로로 가는가?",
+        "prompt": "verified profile의 email이 기존 LOCAL User와 같고 providerId는 일치하지 않습니다.",
+        "observationTitle": "LOCAL email 충돌을 멈추는 지점",
         "reflection": {
-          "prompt": "email 일치가 곧 계정 동일성을 뜻하지 않는 이유를 설명해 보세요.",
+          "prompt": "두 계정을 연결하려면 email 일치 외에 어떤 확인이 필요한지 적어 보세요.",
           "hint": "외부 provider 인증과 기존 LOCAL 자격 증명은 서로 다른 소유 증거입니다."
         },
         "theoryRef": "../../../theory.md#seq-05",
@@ -670,15 +670,15 @@ window.visualLabData = {
             }
           ],
           "answer": "manual-proof",
-          "explanation": "같은 문자열만으로 두 인증 수단의 소유자가 같다고 단정할 수 없습니다."
+          "explanation": "verified email은 외부 계정 소유를 말할 뿐 기존 LOCAL 자격 증명 소유까지 증명하지 않습니다."
         },
         "diagram": {
-          "caption": "verified email이어도 기존 LOCAL 계정의 소유권을 증명하지는 않습니다. 충돌을 감지하면 link_required 결과로 중단합니다.",
+          "caption": "providerId 조회 결과가 없고 email 조회에서 LOCAL User를 찾으면 link_required 예외로 끝내고 JWT를 만들지 않습니다.",
           "lanes": [
             {
               "id": "verified-provider-profile",
               "label": "검증된 외부 profile",
-              "description": "외부 인증과 email 검증은 통과했지만 내부 계정 정책은 아직 결정되지 않았습니다.",
+              "description": "외부 인증과 email 검증을 통과한 profile을 내부 판단으로 넘깁니다.",
               "steps": [
                 {
                   "from": "browser",
@@ -783,7 +783,7 @@ window.visualLabData = {
             {
               "id": "local-account-collision",
               "label": "LOCAL 계정 충돌",
-              "description": "providerId 식별 뒤 같은 email의 LOCAL 계정이 발견되면 자동 연결하지 않습니다.",
+              "description": "providerId가 다르고 email이 같은 LOCAL 계정을 자동 연결하지 않습니다.",
               "steps": [
                 {
                   "from": "oauthSuccessHandler",
@@ -883,8 +883,8 @@ window.visualLabData = {
           { "label": "연결 결과", "value": "link_required", "tone": "blocked" },
           { "label": "JWT", "value": "발급하지 않음" }
         ],
-        "evidence": "starter에 구현된 `OAuthAccountService.linkOrCreateUser`가 providerId 조회 뒤 동일 email User를 찾으면 `OAuthAccountLinkRequiredException`을 던지는지 확인합니다.",
-        "outcome": "email 문자열만으로 계정 소유를 단정하지 않고 명시적인 연결 확인 전까지 인증을 멈춥니다.",
+        "evidence": "`linkOrCreateUser` 구현에서 providerId 조회 뒤 같은 email User가 있으면 `OAuthAccountLinkRequiredException`을 던지는지 확인합니다.",
+        "outcome": "verified email이 같아도 LOCAL 계정 소유는 별도 확인 전까지 연결할 수 없습니다.",
         "stopAfter": 4
       },
       {
@@ -892,10 +892,10 @@ window.visualLabData = {
         "label": "복구 메일 위임",
         "flowId": "smtp-recovery",
         "tone": "warning",
-        "prompt": "현재 계정 복구 구현은 어디까지 책임지고 어떤 보안 단계는 후속으로 남겨둘까요?",
-        "observationTitle": "복구 요청이 mail sender 위임까지만 증명하고 배달은 남겨 두는가?",
+        "prompt": "복구 email 요청이 들어오며 starter에는 Controller와 reset link helper만 구현되어 있습니다.",
+        "observationTitle": "복구 요청에서 현재 증명할 수 있는 범위",
         "reflection": {
-          "prompt": "복구 API의 현재 책임과 아직 증명하지 않은 상태를 구분해 보세요.",
+          "prompt": "이 흐름이 증명한 것과 아직 남은 보안 단계를 두 목록으로 적어 보세요.",
           "hint": "adapter의 정상 반환은 호출 수락 근거이며 실제 수신함 배달이나 token 검증 근거는 아닙니다."
         },
         "theoryRef": "../../../theory.md#seq-05",
@@ -915,12 +915,12 @@ window.visualLabData = {
           "explanation": "현재 범위는 reset link 생성과 sender 위임이며 실제 재설정 완료를 보장하지 않습니다."
         },
         "diagram": {
-          "caption": "starter에서는 Controller와 reset link helper만 구현되어 있고 사용자 조회·sender 위임·SMTP 발송은 TODO입니다. 아래는 TODO 완성 목표이며 실제 password 변경이나 delivery를 보장하지 않습니다.",
+          "caption": "Controller → 사용자 조회 뒤 존재하면 reset link와 sender로, 없으면 발송 없이 나뉘고 두 경로 모두 202를 반환하는 완성 목표입니다.",
           "lanes": [
             {
               "id": "recovery-lookup",
               "label": "복구 요청과 사용자 조회",
-              "description": "요청 email을 받되 Repository 조회 결과를 외부 응답에 직접 노출하지 않습니다.",
+              "description": "요청 email을 내부 조회 조건으로만 사용하고 외부에 존재 여부를 숨깁니다.",
               "steps": [
                 {
                   "from": "recoveryClient",
@@ -973,7 +973,7 @@ window.visualLabData = {
             {
               "id": "existing-user-target",
               "label": "User 존재 · reset link 목표",
-              "description": "TODO 흐름에서 User를 찾고, 구현된 helper로 reset link를 만든 뒤 sender에 넘기는 목표를 구분합니다.",
+              "description": "존재하는 User의 reset link를 만들고 sender에 넘기는 구현 목표입니다.",
               "steps": [
                 {
                   "from": "userRepository",
@@ -1027,7 +1027,7 @@ window.visualLabData = {
             {
               "id": "mail-adapter-result",
               "label": "SMTP adapter 목표와 중립 응답",
-              "description": "아직 TODO인 SMTP adapter와 sender 반환을 구현 목표로 읽고, 실제 delivery 증거와 구분합니다.",
+              "description": "SMTP adapter 호출 수락과 실제 수신함 delivery를 구분합니다.",
               "steps": [
                 {
                   "from": "recoveryMailSender",
@@ -1105,7 +1105,7 @@ window.visualLabData = {
             {
               "id": "missing-user-neutral-response",
               "label": "User 없음 · 발송 없이 같은 202",
-              "description": "User가 없으면 reset link와 sender 호출을 만들지 않지만 외부 응답은 User 존재 경로와 같습니다.",
+              "description": "User가 없으면 발송을 건너뛰되 외부에는 같은 202를 돌려줍니다.",
               "steps": [
                 {
                   "from": "userRepository",
@@ -1176,8 +1176,8 @@ window.visualLabData = {
           { "label": "발송 책임", "value": "RecoveryMailSender 위임" },
           { "label": "후속 범위", "value": "토큰 저장 · 만료 · 재사용 차단", "tone": "warning" }
         ],
-        "evidence": "starter의 `createResetLink`와 Controller의 202 계약은 코드로 확인하고, `requestPasswordReset`과 SMTP sender 위임은 TODO 구현 목표로 구분합니다.",
-        "outcome": "현재 범위는 복구 요청과 메일 발송 위임까지이며 실제 비밀번호 재설정 완료로 오해하지 않습니다."
+        "evidence": "`createResetLink`와 Controller의 202만 현재 코드 근거입니다. `requestPasswordReset`과 SMTP 위임은 TODO입니다.",
+        "outcome": "202는 계정 존재를 숨기고 sender 반환은 위임만 뜻하며 delivery나 password 재설정을 보장하지 않습니다."
       }
     ]
   },

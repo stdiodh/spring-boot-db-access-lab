@@ -172,15 +172,15 @@ window.visualLabData = {
         "label": "email·password 로그인 요청",
         "flowId": "login-token",
         "tone": "recovered",
-        "prompt": "email과 password가 담긴 로그인 요청에서 서버는 무엇을 먼저 확인해야 할까요?",
-        "observationTitle": "저장된 사용자와 password가 맞을 때만 JWT가 발급되는가?",
+        "prompt": "LoginRequest에 email과 raw password가 있고 저장된 User에는 password hash가 있습니다.",
+        "observationTitle": "자격 정보 확인 뒤 JWT가 생기는 경로",
         "reflection": {
-          "prompt": "로그인 자격 증명이 access token으로 바뀌는 두 확인 지점을 설명해 보세요.",
+          "prompt": "사용자 조회와 password 비교가 각각 무엇을 확인하는지 자기 말로 적어 보세요.",
           "hint": "email 조회와 password `matches`가 성공하는지 차례로 확인합니다."
         },
         "theoryRef": "../../../theory.md#seq-04",
         "prediction": {
-          "prompt": "token 발급 여부를 정하기 전에 어떤 확인이 필요할까요?",
+          "prompt": "token을 만들기 전에 통과해야 할 두 확인은 무엇일까요?",
           "options": [
             {
               "id": "before-password",
@@ -192,15 +192,15 @@ window.visualLabData = {
             }
           ],
           "answer": "after-credentials",
-          "explanation": "올바른 자격 정보가 확인된 뒤에만 이후 보호 요청의 인증 근거를 만들 수 있습니다."
+          "explanation": "Repository는 저장된 자격 정보를 찾고 PasswordEncoder는 raw·hash 일치를 판정해야 합니다."
         },
         "diagram": {
-          "caption": "로그인은 저장된 사용자와 password hash를 검증한 뒤 JWT를 발급하며, 그 token의 사용은 다음 요청에서 별도로 시작됩니다.",
+          "caption": "AuthController → AuthService가 User를 조회하고 password를 비교한 뒤 JwtTokenProvider가 TokenResponse를 만듭니다.",
           "lanes": [
             {
               "id": "credential-check",
               "label": "자격 정보 확인",
-              "description": "LoginRequest의 email로 사용자를 찾고 raw password와 저장된 hash를 비교합니다.",
+              "description": "email 사용자 조회와 raw·hash password 비교를 맡습니다.",
               "steps": [
                 {
                   "from": "client",
@@ -295,7 +295,7 @@ window.visualLabData = {
             {
               "id": "token-issuance",
               "label": "Token 발급",
-              "description": "자격 정보 검증이 끝난 뒤 우리 서비스 JWT를 만들어 응답합니다.",
+              "description": "두 자격 확인을 통과한 email로 우리 서비스 JWT를 만듭니다.",
               "steps": [
                 {
                   "from": "auth-service",
@@ -377,23 +377,23 @@ window.visualLabData = {
           { "label": "인증 결과", "value": "사용자 확인", "tone": "recovered" },
           { "label": "Response", "value": "JWT" }
         ],
-        "evidence": "로그인 성공 응답의 token과 AuthService의 사용자 조회·비밀번호 확인·token 발급 순서를 확인합니다.",
-        "outcome": "로그인 결과로 발급한 JWT가 이후 보호 API 요청에서 사용자를 확인할 근거가 됩니다."
+        "evidence": "로그인 성공 응답과 AuthService의 조회 → password 비교 → token 생성 순서를 대조합니다. 이 응답만으로 다음 요청 인증은 증명하지 않습니다.",
+        "outcome": "사용자 조회와 password 비교를 모두 통과한 경우에만 JWT가 발급됩니다."
       },
       {
         "id": "login-failure",
         "label": "비밀번호 불일치",
         "flowId": "login-token",
         "tone": "blocked",
-        "prompt": "비밀번호가 맞지 않을 때 token 발급은 어느 판단 뒤에 멈춰야 할까요?",
-        "observationTitle": "password 불일치가 token 생성 전에 401 흐름을 여는가?",
+        "prompt": "email의 User는 있지만 raw password가 저장 hash와 다릅니다.",
+        "observationTitle": "password 불일치가 token을 막는 지점",
         "reflection": {
-          "prompt": "비밀번호 불일치가 JWT 부재와 401 응답으로 이어지는 규칙은 무엇인가요?",
+          "prompt": "성공 로그인과 이 요청이 처음 갈라지는 지점을 자기 말로 추적해 보세요.",
           "hint": "`matches=false`에서 예외가 발생하므로 `createToken`은 실행되지 않습니다."
         },
         "theoryRef": "../../../theory.md#seq-04",
         "prediction": {
-          "prompt": "비밀번호가 일치하지 않으면 JwtTokenProvider 호출은 어떻게 되어야 할까요?",
+          "prompt": "password가 일치하지 않으면 JwtTokenProvider는 호출되어야 할까요?",
           "options": [
             {
               "id": "issue-token",
@@ -405,15 +405,15 @@ window.visualLabData = {
             }
           ],
           "answer": "stop-before-token",
-          "explanation": "자격 정보 검증 실패는 token 생성 경계까지 도달하면 안 됩니다."
+          "explanation": "password 비교는 token 생성보다 앞선 자격 정보 gate이므로 실패 뒤 발급을 진행할 수 없습니다."
         },
         "diagram": {
-          "caption": "비밀번호 hash 비교가 실패하면 JWT 발급 없이 InvalidCredentialsException이 401 ErrorResponse로 돌아갑니다.",
+          "caption": "User 조회 뒤 PasswordEncoder.matches가 false이면 Service 예외를 handler가 401로 바꾸고 token 경로는 건너뜁니다.",
           "lanes": [
             {
               "id": "failed-credential-check",
               "label": "비밀번호 불일치",
-              "description": "사용자는 찾았지만 raw password가 저장된 hash와 일치하지 않습니다.",
+              "description": "찾은 User의 hash와 요청 password가 일치하는지 판정합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -505,7 +505,7 @@ window.visualLabData = {
             {
               "id": "failed-login-response",
               "label": "인증 실패 반환",
-              "description": "Service 예외를 공통 handler가 401 응답으로 바꿉니다.",
+              "description": "자격 정보 예외를 token 없이 401 공통 응답으로 바꿉니다.",
               "steps": [
                 {
                   "from": "auth-service",
@@ -558,8 +558,8 @@ window.visualLabData = {
           { "label": "Token", "value": "발급하지 않음" },
           { "label": "인증", "value": "실패" }
         ],
-        "evidence": "Swagger 또는 HTTP Client에서 잘못된 비밀번호로 로그인해 401 ErrorResponse를 확인하고, AuthService.login의 비밀번호 비교 뒤 InvalidCredentialsException 분기와 token 생성 위치를 코드로 대조합니다.",
-        "outcome": "사용자 확인에 실패하면 JwtTokenProvider까지 신호를 보내지 않습니다.",
+        "evidence": "잘못된 password의 401 응답과 AuthService의 matches 실패 분기를 대조하고 token 생성이 뒤에 있음을 확인합니다.",
+        "outcome": "matches가 false이면 JWT를 만들지 않고 InvalidCredentialsException을 401로 변환합니다.",
         "stopAfter": 2
       },
       {
@@ -567,10 +567,10 @@ window.visualLabData = {
         "label": "토큰 없는 보호 요청",
         "flowId": "protected-api",
         "tone": "blocked",
-        "prompt": "Authorization header가 없는 보호 API 요청은 filter chain에서 어떤 경계를 거칠까요?",
-        "observationTitle": "Bearer token이 없으면 Authentication 없이 인가 단계에 도달하는가?",
+        "prompt": "Authorization header 없이 보호 API를 요청합니다.",
+        "observationTitle": "미인증 요청의 filter와 401 책임",
         "reflection": {
-          "prompt": "filter의 계속 진행과 인가 거절이 함께 401을 만드는 규칙을 설명해 보세요.",
+          "prompt": "JWT filter와 entry point가 각각 맡는 일을 자기 말로 나눠 보세요.",
           "hint": "filter가 직접 401을 쓰는 것이 아니라 빈 SecurityContext로 chain을 넘긴 뒤 entry point가 응답합니다."
         },
         "theoryRef": "../../../theory.md#seq-04",
@@ -587,15 +587,15 @@ window.visualLabData = {
             }
           ],
           "answer": "authorization-entry-point",
-          "explanation": "JWT filter는 Authentication 없이 chain을 계속하고, 보호 endpoint의 authorization 경계가 요청을 거절하면 entry point가 401을 씁니다."
+          "explanation": "token 추출과 보호 endpoint 허용 여부는 서로 다른 책임에서 결정됩니다."
         },
         "diagram": {
-          "caption": "JWT filter는 header가 없을 때 직접 401을 쓰지 않고 인증 객체 없이 chain을 계속하며, 보호 API 경계의 entry point가 401을 반환합니다.",
+          "caption": "요청 → JWT filter에서 Authentication을 만들지 못한 뒤 authorization gate가 거절하고 entry point가 401을 씁니다.",
           "lanes": [
             {
               "id": "missing-token-return",
               "label": "미인증 보호 요청",
-              "description": "Authentication이 만들어지지 않은 요청이 authorization 경계에서 거절됩니다.",
+              "description": "filter 통과 뒤에도 비어 있는 Authentication을 authorization에서 판정합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -688,8 +688,8 @@ window.visualLabData = {
           { "label": "Authentication", "value": "만들지 않음" },
           { "label": "Response", "value": "401 Unauthorized" }
         ],
-        "evidence": "토큰 없이 보호 API를 호출해 401이 반환되고 Controller 로직이 실행되지 않는지 확인합니다.",
-        "outcome": "JWT filter가 chain을 계속하더라도 Authentication이 없는 보호 요청은 authorization 경계에서 거절되고 entry point가 401을 반환합니다.",
+        "evidence": "token 없는 보호 요청의 401과 Controller 미실행을 확인합니다. filter가 직접 401을 썼다는 증거로 해석하지 않습니다.",
+        "outcome": "filter chain 진행은 접근 허용이 아니며 Authentication 없는 보호 요청은 authorization에서 401이 됩니다.",
         "stopAfter": 2
       },
       {
@@ -697,10 +697,10 @@ window.visualLabData = {
         "label": "다른 작성자의 글 수정",
         "flowId": "protected-api",
         "tone": "blocked",
-        "prompt": "유효한 token이 있어도 게시글을 수정할 수 없는 경우는 어느 정책에서 결정될까요?",
-        "observationTitle": "인증된 사용자라도 작성자가 다르면 DB 변경 전에 403이 되는가?",
+        "prompt": "유효한 token의 email과 수정할 게시글의 author가 다릅니다.",
+        "observationTitle": "인증 뒤 작성자 gate가 쓰기를 막는 지점",
         "reflection": {
-          "prompt": "인증 성공과 게시글 수정 권한이 서로 다른 gate인 이유를 설명해 보세요.",
+          "prompt": "같은 token이 본인 글과 다른 사람 글에서 다른 결과를 내는 이유를 적어 보세요.",
           "hint": "token은 사용자를 식별하고, `validateAuthor`는 그 사용자와 게시글 author를 다시 비교합니다."
         },
         "theoryRef": "../../../theory.md#seq-04",
@@ -720,12 +720,12 @@ window.visualLabData = {
           "explanation": "인증은 통과했지만 작성자 정책을 만족하지 않으므로 인가 실패입니다."
         },
         "diagram": {
-          "caption": "유효한 JWT는 요청자를 인증하지만, 게시글 수정 권한은 PostService가 principal email과 작성자를 다시 비교해 결정합니다.",
+          "caption": "JWT filter → SecurityContext가 사용자를 등록하고 PostService가 principal email과 author를 비교해 403으로 멈춥니다.",
           "lanes": [
             {
               "id": "authenticated-request",
               "label": "Bearer 검증과 subject 추출",
-              "description": "validateToken의 Boolean 결과를 확인한 뒤 getEmail로 subject를 별도로 읽습니다.",
+              "description": "token 유효성을 판정한 뒤 subject email을 추출합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -808,7 +808,7 @@ window.visualLabData = {
             {
               "id": "security-context-authorization",
               "label": "현재 사용자 등록과 endpoint 허용",
-              "description": "email principal을 SecurityContext에 등록하고 보호 endpoint의 인증 조건을 통과합니다.",
+              "description": "email principal을 현재 요청에 등록해 인증 조건을 통과시킵니다.",
               "steps": [
                 {
                   "from": "jwt-filter",
@@ -860,7 +860,7 @@ window.visualLabData = {
             {
               "id": "ownership-denied",
               "label": "게시글 작성자 인가 실패",
-              "description": "인증된 사용자라도 대상 게시글의 작성자가 아니면 Service 정책에서 실패합니다.",
+              "description": "principal과 author가 다르면 Repository 쓰기 전에 거절합니다.",
               "steps": [
                 {
                   "from": "post-controller",
@@ -957,8 +957,8 @@ window.visualLabData = {
           { "label": "작성자 일치", "value": "아님", "tone": "blocked" },
           { "label": "Response", "value": "403 Forbidden" }
         ],
-        "evidence": "현재 사용자 email과 게시글 작성자가 다를 때 작성자 정책 테스트가 403을 반환하는지 확인합니다.",
-        "outcome": "인증은 통과하지만 인가에 실패하므로 Repository 변경은 실행하지 않습니다.",
+        "evidence": "작성자 불일치 요청의 403과 Repository 변경 부재를 확인합니다. token 유효성은 이미 통과한 조건입니다.",
+        "outcome": "인증은 사용자 신원만 증명하며 author 불일치는 Repository 쓰기 전에 403을 만듭니다.",
         "stopAfter": 3
       }
     ]

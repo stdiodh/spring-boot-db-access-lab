@@ -193,15 +193,15 @@ window.visualLabData = {
         "label": "PostCreateRequest + owner email",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "create(request, ownerEmail)의 반환 값을 재현 가능하게 비교하려면 어떤 협력 상태가 필요할까요?",
-        "observationTitle": "고정한 Repository 결과가 네 응답 필드로 보존되는가?",
+        "prompt": "PostServiceTest가 request·ownerEmail과 mock Repository 반환값을 준비했습니다.",
+        "observationTitle": "저장 결과의 네 필드 보존",
         "reflection": {
           "prompt": "fixture와 stub이 성공 테스트를 재현 가능하게 만드는 규칙을 설명해 보세요.",
           "hint": "입력과 협력자 반환을 고정한 뒤 id, title, content, author를 비교합니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "이 Service 호출을 단위 테스트하려면 어느 입력과 협력 결과를 준비할까요?",
+          "prompt": "어떤 값을 assertion해야 Service 변환을 확인할 수 있을까요?",
           "options": [
             {
               "id": "real-database",
@@ -213,15 +213,15 @@ window.visualLabData = {
             }
           ],
           "answer": "fixture-and-mock",
-          "explanation": "외부 DB를 분리하면 Service가 저장 흐름과 응답을 조립하는 책임에 집중할 수 있습니다."
+          "explanation": "DB 연결 여부가 아니라 stub으로 고정한 저장 결과와 Service 반환값을 비교하는 선택입니다."
         },
         "diagram": {
-          "caption": "PostServiceTest는 Repository 결과를 mock으로 통제하고 반환 PostResponse의 필드를 검증합니다. 이 테스트는 실제 DB 연결을 검증하지 않습니다.",
+          "caption": "fixture가 입력을 만들고 mock Repository의 savedPost가 Service를 거쳐 PostResponse로 돌아옵니다.",
           "lanes": [
             {
               "id": "arrange",
               "label": "Given · Arrange",
-              "description": "fixture로 입력을 만들고 mock Repository가 반환할 저장 결과를 준비합니다.",
+              "description": "request·ownerEmail과 Repository 반환값을 고정합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -275,7 +275,7 @@ window.visualLabData = {
             {
               "id": "act",
               "label": "When · Act",
-              "description": "Service가 실제 Repository 대신 준비된 test double을 호출하고 응답을 조립합니다.",
+              "description": "실제 PostService.create를 실행합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -341,7 +341,7 @@ window.visualLabData = {
             {
               "id": "assert",
               "label": "Then · Assert",
-              "description": "현재 테스트가 실제로 assert하는 응답 필드만 보장 범위로 표시합니다.",
+              "description": "id·title·content·author만 비교합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -395,23 +395,23 @@ window.visualLabData = {
           { "label": "When", "value": "PostService 호출" },
           { "label": "Then", "value": "응답 필드 검증 PASS", "tone": "recovered" }
         ],
-        "evidence": "PostServiceTest에서 Repository.save 반환값을 stub으로 준비하고, create 결과의 id·title·content·author를 assertEquals로 비교하는지 확인합니다. 이 테스트는 save 호출 횟수를 별도로 verify하지 않습니다.",
-        "outcome": "DB 연결 문제와 분리해 Service가 요청을 저장 흐름과 응답으로 조립하는 책임을 보장합니다."
+        "evidence": "create 결과의 id·title·content·author를 assertEquals로 확인합니다. save 호출 횟수와 실제 DB 연결은 이 테스트 범위가 아닙니다.",
+        "outcome": "stub으로 고정한 저장 결과가 네 응답 필드로 보존되면 Service 변환 계약이 성립합니다."
       },
       {
         "id": "post-service-not-found",
         "label": "findById(999) → empty",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "Repository가 Optional.empty()를 반환하도록 준비한 뒤 Service 호출에서 무엇을 관찰할까요?",
-        "observationTitle": "Optional.empty()가 PostNotFoundException으로 관찰되는가?",
+        "prompt": "Repository가 Optional.empty()를 반환하도록 stub했습니다.",
+        "observationTitle": "없는 id의 예외 타입",
         "reflection": {
           "prompt": "없는 게시글 테스트에서 stub과 예외 assertion의 인과 관계를 적어 보세요.",
           "hint": "`findById(999)`의 반환을 empty로 고정했기 때문에 Service의 not-found 분기가 실행됩니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "이 반환 조건에서 assertion 대상은 반환 값과 예외 중 무엇일까요?",
+          "prompt": "Service 호출에서 값과 예외 중 무엇을 assertion해야 할까요?",
           "options": [
             {
               "id": "always-fail",
@@ -423,15 +423,15 @@ window.visualLabData = {
             }
           ],
           "answer": "expected-pass",
-          "explanation": "예상한 실패를 assertion으로 명시하면 예외도 올바른 정책 결과로 검증할 수 있습니다."
+          "explanation": "정상 반환을 기대하는 선택과 달리, 이 조건은 PostNotFoundException 타입을 확인해야 합니다."
         },
         "diagram": {
-          "caption": "없는 게시글 조건에서 PostNotFoundException이 정확히 발생하면 실패 분기 테스트는 PASS입니다.",
+          "caption": "mock Repository의 empty 결과가 Service에서 PostNotFoundException으로 바뀌어 테스트로 돌아옵니다.",
           "lanes": [
             {
               "id": "not-found-act",
               "label": "Given + When",
-              "description": "Repository가 empty를 반환하도록 통제한 뒤 실제 Service 조회 분기를 실행합니다.",
+              "description": "empty 반환을 고정하고 Service 조회를 실행합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -512,7 +512,7 @@ window.visualLabData = {
             {
               "id": "not-found-assert",
               "label": "Then · Assert",
-              "description": "예외가 발생했다는 사실이 아니라 기대한 타입과 일치하는지를 검증합니다.",
+              "description": "실제 예외와 기대 타입을 비교합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -566,23 +566,23 @@ window.visualLabData = {
           { "label": "Service 결과", "value": "기대 예외" },
           { "label": "Test", "value": "PASS", "tone": "recovered" }
         ],
-        "evidence": "PostServiceTest가 없는 게시글 조건과 기대 예외 타입을 명시해 실패 분기를 검증하는지 확인합니다.",
-        "outcome": "예상한 실패가 정확히 발생하면 테스트는 통과하고 Service의 실패 정책을 실행 가능한 문서로 남깁니다."
+        "evidence": "PostServiceTest에서 empty stub과 기대 예외 타입을 함께 확인합니다.",
+        "outcome": "empty 조회 결과를 지정한 예외 타입으로 바꾸면 Service의 실패 계약을 실행 가능하게 고정할 수 있습니다."
       },
       {
         "id": "auth-service-failure",
         "label": "저장된 비밀번호와 다른 password 로그인",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "저장된 hash와 다른 password로 login하면 어느 협력 단계에서 멈출까요?",
-        "observationTitle": "`wrong-password`가 JWT 생성 전에 InvalidCredentialsException으로 바뀌는가?",
+        "prompt": "`password123` hash를 저장한 사용자와 `wrong-password` 요청을 준비했습니다.",
+        "observationTitle": "JWT 생성 전 비밀번호 실패",
         "reflection": {
           "prompt": "실제 encoder를 쓰는 테스트에서 저장 hash와 요청 password가 실패 분기를 정하는 규칙은 무엇인가요?",
           "hint": "`password123`의 hash와 `wrong-password`를 `matches`하면 false이며 token은 생성되지 않습니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "잘못된 password로 AuthService.login을 호출할 때 무엇을 관찰할까요?",
+          "prompt": "실제 encoder 비교 뒤 어떤 결과를 assertion해야 할까요?",
           "options": [
             {
               "id": "continue-token",
@@ -594,15 +594,15 @@ window.visualLabData = {
             }
           ],
           "answer": "stop-at-password",
-          "explanation": "AuthService는 BCrypt `matches`가 false이면 InvalidCredentialsException을 던지고 JWT를 만들지 않습니다."
+          "explanation": "일치하는 password의 token 반환과 달리, `matches == false`이면 인증 예외가 기대 결과입니다."
         },
         "diagram": {
-          "caption": "AuthServiceTest는 UserRepository만 mock으로 두고 실제 BCryptPasswordEncoder와 JwtTokenProvider를 사용합니다. 저장된 `password123` hash와 요청의 `wrong-password` 비교가 실패해 token 생성 전에 멈춥니다.",
+          "caption": "UserRepository가 사용자를 반환한 뒤 실제 BCrypt 비교가 실패해 AuthService가 JWT 생성 전에 중단됩니다.",
           "lanes": [
             {
               "id": "auth-arrange",
               "label": "Given · Arrange",
-              "description": "`wrong-password` 요청과 `password123` hash를 가진 사용자를 만들고 UserRepository 조회만 stub합니다.",
+              "description": "wrong-password 요청과 저장된 hash를 준비합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -712,7 +712,7 @@ window.visualLabData = {
             {
               "id": "auth-act",
               "label": "When · Act",
-              "description": "AuthService가 조회한 사용자의 hash와 요청의 `wrong-password`를 실제 encoder로 비교합니다.",
+              "description": "실제 BCrypt `matches`를 실행합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -806,7 +806,7 @@ window.visualLabData = {
             {
               "id": "auth-assert",
               "label": "Then · Assert",
-              "description": "기대 예외 타입과 실제 결과를 비교합니다.",
+              "description": "InvalidCredentialsException 타입을 확인합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -860,23 +860,23 @@ window.visualLabData = {
           { "label": "PasswordEncoder.matches", "value": "false" },
           { "label": "Assertion", "value": "InvalidCredentialsException", "tone": "recovered" }
         ],
-        "evidence": "AuthServiceTest는 `password123`을 실제 encoder로 저장 hash로 만들고 요청에는 `wrong-password`를 넣습니다. Repository만 stub한 뒤 login이 InvalidCredentialsException을 던지는지 확인합니다.",
-        "outcome": "저장 hash와 다른 password는 실제 BCrypt 비교에서 실패하고 JWT 발급 전에 InvalidCredentialsException으로 끝납니다."
+        "evidence": "UserRepository만 stub하고 실제 encoder로 만든 hash를 사용해 InvalidCredentialsException을 확인합니다. HTTP 401은 이 단위 테스트 범위가 아닙니다.",
+        "outcome": "비밀번호 비교 실패는 token 부재와 InvalidCredentialsException을 함께 고정합니다."
       },
       {
         "id": "http-policy-gap",
         "label": "token 없음 · body 제약 위반 · 작성자 불일치",
         "flowId": "status-code-view",
         "tone": "warning",
-        "prompt": "이 세 HTTP 요청 조건의 status를 관찰하려면 어느 실행 경계가 필요할까요?",
-        "observationTitle": "400·401·403을 증명하려면 Service 단위 밖의 HTTP 실행이 필요한가?",
+        "prompt": "`token 없음`, `body 제약 위반`, `작성자 불일치`는 HTTP 경계가 서로 다릅니다.",
+        "observationTitle": "400·401·403의 HTTP 경계",
         "reflection": {
           "prompt": "현재 단위 테스트 증거와 앞으로 필요한 HTTP 통합 증거의 경계를 설명해 보세요.",
           "hint": "Service 예외 assertion만으로 filter, handler, status serialization까지 실행됐다고 볼 수 없습니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "현재 Service 단위 테스트 결과와 별도로 확인해야 할 경계는 무엇일까요?",
+          "prompt": "Service 단위 테스트만으로 세 status를 증명할 수 있을까요?",
           "options": [
             {
               "id": "unit-enough",
@@ -888,15 +888,15 @@ window.visualLabData = {
             }
           ],
           "answer": "integration-needed",
-          "explanation": "HTTP 상태는 Service 밖의 Validation·Security filter·응답 변환 경계에도 의존합니다."
+          "explanation": "Service 반환·예외만 보는 선택과 달리 status에는 Validation, Security, handler 실행이 필요합니다."
         },
         "diagram": {
-          "caption": "아래 세 lane은 06 필수 Service 단위 테스트가 직접 보장하지 않는 HTTP 정책 경계의 개념 지도입니다. 각 status를 보장하려면 별도 HTTP 통합 테스트 증거가 필요합니다.",
+          "caption": "세 lane은 Service 밖에서 401, 400, 403이 결정되는 HTTP 정책 경계를 비교합니다.",
           "lanes": [
             {
               "id": "http-401",
               "label": "401 · token 없는 보호 요청",
-              "description": "JWT filter는 Authentication 없이 chain을 계속하고, 보호 endpoint의 authorization 경계가 요청을 거절합니다.",
+              "description": "filter는 요청을 계속 보내고 authorization gate가 미인증 요청을 거절합니다.",
               "steps": [
                 {
                   "from": "httpClient",
@@ -962,7 +962,7 @@ window.visualLabData = {
             {
               "id": "http-400",
               "label": "400 · Validation 실패",
-              "description": "인증된 요청이라도 DTO 제약을 통과하지 못하면 Service 전에 중단됩니다.",
+              "description": "DTO 제약은 Service 호출 전에 요청을 차단합니다.",
               "steps": [
                 {
                   "from": "httpClient",
@@ -1026,7 +1026,7 @@ window.visualLabData = {
             {
               "id": "http-403",
               "label": "403 · 인가 실패",
-              "description": "인증과 Validation은 통과했지만 작성자 정책에 맞지 않으면 Service 예외가 403으로 변환됩니다.",
+              "description": "작성자 gate 예외가 handler에서 403으로 변환됩니다.",
               "steps": [
                 {
                   "from": "httpClient",
@@ -1135,8 +1135,8 @@ window.visualLabData = {
           { "label": "미검증 경계", "value": "HTTP · Validation · Security", "tone": "warning" },
           { "label": "후속 후보", "value": "400 · 401 · 403 통합 테스트" }
         ],
-        "evidence": "현재 단위 테스트 대상과 status-code-view의 JWT filter·Spring Security authorization·AuthenticationEntryPoint·Validation·HTTP 응답 경계를 대조합니다.",
-        "outcome": "Service 테스트 결과를 HTTP 정책 보장으로 과장하지 않고 작은 통합 테스트가 필요한 범위를 구분합니다."
+        "evidence": "현재 06 Service 테스트에는 filter·Validation·handler를 통과한 HTTP 응답 증거가 없습니다.",
+        "outcome": "Service 테스트 결과만으로 HTTP status 계약을 보장할 수 없습니다."
       }
     ]
   },

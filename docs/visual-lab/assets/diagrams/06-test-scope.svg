@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430" role="img" aria-labelledby="seq06-title seq06-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 482" role="img" aria-labelledby="seq06-title seq06-desc">
   <title id="seq06-title">06 단위 테스트 범위 지도</title>
   <desc id="seq06-desc">시스템 밖 Fixture가 서비스·정책 Service를 실행하고 상태·데이터 Repository mock과 상호작용한 결과를 시스템 밖 Assertion이 확인하며 HTTP 입구·출구는 별도 검증으로 남는 지도</desc>
   <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
@@ -20,49 +20,48 @@
       [data-layer="resource"] .layer{fill:#2C7352}
       .flow{fill:none;stroke:#2955E4;stroke-width:3;marker-end:url(#arrow)}
       .return{fill:none;stroke:#176F72;stroke-width:3;marker-end:url(#return-arrow)}
-      .group{font-size:24px;font-weight:850;fill:#0C2691}
-      .layer{font-size:24px;font-weight:800;fill:#4B587C;text-anchor:middle}
-      .name{font-size:24px;font-weight:800;text-anchor:middle}
-      .body{font-size:24px;font-weight:650;fill:#4B587C;text-anchor:middle}
+      .group{font-size:27px;font-weight:850;fill:#0C2691}
+      .layer{font-size:25px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:27px;font-weight:800;text-anchor:middle}
+      .body{font-size:25px;font-weight:650;fill:#4B587C;text-anchor:middle}
     </style>
   </defs>
-  <rect width="720" height="430" fill="#F8F9FB"/>
-  <rect x="10" y="10" width="700" height="410" rx="18" class="frame"/>
+  <rect width="720" height="482" fill="#F8F9FB"/>
+  <rect x="16" y="16" width="688" height="450" rx="18" class="frame"/>
 
   <g data-semantic="boundary">
-    <rect x="22" y="52" width="676" height="264" rx="15" class="scope"/>
-    <text x="42" y="83" class="group">단위 테스트 경계 · HTTP 없이 확인</text>
+    <rect x="32" y="42" width="656" height="286" rx="15" class="scope"/>
+    <text x="50" y="76" class="group">단위 테스트 경계 · HTTP 없이 확인</text>
   </g>
   <g data-layer="outside">
-    <rect x="40" y="104" width="150" height="88" rx="10" class="node layer-outside"/>
-    <text x="115" y="130" class="layer">시스템 밖</text>
-    <text x="115" y="168" class="name">Fixture</text>
+    <rect x="48" y="96" width="160" height="106" rx="10" class="node layer-outside"/>
+    <text x="128" y="132" class="layer">시스템 밖</text>
+    <text x="128" y="174" class="name">Fixture</text>
   </g>
-  <path d="M190 148h85" class="flow"/>
+  <path d="M208 149h67" class="flow"/>
   <g data-layer="application">
-    <rect x="280" y="104" width="160" height="88" rx="10" class="node layer-application"/>
-    <text x="360" y="130" class="layer">서비스·정책</text>
-    <text x="360" y="168" class="name">Service</text>
+    <rect x="280" y="96" width="160" height="106" rx="10" class="node layer-application"/>
+    <text x="360" y="132" class="layer">서비스·정책</text>
+    <text x="360" y="174" class="name">Service</text>
   </g>
-  <path d="M440 148h80" class="flow"/>
+  <path d="M440 149h67" class="flow"/>
   <g data-layer="outside">
-    <rect x="525" y="104" width="150" height="88" rx="10" class="node layer-outside"/>
-    <text x="600" y="130" class="layer">시스템 밖</text>
-    <text x="600" y="168" class="name">Assertion</text>
+    <rect x="512" y="96" width="160" height="106" rx="10" class="node layer-outside"/>
+    <text x="592" y="132" class="layer">시스템 밖</text>
+    <text x="592" y="174" class="name">Assertion</text>
   </g>
 
-  <path d="M340 192v24" class="flow"/>
+  <path d="M340 202v14" class="flow"/>
   <g data-layer="resource">
-    <rect x="260" y="221" width="200" height="72" rx="10" class="node layer-resource"/>
-    <text x="360" y="245" class="layer">상태·데이터</text>
-    <text x="360" y="278" class="name">Repository mock</text>
+    <rect x="250" y="222" width="220" height="92" rx="10" class="node layer-resource"/>
+    <text x="360" y="254" class="layer">상태·데이터</text>
+    <text x="360" y="294" class="name">Repository mock</text>
   </g>
-  <path d="M380 221v-24" class="return"/>
+  <path d="M380 222v-14" class="return"/>
 
-  <text x="360" y="345" class="body">이 범위에서는 제외 · 통합 테스트에서 따로 관찰</text>
+  <text x="42" y="368" class="group">입구·출구 · 단위 테스트 밖</text>
   <g data-layer="interface">
-    <rect x="180" y="350" width="360" height="68" rx="10" class="node layer-interface"/>
-    <text x="360" y="377" class="layer">입구·출구</text>
-    <text x="360" y="407" class="name">HTTP · 400 / 401 / 403</text>
+    <rect x="110" y="386" width="500" height="64" rx="10" class="node layer-interface"/>
+    <text x="360" y="427" class="name">HTTP 계약 · 400 / 401 / 403</text>
   </g>
 </svg>
