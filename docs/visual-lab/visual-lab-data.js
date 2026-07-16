@@ -1,7 +1,7 @@
 window.visualLabData = {
   "kind": "hub",
   "sequence": "02-06",
-  "title": "DB Access Lab Visual Lab",
+  "title": "DB Access Visual Lab",
   "description": "DB 저장, 요청 검증, JWT 인증, 외부 인증/메일, 테스트 검증 흐름을 시퀀스별로 탐색합니다.",
   "repo": {
     "name": "spring-boot-db-access-lab",

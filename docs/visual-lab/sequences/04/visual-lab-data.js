@@ -54,6 +54,7 @@ window.visualLabData = {
         "icon": "client",
         "kind": "client",
         "role": "로그인 요청과 보호 API 요청을 보내고 상태 코드를 읽습니다.",
+        "systemLayer": "outside",
         "boundary": "HTTP 외부"
       },
       "auth-controller": {
@@ -61,6 +62,7 @@ window.visualLabData = {
         "icon": "api",
         "kind": "api",
         "role": "로그인 HTTP 요청을 AuthService와 연결합니다.",
+        "systemLayer": "interface",
         "boundary": "공개 인증 API"
       },
       "auth-service": {
@@ -68,6 +70,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "사용자와 비밀번호를 확인하고 token 발급을 요청합니다.",
+        "systemLayer": "application",
         "boundary": "자격 정보 검증",
         "codePointIds": ["jwt-create"]
       },
@@ -76,6 +79,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "email로 내부 사용자를 조회합니다.",
+        "systemLayer": "resource",
         "boundary": "사용자 저장소"
       },
       "password-encoder": {
@@ -83,6 +87,7 @@ window.visualLabData = {
         "icon": "security",
         "kind": "security",
         "role": "raw password와 저장된 hash가 일치하는지 비교합니다.",
+        "systemLayer": "application",
         "boundary": "비밀번호 검증"
       },
       "jwt-provider": {
@@ -90,6 +95,7 @@ window.visualLabData = {
         "icon": "token",
         "kind": "token",
         "role": "로그인 성공 시 token을 만들고 다음 요청의 token을 검증합니다.",
+        "systemLayer": "application",
         "boundary": "Token 발급·검증",
         "codePointIds": ["jwt-create", "jwt-filter"]
       },
@@ -98,6 +104,7 @@ window.visualLabData = {
         "icon": "security",
         "kind": "security",
         "role": "Bearer token이 유효할 때 Authentication을 만듭니다.",
+        "systemLayer": "interface",
         "boundary": "요청 인증",
         "codePointIds": ["jwt-filter"]
       },
@@ -106,6 +113,7 @@ window.visualLabData = {
         "icon": "security",
         "kind": "security",
         "role": "현재 요청의 인증된 email을 보관합니다.",
+        "systemLayer": "interface",
         "boundary": "요청별 인증 상태"
       },
       "security-boundary": {
@@ -113,6 +121,7 @@ window.visualLabData = {
         "icon": "gate",
         "kind": "gate",
         "role": "authenticated 규칙을 확인하고 Authentication이 없는 보호 요청을 거절합니다.",
+        "systemLayer": "interface",
         "boundary": "보호 API 경계",
         "codePointIds": ["jwt-filter"]
       },
@@ -121,6 +130,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "authorization 경계의 미인증 접근을 401 ErrorResponse로 변환합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 응답 경계"
       },
       "post-controller": {
@@ -128,6 +138,7 @@ window.visualLabData = {
         "icon": "api",
         "kind": "api",
         "role": "인증된 Principal과 게시글 요청을 PostService에 전달합니다.",
+        "systemLayer": "interface",
         "boundary": "보호된 게시글 API"
       },
       "post-service": {
@@ -135,6 +146,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "현재 사용자와 게시글 작성자를 비교해 resource 인가를 판단합니다.",
+        "systemLayer": "application",
         "boundary": "작성자 인가"
       },
       "post-repository": {
@@ -142,6 +154,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "대상 게시글을 조회하고 허용된 변경만 반영합니다.",
+        "systemLayer": "resource",
         "boundary": "게시글 영속성"
       },
       "exception-handler": {
@@ -149,6 +162,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "로그인 실패와 작성자 인가 실패를 401·403 ErrorResponse로 변환합니다.",
+        "systemLayer": "interface",
         "boundary": "공통 실패 응답"
       }
     },

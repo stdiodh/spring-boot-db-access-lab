@@ -54,6 +54,7 @@ window.visualLabData = {
         "icon": "client",
         "kind": "client",
         "role": "OAuth 시작 요청과 redirect 결과를 주고받습니다.",
+        "systemLayer": "outside",
         "boundary": "클라이언트"
       },
       "springSecurity": {
@@ -61,6 +62,7 @@ window.visualLabData = {
         "icon": "security",
         "kind": "security",
         "role": "OAuth authorization, callback, 인증 객체 생성을 조정합니다.",
+        "systemLayer": "interface",
         "boundary": "애플리케이션 보안"
       },
       "googleOAuth": {
@@ -68,6 +70,7 @@ window.visualLabData = {
         "icon": "external",
         "kind": "external",
         "role": "사용자를 인증하고 provider profile을 제공합니다.",
+        "systemLayer": "integration",
         "boundary": "외부 Identity Provider"
       },
       "oauthProfileLoader": {
@@ -75,6 +78,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "외부 profile에서 providerId, email, email_verified를 읽고 신뢰 조건을 검사합니다.",
+        "systemLayer": "interface",
         "boundary": "애플리케이션 보안"
       },
       "oauthSuccessHandler": {
@@ -82,6 +86,7 @@ window.visualLabData = {
         "icon": "response",
         "kind": "handler",
         "role": "검증된 profile을 내부 계정 판단으로 넘기고 redirect 결과를 만듭니다.",
+        "systemLayer": "interface",
         "boundary": "애플리케이션 보안"
       },
       "oauthAccountService": {
@@ -89,6 +94,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "providerId로 사용자를 식별하고 동일 email 계정 충돌을 차단합니다.",
+        "systemLayer": "application",
         "boundary": "계정 정책",
         "codePointIds": [
           "oauth-link"
@@ -99,6 +105,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "외부 식별자와 email로 내부 사용자 상태를 조회합니다.",
+        "systemLayer": "resource",
         "boundary": "영속성"
       },
       "jwtTokenProvider": {
@@ -106,6 +113,7 @@ window.visualLabData = {
         "icon": "token",
         "kind": "token",
         "role": "내부 사용자 식별 결과로 우리 API용 JWT를 만듭니다.",
+        "systemLayer": "application",
         "boundary": "내부 인증"
       },
       "recoveryClient": {
@@ -113,6 +121,7 @@ window.visualLabData = {
         "icon": "client",
         "kind": "client",
         "role": "비밀번호 재설정 메일을 요청하고 중립 응답을 받습니다.",
+        "systemLayer": "outside",
         "boundary": "클라이언트"
       },
       "accountRecoveryController": {
@@ -120,6 +129,7 @@ window.visualLabData = {
         "icon": "api",
         "kind": "api",
         "role": "복구 요청을 받고 계정 존재 여부를 드러내지 않는 응답 경계를 담당합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP API"
       },
       "accountRecoveryService": {
@@ -127,6 +137,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "사용자를 조회하고 reset link 생성과 발송 위임을 조립합니다.",
+        "systemLayer": "application",
         "boundary": "계정 복구",
         "codePointIds": [
           "smtp-reset"
@@ -137,6 +148,7 @@ window.visualLabData = {
         "icon": "mail",
         "kind": "service",
         "role": "계정 복구 Service가 의존하는 메일 발송 포트입니다.",
+        "systemLayer": "integration",
         "boundary": "메일 포트"
       },
       "smtpAdapter": {
@@ -144,6 +156,7 @@ window.visualLabData = {
         "icon": "external",
         "kind": "external",
         "role": "수신자, 제목, reset link를 SMTP 발송 요청으로 변환합니다.",
+        "systemLayer": "integration",
         "boundary": "인프라 어댑터"
       }
     },

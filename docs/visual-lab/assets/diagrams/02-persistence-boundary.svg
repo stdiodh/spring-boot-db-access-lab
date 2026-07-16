@@ -1,26 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" role="img" aria-labelledby="seq02-title seq02-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" role="img" aria-labelledby="seq02-title seq02-desc">
   <title id="seq02-title">02 영속성 경계 지도</title>
-  <desc id="seq02-desc">Request DTO가 Entity로 변환되고 Repository를 지나 프로세스 밖 MySQL row에 저장되는 지도</desc>
+  <desc id="seq02-desc">입구·출구의 Request DTO가 서비스·정책의 Entity로 바뀌고 상태·데이터의 Repository를 거쳐 application process 밖 MySQL row에 저장되는 지도</desc>
   <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#2955E4"/></marker>
-    <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#176F72"/></marker>
-    <style>.frame{fill:#fff;stroke:#6f82b8;stroke-width:2}.node{fill:#fff;stroke:#6f82b8;stroke-width:2}.soft{fill:#ecfbfa;stroke:#176f72;stroke-width:2}.warning{fill:#eef4ff;stroke:#2955e4;stroke-width:2}.boundary{fill:#eaf0fb;stroke:#6f82b8;stroke-width:2;stroke-dasharray:7 5}.boundary-strong{fill:#ecfbfa;stroke:#176f72;stroke-width:3}.arrow{fill:none;stroke:#2955e4;stroke-width:3;marker-end:url(#arrow)}.return{fill:none;stroke:#176f72;stroke-width:3;marker-end:url(#arrow-teal)}.stop{fill:none;stroke:#2955e4;stroke-width:2;stroke-dasharray:6 4}.divider{stroke:#c9d6f3;stroke-width:2}.title{fill:#111b3f;font:700 26px system-ui,-apple-system,sans-serif;text-anchor:middle}.copy{fill:#4b587c;font:600 24px system-ui,-apple-system,sans-serif;text-anchor:middle}.label{fill:#0c2691;font:800 24px system-ui,-apple-system,sans-serif}.teal{fill:#176f72}</style>
+    <style>
+      text{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;fill:#111B3F}
+      .frame{fill:#FFFFFF;stroke:#6F82B8;stroke-width:2}
+      .process{fill:#FFFFFF;stroke:#94A3B8;stroke-width:2;stroke-dasharray:8 6}
+      .node{stroke-width:2.5}
+      .layer-outside{fill:#F1F5F9;stroke:#5B677A}
+      .layer-interface{fill:#E6F4F7;stroke:#0E7490}
+      .layer-application{fill:#F2EDFF;stroke:#6D43A8}
+      .layer-resource{fill:#EAF5EE;stroke:#2C7352}
+      .layer-integration{fill:#FFF4D6;stroke:#926000}
+      .layer-runtime{fill:#EEF2F7;stroke:#52627A}
+      [data-layer="outside"] .layer{fill:#5B677A}
+      [data-layer="resource"] .layer{fill:#2C7352}
+      .flow{fill:none;stroke:#2955E4;stroke-width:3;marker-end:url(#arrow)}
+      .group{font-size:24px;font-weight:850;fill:#0C2691}
+      .boundary-label{font-size:24px;font-weight:800;fill:#52627A}
+      .layer{font-size:24px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:24px;font-weight:800;text-anchor:middle}
+      .body{font-size:24px;font-weight:650;fill:#4B587C;text-anchor:middle}
+    </style>
   </defs>
-  <rect width="720" height="300" fill="#F8F9FB"/>
+  <rect width="720" height="340" fill="#F8F9FB"/>
+  <rect x="20" y="20" width="680" height="300" rx="18" class="frame"/>
 
-  <rect x="20" y="20" width="680" height="260" rx="18" class="frame"/>
-  <rect x="38" y="58" width="484" height="190" rx="14" class="boundary"/>
-  <text x="58" y="92" class="label">애플리케이션</text>
-  <rect x="50" y="118" width="156" height="64" rx="10" class="node"/><text x="128" y="158" class="title">Request DTO</text>
-  <path d="M206 150h24" class="arrow"/>
-  <rect x="230" y="118" width="110" height="64" rx="10" class="node"/><text x="285" y="158" class="title">Entity</text>
-  <path d="M340 150h20" class="arrow"/>
-  <rect x="360" y="118" width="148" height="64" rx="10" class="node"/><text x="434" y="158" class="title">Repository</text>
-  <path d="M508 150h46" class="arrow"/>
-  <text x="548" y="92" class="label">영속 저장소</text>
-  <rect x="554" y="110" width="128" height="80" rx="10" class="soft"/>
-  <text x="618" y="145" class="title">MySQL</text>
-  <text x="618" y="174" class="copy">row 유지</text>
-  <text x="280" y="222" class="copy">DTO → Entity → save</text>
+  <g data-semantic="boundary">
+    <rect x="34" y="52" width="500" height="228" rx="14" class="process"/>
+    <text x="52" y="82" class="group">application process 안</text>
+  </g>
+  <line x1="540" y1="63" x2="540" y2="278" stroke="#94A3B8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="552" y="82" class="boundary-label">process 밖</text>
+
+  <g data-layer="interface">
+    <rect x="48" y="112" width="150" height="92" rx="10" class="node layer-interface"/>
+    <text x="123" y="138" class="layer">입구·출구</text>
+    <text x="123" y="176" class="name">Request DTO</text>
+  </g>
+  <path d="M198 158h22" class="flow"/>
+  <g data-layer="application">
+    <rect x="225" y="112" width="120" height="92" rx="10" class="node layer-application"/>
+    <text x="285" y="138" class="layer">서비스·정책</text>
+    <text x="285" y="176" class="name">Entity</text>
+  </g>
+  <path d="M345 158h17" class="flow"/>
+  <g data-layer="resource">
+    <rect x="367" y="112" width="150" height="92" rx="10" class="node layer-resource"/>
+    <text x="442" y="138" class="layer">상태·데이터</text>
+    <text x="442" y="176" class="name">Repository</text>
+  </g>
+  <path d="M517 158h30" class="flow"/>
+  <g data-layer="resource">
+    <rect x="552" y="108" width="134" height="100" rx="10" class="node layer-resource"/>
+    <text x="619" y="134" class="layer">상태</text>
+    <text x="619" y="168" class="name">MySQL</text>
+    <text x="619" y="194" class="body">영속 row</text>
+  </g>
+  <text x="285" y="250" class="body">DTO → Entity 변환 → save</text>
+  <text x="619" y="244" class="body">재시작 뒤</text>
+  <text x="619" y="274" class="body">유지</text>
 </svg>

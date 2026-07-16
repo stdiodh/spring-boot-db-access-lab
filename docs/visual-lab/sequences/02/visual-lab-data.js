@@ -50,6 +50,7 @@ window.visualLabData = {
         "icon": "client",
         "kind": "client",
         "role": "HTTP 요청을 보내고 API 응답을 읽습니다.",
+        "systemLayer": "outside",
         "boundary": "HTTP 외부"
       },
       "controller": {
@@ -57,6 +58,7 @@ window.visualLabData = {
         "icon": "api",
         "kind": "api",
         "role": "HTTP 요청을 Service 호출과 연결합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 입구"
       },
       "service": {
@@ -64,6 +66,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "DTO와 Entity 변환 및 CRUD 순서를 조립합니다.",
+        "systemLayer": "application",
         "boundary": "애플리케이션 처리",
         "codePointIds": ["entity-table", "repository-save"]
       },
@@ -72,6 +75,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "애플리케이션 인스턴스를 시작하고 종료하며 외부 MySQL과 다시 연결합니다.",
+        "systemLayer": "runtime",
         "boundary": "애플리케이션 프로세스"
       },
       "repository": {
@@ -79,6 +83,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "JpaRepository를 통해 Entity 저장과 조회를 요청합니다.",
+        "systemLayer": "resource",
         "boundary": "JPA 영속성 경계",
         "codePointIds": ["repository-save"]
       },
@@ -87,6 +92,7 @@ window.visualLabData = {
         "icon": "database",
         "kind": "database",
         "role": "posts table의 row를 애플리케이션 프로세스 밖에 보관합니다.",
+        "systemLayer": "resource",
         "boundary": "영속 저장소",
         "codePointIds": ["entity-table"]
       },
@@ -95,6 +101,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "03의 공통 handler를 도입하기 전 처리되지 않은 예외를 HTTP 오류로 전달합니다.",
+        "systemLayer": "interface",
         "boundary": "기본 HTTP 오류 경계"
       }
     },

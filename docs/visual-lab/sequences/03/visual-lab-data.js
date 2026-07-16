@@ -50,6 +50,7 @@ window.visualLabData = {
         "icon": "client",
         "kind": "client",
         "role": "정상 또는 실패 조건의 HTTP 요청을 보냅니다.",
+        "systemLayer": "outside",
         "boundary": "HTTP 외부"
       },
       "request-gate": {
@@ -57,6 +58,7 @@ window.visualLabData = {
         "icon": "gate",
         "kind": "gate",
         "role": "body 또는 path variable을 바인딩하고 `@Valid` DTO에만 Bean Validation을 적용합니다.",
+        "systemLayer": "interface",
         "boundary": "요청 형식 경계",
         "codePointIds": ["request-validation"]
       },
@@ -65,6 +67,7 @@ window.visualLabData = {
         "icon": "api",
         "kind": "api",
         "role": "검증을 통과한 요청을 Service에 전달합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 입구"
       },
       "service": {
@@ -72,6 +75,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "저장 흐름과 대상 존재 여부를 판단합니다.",
+        "systemLayer": "application",
         "boundary": "비즈니스 판단"
       },
       "repository": {
@@ -79,6 +83,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "게시글 저장과 id 조회를 수행합니다.",
+        "systemLayer": "resource",
         "boundary": "영속성 경계"
       },
       "database": {
@@ -86,6 +91,7 @@ window.visualLabData = {
         "icon": "database",
         "kind": "database",
         "role": "posts row를 저장하고 조회 결과를 반환합니다.",
+        "systemLayer": "resource",
         "boundary": "영속 저장소"
       },
       "exception-handler": {
@@ -93,6 +99,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "검증·도메인 예외를 상태 코드와 ErrorResponse로 변환합니다.",
+        "systemLayer": "interface",
         "boundary": "공통 실패 응답",
         "codePointIds": ["global-handler"]
       }

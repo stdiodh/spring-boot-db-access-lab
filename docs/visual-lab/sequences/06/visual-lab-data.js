@@ -54,6 +54,7 @@ window.visualLabData = {
         "icon": "test",
         "kind": "test",
         "role": "조건을 준비하고 Service를 실행한 뒤 실제 결과를 검증합니다.",
+        "systemLayer": "outside",
         "boundary": "단위 테스트",
         "codePointIds": [
           "service-unit-test"
@@ -64,6 +65,7 @@ window.visualLabData = {
         "icon": "fixture",
         "kind": "fixture",
         "role": "반복되는 요청 DTO와 Entity 입력을 만듭니다.",
+        "systemLayer": "outside",
         "boundary": "테스트 준비",
         "codePointIds": [
           "fixture-factory"
@@ -74,6 +76,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "DB 연결 대신 PostRepository의 반환값을 테스트가 통제하게 합니다.",
+        "systemLayer": "resource",
         "boundary": "테스트 대역"
       },
       "postService": {
@@ -81,6 +84,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "게시글 생성과 조회 실패 같은 비즈니스 판단을 실행하는 테스트 대상입니다.",
+        "systemLayer": "application",
         "boundary": "Service under test",
         "codePointIds": [
           "service-unit-test"
@@ -91,6 +95,7 @@ window.visualLabData = {
         "icon": "repository",
         "kind": "repository",
         "role": "로그인 대상 사용자의 조회 결과를 테스트가 통제하게 합니다.",
+        "systemLayer": "resource",
         "boundary": "테스트 대역"
       },
       "authService": {
@@ -98,6 +103,7 @@ window.visualLabData = {
         "icon": "service",
         "kind": "service",
         "role": "사용자 종류와 비밀번호를 판단하고 성공 시 token을 만드는 테스트 대상입니다.",
+        "systemLayer": "application",
         "boundary": "Service under test"
       },
       "passwordEncoder": {
@@ -105,6 +111,7 @@ window.visualLabData = {
         "icon": "security",
         "kind": "security",
         "role": "06 기준 단위 테스트에서 실제 구현으로 비밀번호 일치 여부를 계산합니다.",
+        "systemLayer": "application",
         "boundary": "실제 협력 객체"
       },
       "jwtTokenProvider": {
@@ -112,6 +119,7 @@ window.visualLabData = {
         "icon": "token",
         "kind": "token",
         "role": "인증 성공 시 access token을 만드는 실제 협력 객체입니다.",
+        "systemLayer": "application",
         "boundary": "실제 협력 객체"
       },
       "assertionOracle": {
@@ -119,6 +127,7 @@ window.visualLabData = {
         "icon": "evidence",
         "kind": "evidence",
         "role": "응답 필드나 기대 예외를 실제 결과와 비교해 PASS 또는 FAIL을 결정합니다.",
+        "systemLayer": "outside",
         "boundary": "테스트 검증"
       },
       "httpClient": {
@@ -126,6 +135,7 @@ window.visualLabData = {
         "icon": "client",
         "kind": "client",
         "role": "인증 header와 요청 body를 포함한 HTTP 요청을 보냅니다.",
+        "systemLayer": "outside",
         "boundary": "HTTP 통합 경계"
       },
       "securityFilter": {
@@ -133,6 +143,7 @@ window.visualLabData = {
         "icon": "security",
         "kind": "security",
         "role": "Bearer token이 유효하면 Authentication을 만들고, token이 없으면 Authentication 없이 다음 filter chain으로 요청을 넘깁니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 통합 경계"
       },
       "authorizationBoundary": {
@@ -140,6 +151,7 @@ window.visualLabData = {
         "icon": "gate",
         "kind": "gate",
         "role": "Authentication이 없는 보호 endpoint 요청을 Controller 진입 전에 거절합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP authorization 경계"
       },
       "authenticationEntryPoint": {
@@ -147,6 +159,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "authorization 경계의 미인증 접근을 401 ErrorResponse로 변환합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 응답 경계"
       },
       "validation": {
@@ -154,6 +167,7 @@ window.visualLabData = {
         "icon": "gate",
         "kind": "gate",
         "role": "요청 body의 형식과 제약을 검사합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 통합 경계"
       },
       "postController": {
@@ -161,6 +175,7 @@ window.visualLabData = {
         "icon": "api",
         "kind": "api",
         "role": "검증된 HTTP 요청과 현재 사용자를 PostService로 전달합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 통합 경계"
       },
       "globalExceptionHandler": {
@@ -168,6 +183,7 @@ window.visualLabData = {
         "icon": "handler",
         "kind": "handler",
         "role": "Validation과 Service 예외를 HTTP status와 ErrorResponse로 변환합니다.",
+        "systemLayer": "interface",
         "boundary": "HTTP 응답 경계"
       }
     },
