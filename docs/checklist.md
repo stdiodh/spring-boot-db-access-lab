@@ -12,7 +12,7 @@
 - [ ] `02`: Repository와 Entity가 DB 저장/조회 흐름을 담당합니다.
 - [ ] `03`: Validation 실패가 `GlobalExceptionHandler`를 지나 `ErrorResponse`로 내려갑니다.
 - [ ] `04`: Sequence 03의 DTO Validation과 요청 본문 `400` 처리 TODO를 다시 구현했습니다.
-- [ ] `04`: `RequestValidation.kt`, `ApiExceptionHandling.kt`, `JwtAuthentication.kt`, `SecurityConfig.kt` 순서로 실습 경계를 읽었습니다.
+- [ ] `04`: `ApiDtos.kt`, `ApiExceptionHandling.kt`, `JwtAuthentication.kt`, `SecurityConfig.kt` 순서로 실습 경계를 읽었습니다.
 - [ ] `04`: 로그인 성공 시 JWT가 발급되고 보호 API에서 Bearer token을 읽습니다.
 - [ ] `04`: email 정규화, DTO/DB 길이, malformed JSON, 일관된 400/401/403 응답을 확인했습니다.
 - [ ] `04`: HS256, issuer, audience, 만료와 subject를 한 번의 parsing으로 검증합니다.

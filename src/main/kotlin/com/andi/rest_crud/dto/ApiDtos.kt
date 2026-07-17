@@ -1,5 +1,6 @@
 package com.andi.rest_crud.dto
 
+import com.andi.rest_crud.domain.PostEntity
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -48,4 +49,33 @@ data class PostUpdateRequest(
     @field:NotBlank(message = "content는 비어 있을 수 없습니다.")
     @field:Size(max = 5000, message = "content는 5000자 이하여야 합니다.")
     val content: String
+)
+
+// WHY: 보호 API는 User Entity 대신 현재 인증된 사용자의 email만 응답으로 노출한다.
+data class CurrentUserResponse(
+    val email: String
+)
+
+// WHY: 게시글 Entity를 직접 노출하지 않고 API에 필요한 필드만 응답 계약으로 전달한다.
+data class PostResponse(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val author: String
+) {
+    companion object {
+        fun from(entity: PostEntity): PostResponse = PostResponse(
+            id = entity.id,
+            title = entity.title,
+            content = entity.content,
+            author = entity.author
+        )
+    }
+}
+
+// WHY: 클라이언트가 token 사용 방식과 남은 유효 시간을 함께 판단할 수 있게 한다.
+data class TokenResponse(
+    val accessToken: String,
+    val tokenType: String = "Bearer",
+    val expiresIn: Long
 )

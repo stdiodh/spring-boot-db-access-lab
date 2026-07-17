@@ -895,7 +895,7 @@ window.visualLabData = {
     {
       "id": "request-validation",
       "title": "Request DTO에서 입력 형식을 먼저 막습니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/dto/RequestValidation.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/dto/ApiDtos.kt",
       "language": "kotlin",
       "snippet": "// 제목, 본문, 작성자 중 빈 필드는 Service 호출 전에 막습니다.\ndata class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\") val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\") val content: String,\n    @field:NotBlank(message = \"author는 비어 있을 수 없습니다.\") val author: String\n)",
       "explanation": "형식 오류는 Service와 DB까지 내려가기 전에 요청 입구에서 멈춥니다.",
