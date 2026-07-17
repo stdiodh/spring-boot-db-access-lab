@@ -1234,7 +1234,7 @@ window.visualLabData = {
     {
       "id": "jwt-create",
       "title": "로그인 성공 결과로 JWT를 발급합니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtAuthentication.kt",
       "language": "kotlin",
       "snippet": "// 같은 시각과 계약으로 issuer, audience, subject, 만료를 기록합니다.\nval issuedAt = clock.instant()\nreturn Jwts.builder()\n    .issuer(issuer)\n    .audience().add(audience).and()\n    .subject(email)\n    .issuedAt(Date.from(issuedAt))\n    .expiration(Date.from(issuedAt.plusMillis(expirationMs)))\n    .signWith(signingKey, Jwts.SIG.HS256)\n    .compact()",
       "explanation": "발급은 LOCAL 로그인 성공 뒤에만 일어나고, 응답은 tokenType과 expiresIn을 함께 알립니다.",
@@ -1243,7 +1243,7 @@ window.visualLabData = {
     {
       "id": "jwt-validate",
       "title": "한 번 파싱한 결과에서 검증된 subject를 꺼냅니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtAuthentication.kt",
       "language": "kotlin",
       "snippet": "// 검증과 subject 조회를 분리해 같은 token을 두 번 파싱하지 않습니다.\nval parsedToken = jwtParser.parseSignedClaims(token)\nif (parsedToken.header.algorithm != Jwts.SIG.HS256.id) {\n    return null\n}\n\nval claims = parsedToken.payload\nval subject = claims.subject\n\nsubject?.takeIf {\n    it.isNotBlank() && claims.issuedAt != null && claims.expiration != null\n}",
       "explanation": "parser가 서명·만료·issuer·audience를 확인하고, 코드는 알고리즘과 필수 claim까지 확인합니다. 파싱 실패는 null로 끝납니다.",
@@ -1252,7 +1252,7 @@ window.visualLabData = {
     {
       "id": "jwt-filter",
       "title": "검증된 subject만 새 SecurityContext에 등록합니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtAuthenticationFilter.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtAuthentication.kt",
       "language": "kotlin",
       "snippet": "// 기존 Authentication은 보존하고 검증된 email이 있을 때만 새 context를 만듭니다.\nif (SecurityContextHolder.getContext().authentication == null) {\n    resolveToken(request)\n        ?.let(jwtTokenProvider::getValidatedSubject)\n        ?.let { email -> setAuthentication(request, email) }\n}\nfilterChain.doFilter(request, response)",
       "explanation": "token이 없거나 잘못되면 Authentication을 만들지 않습니다. 공개 API는 계속될 수 있고 보호 API는 authorization 경계에서 401이 됩니다.",
