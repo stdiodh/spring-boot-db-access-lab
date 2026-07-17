@@ -13,13 +13,22 @@ signup -> login -> access token issue -> JWT validation filter
 
 ## 2. 구현 순서
 
-1. 환경 변수와 DTO/Entity 입력 계약을 맞춥니다.
+1. 환경 변수와 `RequestValidation.kt`/Entity 입력 계약을 맞춥니다.
 2. `AuthService.kt`에서 회원가입 경쟁 조건과 로그인 흐름을 확인합니다.
-3. `JwtTokenProvider.kt`에서 한 번의 파싱으로 토큰을 검증합니다.
-4. `JwtAuthenticationFilter.kt`에서 검증된 subject를 인증 정보로 바꿉니다.
-5. `SecurityConfig.kt`와 오류 handler에서 401/403 형식을 통일합니다.
-6. 게시글 ownership 인가와 오류 응답을 확인합니다.
+3. `JwtAuthentication.kt`의 provider에서 한 번의 파싱으로 토큰을 검증합니다.
+4. 같은 파일의 filter에서 검증된 subject를 인증 정보로 바꿉니다.
+5. `SecurityConfig.kt`에서 공개/보호 경계와 Security의 401/403 응답을 확인합니다.
+6. `ApiExceptionHandling.kt`와 `PostService.kt`에서 API 오류와 ownership 인가를 확인합니다.
 7. 실제 signup/login 토큰을 포함한 통합 테스트를 실행합니다.
+
+실습 파일은 책임이 가까운 코드끼리 아래처럼 모았습니다. answer 구현 위의 주석은 코드를 그대로 읽는 설명이 아니라 그 검사가 필요한 이유를 먼저 알려줍니다.
+
+```text
+dto/RequestValidation.kt          요청 DTO 네 개의 입력 계약
+exception/ApiExceptionHandling.kt ErrorResponse, 도메인 예외, 전역 handler
+security/JwtAuthentication.kt     JWT 발급·검증과 인증 filter
+security/SecurityConfig.kt        Security 규칙, Clock, 401/403 handler
+```
 
 ## 3. Step 1. 사용자 저장 구조 확인
 
@@ -121,13 +130,15 @@ export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
 ./gradlew bootRun
 ```
 
+로컬 MySQL은 다른 기본 설치와 충돌하지 않도록 host `3307`에 열리고, 애플리케이션 기본 URL도 `jdbc:mysql://localhost:3307/aandi_lab`을 사용합니다. 다른 DB를 사용할 때는 `DB_URL`을 지정합니다.
+
 Swagger UI:
 
 ```text
 http://localhost:8080/swagger
 ```
 
-브라우저에서 `http://localhost:8080/auth-practice/index.html`을 열면 email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인할 수 있습니다. 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
+브라우저에서 `http://localhost:8080`을 열면 인증 실습 화면으로 이동합니다. `/auth-practice`와 `/auth-practice/`도 같은 화면으로 이동합니다. email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인하고, 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
 
 테스트:
 
@@ -197,7 +208,7 @@ export SPRINGDOC_ENABLED='false'
 <details>
 <summary>멘토용 진행 포인트</summary>
 
-- starter와 비교할 때 AuthService, JwtTokenProvider, JwtAuthenticationFilter, SecurityConfig 순서로 확인합니다.
+- starter와 비교할 때 AuthService, JwtAuthentication의 provider와 filter, SecurityConfig 순서로 확인합니다.
 - 힌트가 필요하면 로그인 응답, Authorization header, filter 검증 순서로 좁혀갑니다.
 - 다음 OAuth2 시퀀스로 넘어가기 전 자체 JWT의 역할을 설명하게 합니다.
 

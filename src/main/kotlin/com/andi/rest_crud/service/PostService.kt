@@ -41,6 +41,7 @@ class PostService(
     @Transactional
     fun update(id: Long, request: PostUpdateRequest, currentUserEmail: String): PostResponse {
         val post = findPostById(id)
+        // 값을 바꾸기 전에 작성자를 확인해야 다른 사용자의 게시글이 transaction 안에서 수정되지 않습니다.
         validateAuthor(post, currentUserEmail)
         post.update(request.title, request.content)
 
@@ -50,6 +51,7 @@ class PostService(
     @Transactional
     fun delete(id: Long, currentUserEmail: String) {
         val post = findPostById(id)
+        // 삭제도 수정과 같은 소유권 경계를 지나야 인증만 된 다른 사용자의 접근을 403으로 막습니다.
         validateAuthor(post, currentUserEmail)
         postRepository.delete(post)
     }
@@ -60,6 +62,7 @@ class PostService(
     }
 
     private fun validateAuthor(post: PostEntity, currentUserEmail: String) {
+        // Authentication은 신원만 증명하므로 실제 작업 권한은 저장된 작성자와 별도로 비교합니다.
         if (!post.isWrittenBy(currentUserEmail)) {
             throw ForbiddenPostAccessException(post.id)
         }
