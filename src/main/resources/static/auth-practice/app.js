@@ -26,10 +26,12 @@ const elements = {
   requestEndpoint: document.querySelector("#requestEndpoint"),
   responseStatus: document.querySelector("#responseStatus"),
   responseBody: document.querySelector("#responseBody"),
-  tokenDetails: document.querySelector("#tokenDetails"),
+  tokenLab: document.querySelector("#tokenLab"),
+  fullToken: document.querySelector("#fullToken"),
+  copyTokenButton: document.querySelector("#copyTokenButton"),
+  copyStatus: document.querySelector("#copyStatus"),
   tokenType: document.querySelector("#tokenType"),
   tokenExpires: document.querySelector("#tokenExpires"),
-  tokenFingerprint: document.querySelector("#tokenFingerprint"),
   identityProof: document.querySelector("#identityProof"),
   identityTitle: document.querySelector("#identity-title"),
   identityDescription: document.querySelector("#identityDescription"),
@@ -113,6 +115,7 @@ function setBusy(isBusy) {
   elements.loginButton.disabled = isBusy;
   elements.verifyButton.disabled = isBusy || authSession === null;
   elements.clearButton.disabled = isBusy || authSession === null;
+  elements.copyTokenButton.disabled = isBusy || authSession === null;
 }
 
 function readCredentials() {
@@ -179,7 +182,7 @@ function safeResponse(data) {
   }
 
   return {
-    accessToken: "[JavaScript 메모리에 보관]",
+    accessToken: "[아래 Access Token 영역에 표시]",
     tokenType: data.tokenType || "Bearer",
     expiresIn: data.expiresIn ?? "응답에 없음"
   };
@@ -243,17 +246,19 @@ function practiceErrorMessage(response, fallbackMessage) {
   return fallbackMessage;
 }
 
-function tokenFingerprint(token) {
-  if (token.length <= 24) {
-    return "[짧은 token]";
-  }
-
-  return `${token.slice(0, 12)}…${token.slice(-8)}`;
+function clearTokenReceipt() {
+  elements.tokenLab.hidden = true;
+  elements.fullToken.value = "";
+  elements.tokenType.textContent = "—";
+  elements.tokenExpires.textContent = "—";
+  elements.copyTokenButton.textContent = "Access Token 복사";
+  elements.copyTokenButton.disabled = true;
+  elements.copyStatus.textContent = "jwt.io에는 자동으로 전송하지 않습니다.";
 }
 
 function showTokenReceipt() {
   if (!authSession) {
-    elements.tokenDetails.hidden = true;
+    clearTokenReceipt();
     return;
   }
 
@@ -261,8 +266,27 @@ function showTokenReceipt() {
   elements.tokenExpires.textContent = authSession.expiresIn === null
     ? "응답에 없음"
     : `${authSession.expiresIn}초`;
-  elements.tokenFingerprint.textContent = tokenFingerprint(authSession.accessToken);
-  elements.tokenDetails.hidden = false;
+  elements.fullToken.value = authSession.accessToken;
+  elements.copyTokenButton.textContent = "Access Token 복사";
+  elements.copyTokenButton.disabled = busy;
+  elements.copyStatus.textContent = "복사한 뒤 jwt.io의 Encoded 칸에 직접 붙여넣으세요.";
+  elements.tokenLab.hidden = false;
+}
+
+async function copyToken() {
+  if (!authSession) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(authSession.accessToken);
+    elements.copyTokenButton.textContent = "복사됨";
+    elements.copyStatus.textContent = "Access Token을 복사했습니다. jwt.io에는 직접 붙여넣어야 합니다.";
+  } catch (_error) {
+    elements.fullToken.focus();
+    elements.fullToken.select();
+    elements.copyStatus.textContent = "자동 복사가 막혔습니다. 선택된 token을 직접 복사하세요.";
+  }
 }
 
 function resetIdentity() {
@@ -288,7 +312,7 @@ function clearPasswordField() {
 
 function clearAuthenticatedIdentity() {
   authSession = null;
-  elements.tokenDetails.hidden = true;
+  clearTokenReceipt();
   setStage("principal", "waiting", "아직 Authentication 없음");
   resetIdentity();
 }
@@ -466,7 +490,7 @@ async function verifyCurrentUser() {
       setProgress(2);
       showIdentity(data.email);
       clearPasswordField();
-      setNotice("로그인 완료: token으로 보호 API를 호출했고 서버가 현재 사용자를 확인했습니다.", "success");
+      setNotice("로그인 완료: 서버가 현재 사용자를 확인했고 아래에 Access Token 확인 영역을 열었습니다.", "success");
       return;
     }
 
@@ -476,7 +500,7 @@ async function verifyCurrentUser() {
 
     if (response.status === 401) {
       authSession = null;
-      elements.tokenDetails.hidden = true;
+      clearTokenReceipt();
     }
   } catch (error) {
     setStage("principal", "error", "서버 연결 실패");
@@ -525,6 +549,12 @@ elements.verifyButton.addEventListener("click", async () => {
 
 elements.clearButton.addEventListener("click", clearSession);
 
+elements.copyTokenButton.addEventListener("click", () => {
+  if (!busy) {
+    void copyToken();
+  }
+});
+
 elements.email.addEventListener("input", () => {
   if (isCurrentAccount()) {
     setStage("account", "success", "이 email의 계정 준비됨");
@@ -549,4 +579,5 @@ elements.passwordToggle.addEventListener("click", () => {
 });
 
 setBusy(false);
+clearTokenReceipt();
 resetIdentity();

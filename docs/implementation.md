@@ -138,7 +138,9 @@ Swagger UI:
 http://localhost:8080/swagger
 ```
 
-브라우저에서 `http://localhost:8080`을 열면 인증 실습 화면으로 이동합니다. `/auth-practice`와 `/auth-practice/`도 같은 화면으로 이동합니다. email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인하고, 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
+브라우저에서 `http://localhost:8080`을 열면 인증 실습 화면으로 이동합니다. `/auth-practice`와 `/auth-practice/`도 같은 화면으로 이동합니다. email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인하고, 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. 로그인 응답의 Access Token 전체 값은 화면에서 선택하거나 복사할 수 있으며, `Header.Payload.Signature` 구조와 실제 `Authorization: Bearer <token>` 사용 경로를 함께 보여줍니다. 로컬 실습용 token만 jwt.io의 Encoded 칸에 직접 붙여넣어 구조를 확인하고, 운영 token과 `JWT_SECRET`은 입력하지 않습니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
+
+jwt.io에서 내용을 decode한 결과와 서버가 token을 유효하다고 판단하는 것은 다릅니다. 실제 유효성은 보호 요청의 `JwtAuthenticationFilter`가 서명, 만료, issuer, audience를 검증해 결정합니다.
 
 테스트:
 

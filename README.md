@@ -58,7 +58,9 @@ Sequence 04 인증 실습 화면:
 http://localhost:8080
 ```
 
-`/`, `/auth-practice`, `/auth-practice/`는 모두 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+`/`, `/auth-practice`, `/auth-practice/`는 모두 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token 전체 값과 `Header.Payload.Signature` 구조를 보여주고 같은 token으로 `/auth/me`를 호출해 서버가 확인한 신원을 연결합니다. 실습용 token은 복사해 [jwt.io Debugger](https://www.jwt.io/#debugger-io)의 Encoded 칸에서 구조만 확인할 수 있습니다. Token을 링크에 자동으로 싣지 않으며, 운영 token과 `JWT_SECRET`은 외부 도구에 입력하지 않습니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+
+jwt.io에서 Header와 Payload를 읽을 수 있다는 사실은 token이 유효하다는 뜻이 아닙니다. 서명, 만료, issuer, audience 검증은 실제 보호 요청에서 `JwtAuthenticationFilter`가 수행합니다.
 
 테스트 실행:
 

@@ -8,6 +8,7 @@
 - [ ] 로그인 응답에 `Cache-Control: no-store`가 있습니다.
 - [ ] 실제 signup -> login 응답 token -> `/auth/me` 흐름이 성공합니다.
 - [ ] 인증 실습 화면에서 직접 계정을 만들고 로그인한 뒤 `/auth/me`가 같은 email을 반환하는지 확인했습니다.
+- [ ] 인증 실습 화면에서 전체 token과 `Header.Payload.Signature`를 확인하고, jwt.io 관찰 분기와 실제 Bearer 요청 경로를 구분합니다.
 - [ ] `/`, `/auth-practice`, `/auth-practice/`가 인증 실습 화면으로 이동합니다.
 - [ ] 게시글 GET은 공개되고 POST/PUT/DELETE는 인증이 필요합니다.
 - [ ] 작성자가 게시글을 수정/삭제할 수 있고 비작성자는 403을 받습니다.

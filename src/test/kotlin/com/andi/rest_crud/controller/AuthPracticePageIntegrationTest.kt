@@ -33,6 +33,8 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
             .andExpect(content().string(containsString("id=\"authForm\"")))
+            .andExpect(content().string(containsString("id=\"fullToken\"")))
+            .andExpect(content().string(containsString("https://www.jwt.io/#debugger-io")))
 
         mockMvc.perform(get("/auth-practice/styles.css"))
             .andExpect(status().isOk)
