@@ -115,9 +115,11 @@ data class PostCreateRequest(
 <a id="seq-04"></a>
 ## 6. Sequence 04: 로그인 증명을 다음 보호 요청의 현재 사용자로 연결하기
 
-회원 가입은 LOCAL 사용자와 암호화된 password를 저장하고, 로그인은 `LoginRequest`의 email과 password가 맞는지 판정한 뒤 JWT를 발급하는 경로입니다.
+회원가입은 LOCAL 계정을 만드는 경로이고 로그인은 이미 저장된 LOCAL 계정의 email과 password를 확인하는 별도 경로입니다. 로그인 판정과 token 발급은 `AuthService`가 수동으로 처리하고, 이후 HTTP 요청의 인증·인가는 Spring Security filter chain이 처리합니다.
 다음 보호 요청은 `Authorization: Bearer ...` header를 다시 검증해 `SecurityContext`에 email 기반 Authentication을 넣습니다.
-header가 없거나 token이 유효하지 않으면 filter는 Authentication 없이 chain을 계속하고, 인가 단계가 요청을 거절해 entry point가 `401`을 씁니다. 인증은 됐지만 작성자가 다르면 Service의 작성자 gate가 DB 변경 전에 `403` 흐름으로 보냅니다.
+header가 없거나 token이 유효하지 않으면 filter는 Authentication 없이 chain을 계속합니다. 공개 GET은 현재 정책대로 실행될 수 있지만, 보호 API는 인가 단계가 거절해 entry point가 `WWW-Authenticate: Bearer`를 포함한 `401`을 씁니다. 인증은 됐지만 작성자가 다르면 Service의 작성자 gate가 DB 변경 전에 `403` 흐름으로 보냅니다.
+
+Authentication은 요청한 사용자가 누구인지 확인하는 단계입니다. Authorization은 확인된 사용자가 해당 endpoint나 게시글에 접근할 수 있는지 판단하는 단계입니다.
 
 ```mermaid
 sequenceDiagram
@@ -126,21 +128,25 @@ sequenceDiagram
     participant AS as Auth Service
     participant R as User Repository
     participant E as Password Encoder
-    participant J as JWT Provider / Filter
+    participant J as JWT Provider
+    participant F as JWT Filter
     participant SC as SecurityContext
     participant Z as Authorization
     C->>AC: POST /auth/login
     AC->>AS: login(request)
     AS->>R: email로 User 조회
     R-->>AS: User
+    AS->>AS: LOCAL 로그인 방식 확인
     AS->>E: raw와 encoded password 비교
     AS->>J: email로 token 생성
+    J-->>AS: signed JWT
     AS-->>AC: TokenResponse
-    AC-->>C: 200 TokenResponse
-    C->>J: 보호 요청 + Bearer token
-    J->>J: validateToken(token): Boolean
-    J->>J: getEmail(token)
-    J->>SC: Authentication(email) 등록
+    AC-->>C: 200 TokenResponse + no-store
+    C->>F: 보호 요청 + Bearer token
+    F->>J: getValidatedSubject(token)
+    J->>J: signature + exp + iss + aud 검증
+    J-->>F: 검증된 subject(email)
+    F->>SC: Authentication(email) 등록
     SC->>Z: 인증된 principal 제공
 ```
 
@@ -154,33 +160,39 @@ sequenceDiagram
 | 6 | 다음 요청의 Bearer token | filter가 검증 후 Authentication 등록 | 보호 API가 읽을 현재 사용자 |
 
 ```kotlin
-// 04 답안은 요청 email 조회와 password 비교를 통과한 뒤 token을 만듭니다.
-val email = request.email
+// email은 Locale.ROOT로 소문자 정규화하고 password 원문은 trim하지 않습니다.
+val email = request.email.lowercase(Locale.ROOT)
 val rawPassword = request.password
 val user = userRepository.findByEmail(email)
         .orElseThrow { InvalidCredentialsException() }
-if (!passwordEncoder.matches(rawPassword, requireNotNull(user.password))) {
+if (user.authProvider != AuthProvider.LOCAL) {
+    throw InvalidCredentialsException()
+}
+if (!passwordEncoder.matches(rawPassword, user.password)) {
     throw InvalidCredentialsException()
 }
 return TokenResponse(
-    accessToken = jwtTokenProvider.createToken(requireNotNull(user.email))
+    accessToken = jwtTokenProvider.createToken(user.email),
+    expiresIn = jwtTokenProvider.expirationSeconds
 )
 ```
 
 검증되지 않은 자격 증명은 token이 없는 실패 상태로, email 조회와 password 비교를 통과한 자격 증명은 다음 요청에 제시할 access token으로 바뀝니다.
 
 ```kotlin
-// 유효한 Bearer token만 현재 요청의 Authentication으로 등록합니다.
-val token = resolveToken(request)
-if (token != null && jwtTokenProvider.validateToken(token)) {
-    val email = jwtTokenProvider.getEmail(token)
-    val authentication = UsernamePasswordAuthenticationToken(email, null, emptyList())
-    SecurityContextHolder.getContext().authentication = authentication
+// JWT는 한 번 파싱하고 검증된 subject가 있을 때만 새 context를 만듭니다.
+if (SecurityContextHolder.getContext().authentication == null) {
+    resolveToken(request)
+        ?.let(jwtTokenProvider::getValidatedSubject)
+        ?.let { email -> setAuthentication(request, email) }
 }
-filterChain.doFilter(request, response)
 ```
 
 유효한 token이 있으면 비어 있던 요청 인증 상태가 email을 가진 Authentication으로 바뀌고, token이 없으면 비어 있는 상태로 인가 단계에 전달됩니다.
+
+현재 04 흐름은 Access Token only입니다. Refresh Token과 Redis 기반 token 저장·회수는 이번 범위 밖입니다. subject=email과 빈 authorities는 교육용 단순화이며, 운영에서는 불변 userId와 별도 권한 정책을 권장합니다. JWT payload는 암호화된 비밀 영역이 아니므로 민감 정보를 넣지 않습니다. 브라우저 쿠키 저장으로 바꾸면 CSRF 정책을 다시 검토해야 합니다.
+
+`JWT_SECRET`은 환경 변수로 주입하고 UTF-8 기준 32바이트 이상이어야 합니다. 발급과 검증은 HS256, issuer, audience, issuedAt, expiration을 같은 계약으로 확인합니다. single-key 구조에서 secret, issuer 또는 audience를 바꾸면 기존 토큰은 모두 401이 되며, 개별 access token을 즉시 회수하는 저장소는 이번 범위에 없습니다.
 
 [Visual Lab에서 입력 조건을 보고 경로 예측하기](./visual-lab/sequences/04/)
 
