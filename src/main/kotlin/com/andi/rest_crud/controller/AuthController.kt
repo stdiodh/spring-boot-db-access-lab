@@ -6,7 +6,9 @@ import com.andi.rest_crud.dto.TokenResponse
 import com.andi.rest_crud.dto.UserSignUpRequest
 import com.andi.rest_crud.service.AuthService
 import jakarta.validation.Valid
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -28,8 +30,10 @@ class AuthController(
     }
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): TokenResponse {
-        return authService.login(request)
+    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<TokenResponse> {
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .body(authService.login(request))
     }
 
     @GetMapping("/me")

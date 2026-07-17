@@ -13,7 +13,8 @@ import org.springframework.security.web.SecurityFilterChain
 @Configuration
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    private val customAuthenticationEntryPoint: CustomAuthenticationEntryPoint
+    private val customAuthenticationEntryPoint: CustomAuthenticationEntryPoint,
+    private val jsonAccessDeniedHandler: JsonAccessDeniedHandler
 ) {
 
     @Bean
@@ -21,7 +22,11 @@ class SecurityConfig(
         http
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .exceptionHandling { it.authenticationEntryPoint(customAuthenticationEntryPoint) }
+            .exceptionHandling { exceptions ->
+                exceptions
+                    .authenticationEntryPoint(customAuthenticationEntryPoint)
+                    .accessDeniedHandler(jsonAccessDeniedHandler)
+            }
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(

@@ -9,35 +9,49 @@ import com.andi.rest_crud.exception.InvalidCredentialsException
 import com.andi.rest_crud.exception.UserAlreadyExistsException
 import com.andi.rest_crud.repository.UserRepository
 import com.andi.rest_crud.security.JwtTokenProvider
+import org.hibernate.exception.ConstraintViolationException
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.util.Locale
 
 @Service
+@Transactional(readOnly = true)
 class AuthService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtTokenProvider: JwtTokenProvider
 ) {
 
+    @Transactional
     fun signUp(request: UserSignUpRequest) {
-        val email = request.email
+        val email = normalizeEmail(request.email)
         val rawPassword = request.password
-        val encodedPassword = requireNotNull(passwordEncoder.encode(rawPassword))
 
         if (userRepository.existsByEmail(email)) {
-            throw UserAlreadyExistsException(email)
+            throw UserAlreadyExistsException()
         }
 
-        userRepository.save(
-            User(
-                email = email,
-                password = encodedPassword
+        val encodedPassword = requireNotNull(passwordEncoder.encode(rawPassword))
+
+        try {
+            userRepository.saveAndFlush(
+                User(
+                    email = email,
+                    password = encodedPassword
+                )
             )
-        )
+        } catch (exception: DataIntegrityViolationException) {
+            if (exception.isUniqueConstraintViolation()) {
+                throw UserAlreadyExistsException()
+            }
+            throw exception
+        }
     }
 
     fun login(request: LoginRequest): TokenResponse {
-        val email = request.email
+        val email = normalizeEmail(request.email)
         val rawPassword = request.password
         val user = userRepository.findByEmail(email)
             .orElseThrow { InvalidCredentialsException() }
@@ -47,14 +61,23 @@ class AuthService(
         }
 
         return TokenResponse(
-            accessToken = jwtTokenProvider.createToken(requireNotNull(user.email))
+            accessToken = jwtTokenProvider.createToken(requireNotNull(user.email)),
+            expiresIn = jwtTokenProvider.expirationSeconds
         )
     }
 
     fun getCurrentUser(email: String): CurrentUserResponse {
-        val user = userRepository.findByEmail(email)
+        val user = userRepository.findByEmail(normalizeEmail(email))
             .orElseThrow { InvalidCredentialsException() }
 
         return CurrentUserResponse(email = requireNotNull(user.email))
+    }
+
+    private fun normalizeEmail(email: String): String = email.lowercase(Locale.ROOT)
+
+    private fun DataIntegrityViolationException.isUniqueConstraintViolation(): Boolean {
+        return generateSequence(cause) { it.cause }
+            .filterIsInstance<ConstraintViolationException>()
+            .any { it.kind == ConstraintViolationException.ConstraintKind.UNIQUE }
     }
 }

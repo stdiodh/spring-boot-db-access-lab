@@ -19,16 +19,22 @@ class JwtAuthenticationFilter(
         response: HttpServletResponse,
         filterChain: FilterChain
     ) {
-        val token = resolveToken(request)
-
-        if (token != null && jwtTokenProvider.validateToken(token)) {
-            val email = jwtTokenProvider.getEmail(token)
-            val authentication = UsernamePasswordAuthenticationToken(email, null, emptyList())
-            authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
-            SecurityContextHolder.getContext().authentication = authentication
+        if (SecurityContextHolder.getContext().authentication == null) {
+            resolveToken(request)
+                ?.let(jwtTokenProvider::getValidatedSubject)
+                ?.let { email -> setAuthentication(request, email) }
         }
 
         filterChain.doFilter(request, response)
+    }
+
+    private fun setAuthentication(request: HttpServletRequest, email: String) {
+        val authentication = UsernamePasswordAuthenticationToken(email, null, emptyList())
+        authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
+
+        val context = SecurityContextHolder.createEmptyContext()
+        context.authentication = authentication
+        SecurityContextHolder.setContext(context)
     }
 
     private fun resolveToken(request: HttpServletRequest): String? {
