@@ -895,7 +895,7 @@ window.visualLabData = {
     {
       "id": "request-validation",
       "title": "Request DTO에서 입력 형식을 먼저 막습니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/dto/PostCreateRequest.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/dto/RequestValidation.kt",
       "language": "kotlin",
       "snippet": "// 제목, 본문, 작성자 중 빈 필드는 Service 호출 전에 막습니다.\ndata class PostCreateRequest(\n    @field:NotBlank(message = \"title은 비어 있을 수 없습니다.\") val title: String,\n    @field:NotBlank(message = \"content는 비어 있을 수 없습니다.\") val content: String,\n    @field:NotBlank(message = \"author는 비어 있을 수 없습니다.\") val author: String\n)",
       "explanation": "형식 오류는 Service와 DB까지 내려가기 전에 요청 입구에서 멈춥니다.",
@@ -904,7 +904,7 @@ window.visualLabData = {
     {
       "id": "global-handler",
       "title": "전역 handler는 실패를 같은 응답 형식으로 바꿉니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/exception/GlobalExceptionHandler.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/exception/ApiExceptionHandling.kt",
       "language": "kotlin",
       "snippet": "// Validation 예외를 field 오류가 있는 400 응답 계약으로 바꿉니다.\n@ExceptionHandler(MethodArgumentNotValidException::class)\n@ResponseStatus(HttpStatus.BAD_REQUEST)\nfun handleValidationException(exception: MethodArgumentNotValidException): ErrorResponse {\n    val errors = exception.bindingResult.fieldErrors\n        .associate { it.field to (it.defaultMessage ?: \"잘못된 요청입니다.\") }\n    return ErrorResponse(\n        code = \"VALIDATION_ERROR\",\n        message = \"입력값 검증에 실패했습니다.\",\n        errors = errors\n    )\n}",
       "explanation": "클라이언트가 실패 이유를 안정적으로 읽도록 에러 응답을 통일합니다.",
