@@ -127,6 +127,8 @@ Swagger UI:
 http://localhost:8080/swagger
 ```
 
+브라우저에서 `http://localhost:8080/auth-practice/index.html`을 열면 email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인할 수 있습니다. 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
+
 테스트:
 
 ```bash
