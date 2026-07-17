@@ -32,7 +32,7 @@ git checkout -b feat/<이름>
 
 실제로 수정할 파일은 아래 순서로 확인합니다. 관련 DTO, 예외, JWT 클래스는 한 흐름을 한 파일에서 읽을 수 있도록 묶었습니다.
 
-1. `src/main/kotlin/com/andi/rest_crud/dto/RequestValidation.kt`
+1. `src/main/kotlin/com/andi/rest_crud/dto/ApiDtos.kt`
 2. `src/main/kotlin/com/andi/rest_crud/domain/User.kt`, `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
 3. `src/main/kotlin/com/andi/rest_crud/exception/ApiExceptionHandling.kt`
 4. `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
@@ -63,7 +63,7 @@ http://localhost:8080/auth-practice/index.html
 
 인증 TODO를 완성한 뒤 email과 password를 직접 입력해 계정을 만들고 로그인합니다. 화면은 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
 
-실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 현재 단계의 `RequestValidation.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
+실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 현재 단계의 `ApiDtos.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
 
 테스트 실행:
 
