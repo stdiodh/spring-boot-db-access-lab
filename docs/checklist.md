@@ -21,15 +21,19 @@
 - [ ] 수정·삭제 전 저장된 작성자와 인증된 사용자를 비교합니다.
 - [ ] 작성자가 아닌 사용자의 수정·삭제는 403으로 실패합니다.
 - [ ] 인증 TODO를 완성한 뒤 인증 실습 화면에서 계정을 만들고 로그인해 `/auth/me`가 같은 email을 반환하는지 확인합니다.
+- [ ] 실습 화면에서 5xx 응답이 나오면 원인을 단정하지 않고 서버 로그를 먼저 확인한 뒤, 현재 단계의 `RequestValidation.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
 - [ ] `./gradlew test`가 통과합니다.
 
 ## 3. 코드 구조 확인
 
+- [ ] `RequestValidation.kt` 한 파일에서 네 요청 DTO의 입력 계약을 확인합니다.
+- [ ] `ApiExceptionHandling.kt` 한 파일에서 예외 타입과 응답 변환 흐름을 확인합니다.
 - [ ] `AuthService`가 회원가입과 로그인 흐름을 담당합니다.
-- [ ] `JwtTokenProvider`가 토큰 발급과 검증 책임을 갖습니다.
-- [ ] `JwtAuthenticationFilter`가 요청 토큰을 인증 정보로 바꿉니다.
+- [ ] `JwtAuthentication.kt` 안의 `JwtTokenProvider`가 토큰 발급과 검증 책임을 갖습니다.
+- [ ] 같은 파일의 `JwtAuthenticationFilter`가 요청 토큰을 인증 정보로 바꿉니다.
 - [ ] `SecurityConfig`가 공개 API와 보호 API를 구분합니다.
-- [ ] JWT secret 같은 운영 민감값은 별도 설정으로 분리할 필요가 있음을 설명합니다.
+- [ ] `PostService`가 저장된 작성자와 인증된 사용자의 소유권을 비교합니다.
+- [ ] JWT secret을 환경 변수로 전달하고 실제 값이나 `.env` 파일을 커밋하지 않습니다.
 
 ## 4. 실패 케이스 확인
 

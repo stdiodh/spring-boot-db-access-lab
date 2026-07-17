@@ -1,13 +1,19 @@
 package com.andi.rest_crud.security
 
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.core.AuthenticationException
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.stereotype.Component
 
 @Configuration
 class SecurityConfig(
@@ -26,8 +32,11 @@ class SecurityConfig(
                 auth
                     // TODO 1. 회원가입/로그인은 열어 두고, 보호할 API만 authenticated()로 바꾸세요.
                     .requestMatchers(
+                        "/",
                         "/swagger/**",
                         "/v3/api-docs/**",
+                        "/auth-practice",
+                        "/auth-practice/",
                         "/auth-practice/**",
                         "/auth/signup",
                         "/auth/login"
@@ -44,4 +53,19 @@ class SecurityConfig(
 
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
+}
+
+@Component
+class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
+
+    override fun commence(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        authException: AuthenticationException
+    ) {
+        response.status = HttpServletResponse.SC_UNAUTHORIZED
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        response.characterEncoding = Charsets.UTF_8.name()
+        response.writer.write("""{"code":"UNAUTHORIZED","message":"인증이 필요합니다.","errors":{}}""")
+    }
 }

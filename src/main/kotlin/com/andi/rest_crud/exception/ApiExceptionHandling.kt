@@ -8,6 +8,20 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 
+data class ErrorResponse(
+    val code: String,
+    val message: String,
+    val errors: Map<String, String> = emptyMap()
+)
+
+class PostNotFoundException(id: Long) : RuntimeException("id=$id 에 해당하는 게시글이 없습니다.")
+
+class ForbiddenPostAccessException(id: Long) : RuntimeException("id=$id 게시글을 수정하거나 삭제할 권한이 없습니다.")
+
+class UserAlreadyExistsException(email: String) : RuntimeException("이미 가입된 이메일입니다. email=$email")
+
+class InvalidCredentialsException : RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다.")
+
 @RestControllerAdvice
 class GlobalExceptionHandler {
 

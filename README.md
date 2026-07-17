@@ -30,24 +30,24 @@ git checkout -b feat/<이름>
 2. [구현 가이드](./docs/implementation.md)
 3. [체크리스트](./docs/checklist.md)
 
-핵심 파일은 아래 순서로 확인합니다.
+실제로 수정할 파일은 아래 순서로 확인합니다. 관련 DTO, 예외, JWT 클래스는 한 흐름을 한 파일에서 읽을 수 있도록 묶었습니다.
 
-- `src/main/kotlin/com/andi/rest_crud/dto/*Request.kt`
-- `src/main/kotlin/com/andi/rest_crud/exception/GlobalExceptionHandler.kt`
-- `src/main/kotlin/com/andi/rest_crud/domain/User.kt`
-- `src/main/kotlin/com/andi/rest_crud/repository/UserRepository.kt`
-- `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/JwtAuthenticationFilter.kt`
-- `src/main/kotlin/com/andi/rest_crud/security/SecurityConfig.kt`
-- `src/main/kotlin/com/andi/rest_crud/controller/AuthController.kt`
+1. `src/main/kotlin/com/andi/rest_crud/dto/RequestValidation.kt`
+2. `src/main/kotlin/com/andi/rest_crud/domain/User.kt`, `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
+3. `src/main/kotlin/com/andi/rest_crud/exception/ApiExceptionHandling.kt`
+4. `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
+5. `src/main/kotlin/com/andi/rest_crud/security/JwtAuthentication.kt`, `src/main/kotlin/com/andi/rest_crud/security/SecurityConfig.kt`
+6. `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
 
 ## 실행 / 테스트 방법
 
 ```bash
+export JWT_SECRET="$(openssl rand -hex 32)"
 docker compose up -d
 ./gradlew bootRun
 ```
+
+기본 Docker MySQL 포트는 로컬 MySQL과 겹치지 않도록 `3307`을 사용합니다. 다른 DB를 사용한다면 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 환경 변수로 재정의할 수 있습니다. `JWT_SECRET`은 실행할 때마다 반드시 설정하고 실제 값이나 `.env` 파일을 커밋하지 않습니다.
 
 Swagger UI:
 
@@ -62,6 +62,8 @@ http://localhost:8080/auth-practice/index.html
 ```
 
 인증 TODO를 완성한 뒤 email과 password를 직접 입력해 계정을 만들고 로그인합니다. 화면은 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+
+실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 현재 단계의 `RequestValidation.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
 
 테스트 실행:
 
@@ -84,7 +86,7 @@ http://localhost:8080/auth-practice/index.html
 
 ## 수업 전 확인
 
-- JWT secret은 운영에서는 외부 설정으로 분리해야 함을 설명하되, 이번 구현은 기본 인증 흐름에 집중합니다.
+- JWT secret은 환경 변수로 전달하고 실제 값을 저장소에 남기지 않는지 확인합니다.
 - OAuth2/SMTP는 다음 시퀀스 범위입니다.
 
 ## 수업 중 질문
