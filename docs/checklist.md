@@ -17,6 +17,7 @@
 - [ ] `04`: HS256, issuer, audience, 만료와 subject를 한 번의 parsing으로 검증합니다.
 - [ ] `04`: JWT subject=email과 빈 authorities가 교육용 단순화임을 설명할 수 있습니다.
 - [ ] `04`: 회원가입과 로그인을 구분하고 Authentication과 Authorization의 책임을 설명할 수 있습니다.
+- [ ] `04`: 인증 실습 화면에서 직접 계정을 만들고 로그인한 뒤 `/auth/me`가 같은 email을 반환하는지 확인했습니다.
 - [ ] `04`: Refresh Token과 Redis 기반 token 저장·회수가 범위 밖임을 확인했습니다.
 - [ ] `05`: verified email만 사용하고, 동일 email 로컬 계정을 자동 연결하지 않으며, JWT를 redirect fragment로 전달합니다.
 - [ ] `06`: fixture와 mock으로 정상/실패 케이스를 분리했습니다.
