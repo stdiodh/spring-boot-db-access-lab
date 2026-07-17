@@ -25,6 +25,8 @@ git fetch origin
 git diff origin/04-implementation..origin/04-answer
 ```
 
+실습 지점을 찾기 쉽도록 요청 Validation은 `RequestValidation.kt`, 예외 응답은 `ApiExceptionHandling.kt`, JWT 발급·필터는 `JwtAuthentication.kt`, Security 설정·오류 처리는 `SecurityConfig.kt`에 모았습니다. answer의 각 구현 블록 바로 위에는 문법 설명이 아니라 해당 검사가 필요한 이유를 짧게 적었습니다.
+
 ## 읽는 순서
 
 1. [이론 정리](./docs/theory.md)
@@ -39,7 +41,7 @@ export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
 ./gradlew bootRun
 ```
 
-`JWT_SECRET`은 필수이며 UTF-8 기준 32바이트 이상이어야 합니다. 값이 없거나 짧으면 애플리케이션 시작이 실패합니다. 만료 시간을 바꾸려면 `JWT_EXPIRATION_MS`를 밀리초 단위로 설정할 수 있으며 기본값은 3,600,000ms입니다. issuer와 audience는 각각 `JWT_ISSUER`, `JWT_AUDIENCE`로 재정의할 수 있고 기본값은 이 애플리케이션과 API 이름입니다. 실제 secret이나 `.env` 파일은 커밋하지 않습니다.
+Docker MySQL은 로컬 `3307` 포트를 사용하며 애플리케이션 기본 DB URL도 여기에 맞춰져 있습니다. 별도 DB를 쓸 때는 `DB_URL`로 재정의합니다. `JWT_SECRET`은 필수이며 UTF-8 기준 32바이트 이상이어야 합니다. 값이 없거나 짧으면 애플리케이션 시작이 실패합니다. 만료 시간을 바꾸려면 `JWT_EXPIRATION_MS`를 밀리초 단위로 설정할 수 있으며 기본값은 3,600,000ms입니다. issuer와 audience는 각각 `JWT_ISSUER`, `JWT_AUDIENCE`로 재정의할 수 있고 기본값은 이 애플리케이션과 API 이름입니다. 실제 secret이나 `.env` 파일은 커밋하지 않습니다.
 
 Swagger UI:
 
@@ -50,10 +52,10 @@ http://localhost:8080/swagger
 Sequence 04 인증 실습 화면:
 
 ```text
-http://localhost:8080/auth-practice/index.html
+http://localhost:8080
 ```
 
-email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+`/`, `/auth-practice`, `/auth-practice/`는 모두 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
 
 테스트 실행:
 

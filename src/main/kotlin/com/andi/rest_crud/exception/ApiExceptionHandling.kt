@@ -11,18 +11,34 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 
+data class ErrorResponse(
+    val code: String,
+    val message: String,
+    val errors: Map<String, String> = emptyMap()
+)
+
+class PostNotFoundException(id: Long) : RuntimeException("id=$id 에 해당하는 게시글이 없습니다.")
+
+class ForbiddenPostAccessException(id: Long) : RuntimeException("id=$id 게시글을 수정하거나 삭제할 권한이 없습니다.")
+
+class UserAlreadyExistsException : RuntimeException("이미 가입된 이메일입니다.")
+
+class InvalidCredentialsException : RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다.")
+
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleValidationException(exception: MethodArgumentNotValidException): ErrorResponse {
+        // 같은 필드의 여러 실패가 검증 실행 순서에 따라 바뀌지 않아야 클라이언트가 늘 같은 오류를 봅니다.
         return validationErrorResponse(toFirstFieldErrors(exception.bindingResult.fieldErrors))
     }
 
     @ExceptionHandler(HandlerMethodValidationException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleMethodValidationException(exception: HandlerMethodValidationException): ErrorResponse {
+        // path와 query parameter도 요청 본문과 같은 오류 계약을 사용해야 호출자가 한 형식으로 처리할 수 있습니다.
         val errors = linkedMapOf<String, String>()
 
         exception.parameterValidationResults
@@ -45,6 +61,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleHttpMessageNotReadableException(): ErrorResponse {
+        // JSON 자체를 읽지 못한 경우에는 특정 필드의 값 오류와 구분되는 원인을 알려야 합니다.
         return ErrorResponse(
             code = "MALFORMED_JSON",
             message = "요청 본문을 읽을 수 없습니다. JSON 형식을 확인해 주세요."

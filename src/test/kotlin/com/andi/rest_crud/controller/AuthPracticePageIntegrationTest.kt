@@ -9,6 +9,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @SpringBootTest
@@ -16,6 +17,15 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class AuthPracticePageIntegrationTest @Autowired constructor(
     private val mockMvc: MockMvc
 ) {
+
+    @Test
+    fun `짧은 진입 경로는 인증 실습 페이지로 이동한다`() {
+        listOf("/", "/auth-practice", "/auth-practice/").forEach { path ->
+            mockMvc.perform(get(path))
+                .andExpect(status().is3xxRedirection)
+                .andExpect(redirectedUrl("/auth-practice/index.html"))
+        }
+    }
 
     @Test
     fun `인증 없이 인증 실습 페이지와 자산에 접근할 수 있다`() {
