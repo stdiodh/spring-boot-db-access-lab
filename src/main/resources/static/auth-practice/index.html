@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Sequence 04 인증 실습 | Spring Boot DB Access Lab</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">인증 실습으로 건너뛰기</a>
+
+  <header class="lab-bar">
+    <a class="lab-brand" href="/auth-practice/index.html" aria-label="Sequence 04 인증 실습 처음으로">
+      <span class="lab-brand__mark" aria-hidden="true"></span>
+      <span>A&amp;I Backend · Auth Practice</span>
+    </a>
+    <span class="lab-bar__context">spring-boot-db-access-lab / 04</span>
+  </header>
+
+  <main id="main-content" class="page-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">직접 확인할 흐름 · signup → login → /auth/me</p>
+        <h1 id="page-title">내가 입력한 계정이<br>요청의 신원이 되는지 확인합니다.</h1>
+        <p class="intro__description">
+          이 실습의 아이디는 email입니다. 계정을 만든 뒤 같은 정보로 로그인하면,
+          서버가 보호 API에서 확인한 email까지 한 흐름으로 보여줍니다.
+        </p>
+      </div>
+      <div class="runtime-note" aria-label="실습 환경 정보">
+        <span class="runtime-note__dot" aria-hidden="true"></span>
+        <span>
+          <strong>Same-origin API</strong>
+          <code id="originLabel">현재 서버</code>
+        </span>
+      </div>
+    </section>
+
+    <section class="auth-trace" aria-labelledby="trace-title">
+      <div class="section-heading">
+        <p class="eyebrow">Authentication receipt</p>
+        <h2 id="trace-title">Credential이 Principal이 되는 세 지점</h2>
+      </div>
+
+      <ol id="traceList" class="trace-list" style="--progress: 0">
+        <li class="trace-step" data-stage="account" data-state="active">
+          <span class="trace-step__marker" aria-hidden="true">1</span>
+          <span class="trace-step__copy">
+            <code>POST /auth/signup</code>
+            <strong>계정 생성</strong>
+            <span data-stage-label>입력 대기</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="token" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">2</span>
+          <span class="trace-step__copy">
+            <code>POST /auth/login</code>
+            <strong>Token 발급</strong>
+            <span data-stage-label>아직 token 없음</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="principal" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">3</span>
+          <span class="trace-step__copy">
+            <code>GET /auth/me</code>
+            <strong>신원 확인</strong>
+            <span data-stage-label>아직 Authentication 없음</span>
+          </span>
+        </li>
+      </ol>
+    </section>
+
+    <section class="workbench" aria-label="인증 입력과 HTTP 증거">
+      <div class="credential-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">입력</p>
+            <h2>로그인 ID와 비밀번호</h2>
+          </div>
+          <span class="panel-heading__hint">password는 trim하지 않습니다</span>
+        </div>
+
+        <form id="authForm" class="auth-form" novalidate>
+          <div class="field">
+            <label for="email">로그인 ID로 사용할 email</label>
+            <input
+              id="email"
+              name="email"
+              type="text"
+              inputmode="email"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              aria-describedby="emailHint emailError"
+              placeholder="student@example.com"
+            >
+            <p id="emailHint" class="field__hint">회원가입과 로그인에 같은 email을 사용합니다.</p>
+            <p id="emailError" class="field__error"></p>
+          </div>
+
+          <div class="field">
+            <label for="password">비밀번호</label>
+            <div class="password-input">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                aria-describedby="passwordHint passwordError"
+                placeholder="8자 이상 입력"
+              >
+              <button id="passwordToggle" class="password-toggle" type="button" aria-pressed="false">
+                표시
+              </button>
+            </div>
+            <p id="passwordHint" class="field__hint">계정 생성 시 8~64자, 로그인 시 최대 64자입니다.</p>
+            <p id="passwordError" class="field__error"></p>
+          </div>
+
+          <div class="primary-actions">
+            <button id="signupButton" class="button button--credential" type="button">
+              계정 만들기
+            </button>
+            <button id="loginButton" class="button button--signal" type="submit">
+              로그인하고 신원 확인
+            </button>
+          </div>
+        </form>
+
+        <div class="session-actions" aria-label="로그인 이후 동작">
+          <button id="verifyButton" class="text-button" type="button" disabled>
+            현재 사용자 다시 확인
+          </button>
+          <button id="clearButton" class="text-button" type="button" disabled>
+            메모리 token 지우기
+          </button>
+        </div>
+
+        <p id="formNotice" class="form-notice" role="status" aria-live="polite">
+          email과 password를 직접 입력한 뒤 계정을 만들거나 로그인하세요.
+        </p>
+        <p id="formError" class="form-error" role="alert" hidden></p>
+      </div>
+
+      <aside class="evidence-panel" aria-labelledby="evidence-title">
+        <div class="evidence-panel__heading">
+          <div>
+            <p class="eyebrow eyebrow--inverse">HTTP evidence</p>
+            <h2 id="evidence-title">마지막 요청과 응답</h2>
+          </div>
+          <span id="requestState" class="request-state" data-state="waiting">대기</span>
+        </div>
+
+        <dl class="exchange-meta">
+          <div>
+            <dt>Method</dt>
+            <dd id="requestMethod">—</dd>
+          </div>
+          <div>
+            <dt>Endpoint</dt>
+            <dd id="requestEndpoint">—</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd id="responseStatus">—</dd>
+          </div>
+        </dl>
+
+        <div class="exchange-body">
+          <span class="exchange-body__label">Response body</span>
+          <pre id="responseBody" tabindex="0">아직 요청하지 않았습니다.</pre>
+        </div>
+
+        <details id="tokenDetails" class="token-details" hidden>
+          <summary>발급된 token 정보 보기</summary>
+          <dl>
+            <div>
+              <dt>Type</dt>
+              <dd id="tokenType">—</dd>
+            </div>
+            <div>
+              <dt>Expires</dt>
+              <dd id="tokenExpires">—</dd>
+            </div>
+            <div>
+              <dt>Fingerprint</dt>
+              <dd id="tokenFingerprint">—</dd>
+            </div>
+          </dl>
+          <p>전체 token은 DOM이나 브라우저 저장소에 남기지 않고 이 페이지의 JavaScript 메모리에만 둡니다.</p>
+        </details>
+      </aside>
+    </section>
+
+    <section id="identityProof" class="identity-proof" data-state="waiting" aria-labelledby="identity-title">
+      <div class="identity-proof__mark" aria-hidden="true">@</div>
+      <div>
+        <p class="eyebrow">SecurityContext가 전달한 현재 사용자</p>
+        <h2 id="identity-title">아직 로그인 신원을 확인하지 않았습니다.</h2>
+        <p id="identityDescription">
+          로그인 성공 후 access token으로 <code>GET /auth/me</code>를 호출하면 이곳에 서버가 확인한 email이 표시됩니다.
+        </p>
+      </div>
+      <span id="identityStatus" class="identity-proof__status">확인 전</span>
+    </section>
+
+    <footer class="page-footer">
+      <p>새로고침하면 메모리 token이 사라집니다. 이 화면은 Access Token only 흐름만 확인합니다.</p>
+      <a href="/swagger">Swagger 열기</a>
+    </footer>
+  </main>
+</body>
+</html>
