@@ -4,7 +4,7 @@
 
 - [ ] 오늘 시퀀스 번호가 `02`~`06` 중 무엇인지 확인했습니다.
 - [ ] 해당 `NN-implementation` 브랜치에서 시작했습니다.
-- [ ] `docker compose up -d`로 필요한 DB 서비스를 실행했습니다.
+- [ ] `docker compose up -d`로 host `3307`의 MySQL을 실행했고 필요하면 `DB_URL`을 재정의했습니다.
 - [ ] `./gradlew test`를 실행했습니다.
 
 ## 구현 확인
@@ -12,12 +12,14 @@
 - [ ] `02`: Repository와 Entity가 DB 저장/조회 흐름을 담당합니다.
 - [ ] `03`: Validation 실패가 `GlobalExceptionHandler`를 지나 `ErrorResponse`로 내려갑니다.
 - [ ] `04`: Sequence 03의 DTO Validation과 요청 본문 `400` 처리 TODO를 다시 구현했습니다.
+- [ ] `04`: `RequestValidation.kt`, `ApiExceptionHandling.kt`, `JwtAuthentication.kt`, `SecurityConfig.kt` 순서로 실습 경계를 읽었습니다.
 - [ ] `04`: 로그인 성공 시 JWT가 발급되고 보호 API에서 Bearer token을 읽습니다.
 - [ ] `04`: email 정규화, DTO/DB 길이, malformed JSON, 일관된 400/401/403 응답을 확인했습니다.
 - [ ] `04`: HS256, issuer, audience, 만료와 subject를 한 번의 parsing으로 검증합니다.
 - [ ] `04`: JWT subject=email과 빈 authorities가 교육용 단순화임을 설명할 수 있습니다.
 - [ ] `04`: 회원가입과 로그인을 구분하고 Authentication과 Authorization의 책임을 설명할 수 있습니다.
-- [ ] `04`: 인증 실습 화면에서 직접 계정을 만들고 로그인한 뒤 `/auth/me`가 같은 email을 반환하는지 확인했습니다.
+- [ ] `04`: `/` 또는 `/auth-practice`의 인증 실습 화면에서 직접 계정을 만들고 로그인한 뒤 `/auth/me`가 같은 email을 반환하는지 확인했습니다.
+- [ ] `04`: 화면에 5xx 안내가 나오면 네 핵심 파일 중 현재 단계의 TODO와 서버 로그를 확인했습니다.
 - [ ] `04`: Refresh Token과 Redis 기반 token 저장·회수가 범위 밖임을 확인했습니다.
 - [ ] `05`: verified email만 사용하고, 동일 email 로컬 계정을 자동 연결하지 않으며, JWT를 redirect fragment로 전달합니다.
 - [ ] `06`: fixture와 mock으로 정상/실패 케이스를 분리했습니다.

@@ -9,6 +9,7 @@ import jakarta.validation.Valid
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -40,4 +41,12 @@ class AuthController(
     fun me(authentication: Principal): CurrentUserResponse {
         return authService.getCurrentUser(authentication.name)
     }
+}
+
+// WHY: 학생이 실행 직후 주소를 외우지 않아도 루트와 짧은 경로에서 같은 인증 실습 화면으로 진입한다.
+@Controller
+class AuthPracticePageController {
+
+    @GetMapping("/", "/auth-practice", "/auth-practice/")
+    fun redirectToPracticePage(): String = "redirect:/auth-practice/index.html"
 }

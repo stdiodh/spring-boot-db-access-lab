@@ -27,7 +27,16 @@ private fun validateAuthor(post: PostEntity, currentUserEmail: String) {
 ```
 
 이 코드는 보호 API에서 현재 사용자와 게시글 작성자가 다른 문제를 403 흐름으로 보냅니다.
-실패 응답은 `GlobalExceptionHandler.kt`가 `ErrorResponse`로 정리합니다.
+실패 응답은 `exception/ApiExceptionHandling.kt`의 `GlobalExceptionHandler`가 `ErrorResponse`로 정리합니다.
+
+Sequence 04는 같은 책임을 여러 파일로 찾아다니지 않도록 아래 네 파일을 중심으로 읽습니다. 완성 코드의 `WHY:` 주석은 코드가 하는 일보다 해당 경계가 필요한 이유를 설명합니다.
+
+| 파일 | 실습 범위 |
+| --- | --- |
+| `dto/RequestValidation.kt` | 네 request DTO의 Validation |
+| `exception/ApiExceptionHandling.kt` | 예외 종류와 400/401/403/404/409 응답 |
+| `security/JwtAuthentication.kt` | JWT 발급·검증과 SecurityContext 연결 |
+| `security/SecurityConfig.kt` | 인증 filter 순서와 공개·보호 경로 |
 
 ## 4. 실행/테스트
 
@@ -38,9 +47,11 @@ export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
 ./gradlew bootRun
 ```
 
+Docker MySQL은 host `3307`에서 열리고 애플리케이션의 기본 `DB_URL`도 그 주소를 사용합니다. 별도 DB를 사용한다면 실행 전에 `DB_URL`을 재정의합니다.
+
 Swagger에서 게시글 생성/조회/수정/삭제와 `/auth/signup`, `/auth/login`, `/auth/me` 흐름을 확인합니다.
 
-브라우저에서 `http://localhost:8080/auth-practice/index.html`을 열면 email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인할 수 있습니다. 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
+브라우저에서 `http://localhost:8080/` 또는 `http://localhost:8080/auth-practice`를 열면 email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인할 수 있습니다. 로그인 후 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다. `04-implementation`에서 5xx 안내가 보이면 `AuthService.kt`, `RequestValidation.kt`, `ApiExceptionHandling.kt`, `JwtAuthentication.kt` 중 현재 단계의 TODO와 서버 로그를 확인합니다.
 
 ## 5. 인증과 요청 경계 구현 확인
 

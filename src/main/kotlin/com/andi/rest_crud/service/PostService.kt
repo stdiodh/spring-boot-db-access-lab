@@ -64,6 +64,7 @@ class PostService(
     }
 
     private fun validateAuthor(post: PostEntity, currentUserEmail: String) {
+        // WHY: authenticated 여부만으로는 다른 사용자의 글을 바꿀 수 있으므로 변경 직전에 ownership을 확인한다.
         if (!post.isWrittenBy(currentUserEmail)) {
             throw ForbiddenPostAccessException(post.id)
         }
