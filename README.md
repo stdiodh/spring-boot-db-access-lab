@@ -42,12 +42,12 @@ git checkout -b feat/<이름>
 ## 실행 / 테스트 방법
 
 ```bash
-export JWT_SECRET="$(openssl rand -hex 32)"
+cp .env.example .env
 docker compose up -d
 ./gradlew bootRun
 ```
 
-기본 Docker MySQL 포트는 로컬 MySQL과 겹치지 않도록 `3307`을 사용합니다. 다른 DB를 사용한다면 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 환경 변수로 재정의할 수 있습니다. `JWT_SECRET`은 실행할 때마다 반드시 설정하고 실제 값이나 `.env` 파일을 커밋하지 않습니다.
+프로젝트 루트의 `.env`는 로컬 실행 설정으로 자동 로드됩니다. 기본 Docker MySQL 포트는 로컬 MySQL과 겹치지 않도록 `3307`을 사용합니다. 다른 DB나 secret이 필요하면 `.env`의 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`을 바꿉니다. 같은 이름의 OS 환경 변수가 있으면 `.env`보다 우선합니다. 예제만 저장소에 남기고 실제 `.env`와 운영 secret은 커밋하지 않습니다.
 
 Swagger UI:
 
