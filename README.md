@@ -71,7 +71,7 @@ http://localhost:8080/
 http://localhost:8080/auth-practice
 ```
 
-두 주소는 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다. `04-implementation`에서 API가 5xx를 반환하면 `AuthService.kt`, `RequestValidation.kt`, `ApiExceptionHandling.kt`, `JwtAuthentication.kt` 중 현재 단계의 TODO와 서버 로그를 확인합니다.
+두 주소는 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다. `04-implementation`에서 API가 5xx를 반환하면 `AuthService.kt`, `ApiDtos.kt`, `ApiExceptionHandling.kt`, `JwtAuthentication.kt` 중 현재 단계의 TODO와 서버 로그를 확인합니다.
 
 ## 테스트 방법
 
@@ -108,7 +108,7 @@ Sequence 04의 연관 코드는 책임별로 다음 파일에 모았습니다.
 
 | 파일 | 한 번에 읽을 흐름 |
 | --- | --- |
-| `dto/RequestValidation.kt` | 회원가입·로그인·게시글 create/update 입력 계약 |
+| `dto/ApiDtos.kt` | 회원가입·로그인·게시글의 요청 및 응답 DTO 계약 |
 | `exception/ApiExceptionHandling.kt` | 도메인 예외, `ErrorResponse`, 전역 예외 변환 |
 | `security/JwtAuthentication.kt` | JWT 발급·검증과 요청 인증 filter |
 | `security/SecurityConfig.kt` | Clock, 401/403 JSON, 공개·보호 endpoint 설정 |

@@ -234,7 +234,7 @@ function renderApiError(response, data, fallbackMessage) {
   renderFieldErrors(data?.errors);
 
   if (response.status >= 500) {
-    showError("서버가 5xx를 반환했습니다. 04-implementation에서는 AuthService.kt, RequestValidation.kt, ApiExceptionHandling.kt, JwtAuthentication.kt 중 현재 단계의 TODO와 서버 로그를 확인하세요.");
+    showError("서버가 5xx를 반환했습니다. 04-implementation에서는 AuthService.kt, ApiDtos.kt, ApiExceptionHandling.kt, JwtAuthentication.kt 중 현재 단계의 TODO와 서버 로그를 확인하세요.");
     return;
   }
 
