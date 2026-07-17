@@ -55,6 +55,14 @@ Swagger UI:
 http://localhost:8080/swagger
 ```
 
+Sequence 04 인증 실습 화면:
+
+```text
+http://localhost:8080/auth-practice/index.html
+```
+
+인증 TODO를 완성한 뒤 email과 password를 직접 입력해 계정을 만들고 로그인합니다. 화면은 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+
 테스트 실행:
 
 ```bash
