@@ -36,12 +36,15 @@ git diff origin/04-implementation..origin/04-answer
 ## 실행 / 테스트 방법
 
 ```bash
+cp .env.example .env
+# 필요하면 .env의 로컬 값을 수정합니다.
 docker compose up -d
-export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
 ./gradlew bootRun
 ```
 
-Docker MySQL은 로컬 `3307` 포트를 사용하며 애플리케이션 기본 DB URL도 여기에 맞춰져 있습니다. 별도 DB를 쓸 때는 `DB_URL`로 재정의합니다. `JWT_SECRET`은 필수이며 UTF-8 기준 32바이트 이상이어야 합니다. 값이 없거나 짧으면 애플리케이션 시작이 실패합니다. 만료 시간을 바꾸려면 `JWT_EXPIRATION_MS`를 밀리초 단위로 설정할 수 있으며 기본값은 3,600,000ms입니다. issuer와 audience는 각각 `JWT_ISSUER`, `JWT_AUDIENCE`로 재정의할 수 있고 기본값은 이 애플리케이션과 API 이름입니다. 실제 secret이나 `.env` 파일은 커밋하지 않습니다.
+애플리케이션은 프로젝트 루트의 `.env`를 자동으로 읽습니다. OS 환경 변수는 `.env`보다 우선하므로 별도 실행 환경에서는 같은 이름의 값을 안전하게 덮어쓸 수 있습니다. `.env.example`은 로컬 학습용 예시일 뿐 운영에 복사해 사용하지 않으며, 실제 secret이 들어 있는 `.env`는 절대 커밋하지 않습니다.
+
+Docker MySQL은 로컬 `3307` 포트를 사용하며 예시의 `DB_URL`도 여기에 맞춰져 있습니다. 별도 DB를 쓸 때는 `DB_URL`을 바꿉니다. `JWT_SECRET`은 필수이며 UTF-8 기준 32바이트 이상이어야 합니다. `.env`와 OS 환경 변수 어디에도 값이 없거나 값이 짧으면 애플리케이션 시작이 실패합니다. 만료 시간을 바꾸려면 `JWT_EXPIRATION_MS`를 밀리초 단위로 설정할 수 있으며 기본값은 3,600,000ms입니다. issuer와 audience는 각각 `JWT_ISSUER`, `JWT_AUDIENCE`로 재정의할 수 있고 기본값은 이 애플리케이션과 API 이름입니다.
 
 Swagger UI:
 
