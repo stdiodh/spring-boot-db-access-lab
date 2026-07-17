@@ -230,7 +230,16 @@ function renderNetworkError(method, endpoint, error) {
   elements.responseBody.textContent = JSON.stringify({ exchanges: exchangeHistory }, null, 2);
 }
 
-function renderApiError(data, fallbackMessage) {
+function renderApiError(response, data, fallbackMessage) {
+  if (response.status >= 500) {
+    showError(
+      "서버가 5xx로 응답했습니다. 서버 로그를 먼저 확인하고, " +
+      "현재 단계의 RequestValidation.kt, ApiExceptionHandling.kt, " +
+      "AuthService.kt, JwtAuthentication.kt TODO를 확인하세요."
+    );
+    return;
+  }
+
   renderFieldErrors(data?.errors);
   showError(data?.message || fallbackMessage);
 }
@@ -344,7 +353,7 @@ async function signup() {
     accountEmail = null;
     setStage("account", "error", `${response.status} 입력 확인`);
     setProgress(0);
-    renderApiError(data, "계정을 만들 수 없습니다. 입력값과 응답을 확인하세요.");
+    renderApiError(response, data, "계정을 만들 수 없습니다. 입력값과 응답을 확인하세요.");
   } catch (error) {
     accountEmail = null;
     setStage("account", "error", "서버 연결 실패");
@@ -394,7 +403,7 @@ async function login() {
     if (!response.ok || !data?.accessToken) {
       setStage("token", "error", `${response.status} 로그인 실패`);
       setProgress(isCurrentAccount(credentials.email) ? 1 : 0);
-      renderApiError(data, "로그인에 실패했습니다. email과 비밀번호를 확인하세요.");
+      renderApiError(response, data, "로그인에 실패했습니다. email과 비밀번호를 확인하세요.");
       return;
     }
 
@@ -464,7 +473,7 @@ async function verifyCurrentUser() {
 
     setStage("principal", "error", `${response.status} 신원 확인 실패`);
     showIdentityError(data?.message || "보호 API가 현재 사용자를 확인하지 못했습니다.");
-    renderApiError(data, "현재 사용자 확인에 실패했습니다.");
+    renderApiError(response, data, "현재 사용자 확인에 실패했습니다.");
 
     if (response.status === 401) {
       authSession = null;
