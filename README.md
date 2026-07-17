@@ -25,7 +25,7 @@ git fetch origin
 git diff origin/04-implementation..origin/04-answer
 ```
 
-실습 지점을 찾기 쉽도록 요청 Validation은 `RequestValidation.kt`, 예외 응답은 `ApiExceptionHandling.kt`, JWT 발급·필터는 `JwtAuthentication.kt`, Security 설정·오류 처리는 `SecurityConfig.kt`에 모았습니다. answer의 각 구현 블록 바로 위에는 문법 설명이 아니라 해당 검사가 필요한 이유를 짧게 적었습니다.
+실습 지점을 찾기 쉽도록 요청·응답 DTO는 `ApiDtos.kt`, 예외 응답은 `ApiExceptionHandling.kt`, JWT 발급·필터는 `JwtAuthentication.kt`, Security 설정·오류 처리는 `SecurityConfig.kt`에 모았습니다. answer의 각 구현 블록 바로 위에는 문법 설명이 아니라 해당 검사가 필요한 이유를 짧게 적었습니다.
 
 ## 읽는 순서
 

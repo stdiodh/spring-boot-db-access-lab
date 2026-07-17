@@ -1,5 +1,6 @@
 package com.andi.rest_crud.dto
 
+import com.andi.rest_crud.domain.PostEntity
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -53,3 +54,32 @@ data class PostUpdateRequest(
     @field:Size(max = 5000, message = "content는 5000자 이하여야 합니다.")
     val content: String
 )
+
+// 보호 API는 검증된 최소 신원만 반환해 JWT 내부 구조가 응답 계약으로 새지 않게 합니다.
+data class CurrentUserResponse(
+    val email: String
+)
+
+// 클라이언트가 JWT payload를 직접 해석하지 않도록 전달 방식과 남은 만료 시간을 함께 제공합니다.
+data class TokenResponse(
+    val accessToken: String,
+    val tokenType: String = "Bearer",
+    val expiresIn: Long
+)
+
+// 영속성 Entity 대신 응답 모델을 사용해 DB 변경 가능 상태가 API 경계 밖으로 노출되지 않게 합니다.
+data class PostResponse(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val author: String
+) {
+    companion object {
+        fun from(entity: PostEntity): PostResponse = PostResponse(
+            id = entity.id,
+            title = entity.title,
+            content = entity.content,
+            author = entity.author
+        )
+    }
+}
