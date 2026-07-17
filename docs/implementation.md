@@ -13,7 +13,7 @@ signup -> login -> access token issue -> JWT validation filter
 
 ## 2. 구현 순서
 
-1. 환경 변수와 `RequestValidation.kt`/Entity 입력 계약을 맞춥니다.
+1. 환경 변수와 `ApiDtos.kt`/Entity 입력 계약을 맞춥니다.
 2. `AuthService.kt`에서 회원가입 경쟁 조건과 로그인 흐름을 확인합니다.
 3. `JwtAuthentication.kt`의 provider에서 한 번의 파싱으로 토큰을 검증합니다.
 4. 같은 파일의 filter에서 검증된 subject를 인증 정보로 바꿉니다.
@@ -24,7 +24,7 @@ signup -> login -> access token issue -> JWT validation filter
 실습 파일은 책임이 가까운 코드끼리 아래처럼 모았습니다. answer 구현 위의 주석은 코드를 그대로 읽는 설명이 아니라 그 검사가 필요한 이유를 먼저 알려줍니다.
 
 ```text
-dto/RequestValidation.kt          요청 DTO 네 개의 입력 계약
+dto/ApiDtos.kt                    요청·응답 DTO와 입력 계약
 exception/ApiExceptionHandling.kt ErrorResponse, 도메인 예외, 전역 handler
 security/JwtAuthentication.kt     JWT 발급·검증과 인증 filter
 security/SecurityConfig.kt        Security 규칙, Clock, 401/403 handler
