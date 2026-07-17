@@ -69,7 +69,7 @@ window.visualLabData = {
         "label": "AuthService",
         "icon": "service",
         "kind": "service",
-        "role": "사용자와 비밀번호를 확인하고 token 발급을 요청합니다.",
+        "role": "사용자와 LOCAL 로그인 방식, 비밀번호를 확인하고 token 발급을 요청합니다.",
         "systemLayer": "application",
         "boundary": "자격 정보 검증",
         "codePointIds": ["jwt-create"]
@@ -97,7 +97,7 @@ window.visualLabData = {
         "role": "로그인 성공 시 token을 만들고 다음 요청의 token을 검증합니다.",
         "systemLayer": "application",
         "boundary": "Token 발급·검증",
-        "codePointIds": ["jwt-create", "jwt-filter"]
+        "codePointIds": ["jwt-create", "jwt-validate"]
       },
       "jwt-filter": {
         "label": "JwtAuthenticationFilter",
@@ -172,15 +172,15 @@ window.visualLabData = {
         "label": "email·password 로그인 요청",
         "flowId": "login-token",
         "tone": "recovered",
-        "prompt": "LoginRequest에 email과 raw password가 있고 저장된 User에는 password hash가 있습니다.",
+        "prompt": "LoginRequest에 email과 raw password가 있고 저장된 User에는 로그인 방식과 password hash가 있습니다.",
         "observationTitle": "자격 정보 확인 뒤 JWT가 생기는 경로",
         "reflection": {
-          "prompt": "사용자 조회와 password 비교가 각각 무엇을 확인하는지 자기 말로 적어 보세요.",
-          "hint": "email 조회와 password `matches`가 성공하는지 차례로 확인합니다."
+          "prompt": "사용자 조회, LOCAL 방식 확인, password 비교가 각각 무엇을 확인하는지 자기 말로 적어 보세요.",
+          "hint": "email로 계정을 찾고 LOCAL 계정인지 확인한 뒤 password `matches`를 실행합니다."
         },
         "theoryRef": "../../../theory.md#seq-04",
         "prediction": {
-          "prompt": "token을 만들기 전에 통과해야 할 두 확인은 무엇일까요?",
+          "prompt": "token을 만들기 전에 통과해야 할 세 확인은 무엇일까요?",
           "options": [
             {
               "id": "before-password",
@@ -188,19 +188,19 @@ window.visualLabData = {
             },
             {
               "id": "after-credentials",
-              "label": "사용자와 비밀번호를 확인한 뒤 발급한다"
+              "label": "사용자, LOCAL 방식, 비밀번호를 확인한 뒤 발급한다"
             }
           ],
           "answer": "after-credentials",
-          "explanation": "Repository는 저장된 자격 정보를 찾고 PasswordEncoder는 raw·hash 일치를 판정해야 합니다."
+          "explanation": "Repository에서 사용자를 찾고 LOCAL 로그인 방식인지 확인한 뒤 PasswordEncoder로 raw·hash 일치를 판정합니다."
         },
         "diagram": {
-          "caption": "AuthController → AuthService가 User를 조회하고 password를 비교한 뒤 JwtTokenProvider가 TokenResponse를 만듭니다.",
+          "caption": "AuthService가 User 조회 → LOCAL 방식 → password 일치를 확인한 뒤 JWT 발급을 요청하고 TokenResponse를 반환합니다.",
           "lanes": [
             {
               "id": "credential-check",
               "label": "자격 정보 확인",
-              "description": "email 사용자 조회와 raw·hash password 비교를 맡습니다.",
+              "description": "email 사용자 조회, LOCAL 로그인 방식, raw·hash password 일치를 차례로 확인합니다.",
               "steps": [
                 {
                   "from": "client",
@@ -236,13 +236,13 @@ window.visualLabData = {
                   "from": "auth-service",
                   "to": "user-repository",
                   "verb": "조회",
-                  "payload": "findByEmail(request.email)",
+                  "payload": "normalizeEmail → findByEmail(email)",
                   "kind": "call",
                   "effect": {
                     "kind": "transfer",
-                    "subject": "findByEmail(request.email)",
-                    "before": "AuthService: findByEmail(request.email)에 사용할 id 또는 email 보유",
-                    "after": "UserRepository: findByEmail(request.email) 조회 실행"
+                    "subject": "정규화된 email",
+                    "before": "AuthService: 요청 email 원문 보유",
+                    "after": "UserRepository: Locale.ROOT로 소문자화한 email 조회 실행"
                   },
                   "evidenceScope": "code"
                 },
@@ -250,15 +250,31 @@ window.visualLabData = {
                   "from": "user-repository",
                   "to": "auth-service",
                   "verb": "반환",
-                  "payload": "User { password }",
+                  "payload": "User { authProvider, password }",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "User { password }",
+                    "subject": "User { authProvider, password }",
                     "before": "AuthService: email에 해당하는 User 없음",
-                    "after": "AuthService: encoded password를 가진 User 확보"
+                    "after": "AuthService: LOCAL 여부와 encoded password를 가진 User 확보"
                   },
                   "evidenceScope": "code"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "auth-service",
+                  "verb": "로그인 방식 확인",
+                  "payload": "user.authProvider == LOCAL",
+                  "kind": "compare",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "LOCAL password 로그인",
+                    "before": "AuthService: 계정의 로그인 방식 미확인",
+                    "after": "AuthService: LOCAL 계정만 password 비교 단계로 진행"
+                  },
+                  "evidenceScope": "code",
+                  "concept": "인증 방식 경계",
+                  "check": "OAuth 계정을 password 로그인으로 처리하지 않는지 확인합니다."
                 },
                 {
                   "from": "auth-service",
@@ -295,7 +311,7 @@ window.visualLabData = {
             {
               "id": "token-issuance",
               "label": "Token 발급",
-              "description": "두 자격 확인을 통과한 email로 우리 서비스 JWT를 만듭니다.",
+              "description": "세 자격 확인을 통과한 email로 우리 서비스 JWT를 만듭니다.",
               "steps": [
                 {
                   "from": "auth-service",
@@ -334,13 +350,13 @@ window.visualLabData = {
                   "from": "auth-service",
                   "to": "auth-controller",
                   "verb": "포장",
-                  "payload": "TokenResponse { accessToken }",
+                  "payload": "TokenResponse { accessToken, tokenType, expiresIn }",
                   "kind": "transform",
                   "effect": {
                     "kind": "transform",
-                    "subject": "TokenResponse { accessToken }",
+                    "subject": "TokenResponse { accessToken, tokenType, expiresIn }",
                     "before": "AuthService: 서명된 JWT 문자열 보유",
-                    "after": "AuthController 반환값: accessToken을 담은 TokenResponse"
+                    "after": "AuthController 반환값: Bearer token과 초 단위 만료 시간을 담은 TokenResponse"
                   },
                   "evidenceScope": "code"
                 },
@@ -348,16 +364,16 @@ window.visualLabData = {
                   "from": "auth-controller",
                   "to": "client",
                   "verb": "응답",
-                  "payload": "200 OK + TokenResponse",
+                  "payload": "200 OK + TokenResponse + Cache-Control: no-store",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "200 OK + TokenResponse",
+                    "subject": "200 OK + no-store",
                     "before": "Client: HTTP status와 body 미확정",
-                    "after": "Client: 200 OK + TokenResponse"
+                    "after": "Client: 200 OK, accessToken/tokenType/expiresIn, Cache-Control: no-store"
                   },
                   "evidenceScope": "runtime",
-                  "check": "로그인 응답의 accessToken을 확인합니다."
+                  "check": "accessToken, tokenType, expiresIn과 no-store header를 확인합니다."
                 }
               ]
             }
@@ -377,8 +393,8 @@ window.visualLabData = {
           { "label": "인증 결과", "value": "사용자 확인", "tone": "recovered" },
           { "label": "Response", "value": "JWT" }
         ],
-        "evidence": "로그인 성공 응답과 AuthService의 조회 → password 비교 → token 생성 순서를 대조합니다. 이 응답만으로 다음 요청 인증은 증명하지 않습니다.",
-        "outcome": "사용자 조회와 password 비교를 모두 통과한 경우에만 JWT가 발급됩니다."
+        "evidence": "로그인 성공 응답과 AuthService의 사용자 조회 → LOCAL 방식 → password 비교 → token 생성 순서를 대조합니다. 이 응답만으로 다음 요청 인증은 증명하지 않습니다.",
+        "outcome": "사용자 조회, LOCAL 방식, password 일치를 모두 통과한 경우에만 JWT가 발급됩니다."
       },
       {
         "id": "login-failure",
@@ -447,13 +463,13 @@ window.visualLabData = {
                   "from": "auth-service",
                   "to": "user-repository",
                   "verb": "조회",
-                  "payload": "findByEmail(request.email)",
+                  "payload": "normalizeEmail → findByEmail(email)",
                   "kind": "call",
                   "effect": {
                     "kind": "transfer",
-                    "subject": "findByEmail(request.email)",
-                    "before": "AuthService: findByEmail(request.email)에 사용할 id 또는 email 보유",
-                    "after": "UserRepository: findByEmail(request.email) 조회 실행"
+                    "subject": "정규화된 email",
+                    "before": "AuthService: 요청 email 원문 보유",
+                    "after": "UserRepository: Locale.ROOT로 소문자화한 email 조회 실행"
                   },
                   "evidenceScope": "code"
                 },
@@ -461,15 +477,30 @@ window.visualLabData = {
                   "from": "user-repository",
                   "to": "auth-service",
                   "verb": "반환",
-                  "payload": "User { password }",
+                  "payload": "User { authProvider, password }",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "User { password }",
+                    "subject": "User { authProvider, password }",
                     "before": "AuthService: email에 해당하는 User 없음",
-                    "after": "AuthService: encoded password를 가진 User 확보"
+                    "after": "AuthService: LOCAL 여부와 encoded password를 가진 User 확보"
                   },
                   "evidenceScope": "code"
+                },
+                {
+                  "from": "auth-service",
+                  "to": "auth-service",
+                  "verb": "로그인 방식 확인",
+                  "payload": "user.authProvider == LOCAL",
+                  "kind": "compare",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "LOCAL password 로그인",
+                    "before": "AuthService: 계정의 로그인 방식 미확인",
+                    "after": "AuthService: LOCAL 계정만 password 비교 단계로 진행"
+                  },
+                  "evidenceScope": "code",
+                  "concept": "인증 방식 경계"
                 },
                 {
                   "from": "auth-service",
@@ -525,16 +556,16 @@ window.visualLabData = {
                   "from": "exception-handler",
                   "to": "client",
                   "verb": "응답",
-                  "payload": "401 ErrorResponse { INVALID_CREDENTIALS }",
+                  "payload": "401 + WWW-Authenticate: Bearer + INVALID_CREDENTIALS",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "401 ErrorResponse { INVALID_CREDENTIALS }",
+                    "subject": "401 INVALID_CREDENTIALS",
                     "before": "Client: HTTP status와 body 미확정",
-                    "after": "Client: 401 ErrorResponse { INVALID_CREDENTIALS }"
+                    "after": "Client: 401, WWW-Authenticate: Bearer, INVALID_CREDENTIALS"
                   },
                   "evidenceScope": "runtime",
-                  "check": "로그인 실패가 성공 응답으로 처리되지 않는지 확인합니다."
+                  "check": "두 로그인 실패가 같은 code/message와 Bearer challenge를 반환하는지 확인합니다."
                 }
               ]
             }
@@ -652,15 +683,16 @@ window.visualLabData = {
                   "from": "auth-entry-point",
                   "to": "client",
                   "verb": "응답 작성",
-                  "payload": "401 Unauthorized + ErrorResponse",
+                  "payload": "401 + WWW-Authenticate: Bearer + ErrorResponse",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "401 Unauthorized + ErrorResponse",
+                    "subject": "401 Unauthorized",
                     "before": "Client: HTTP status와 body 미확정",
-                    "after": "Client: 401 Unauthorized + ErrorResponse"
+                    "after": "Client: 401, WWW-Authenticate: Bearer, ErrorResponse"
                   },
-                  "evidenceScope": "runtime"
+                  "evidenceScope": "runtime",
+                  "check": "Bearer challenge와 JSON ErrorResponse를 함께 확인합니다."
                 }
               ]
             }
@@ -724,8 +756,8 @@ window.visualLabData = {
           "lanes": [
             {
               "id": "authenticated-request",
-              "label": "Bearer 검증과 subject 추출",
-              "description": "token 유효성을 판정한 뒤 subject email을 추출합니다.",
+              "label": "Bearer token을 한 번 검증",
+              "description": "token을 한 번 파싱해 서명·만료·issuer·audience와 필수 claim을 확인하고 subject email을 돌려줍니다.",
               "steps": [
                 {
                   "from": "client",
@@ -744,64 +776,37 @@ window.visualLabData = {
                 {
                   "from": "jwt-filter",
                   "to": "jwt-provider",
-                  "verb": "검증",
-                  "payload": "validateToken(token)",
+                  "verb": "검증·subject 요청",
+                  "payload": "getValidatedSubject(token)",
                   "kind": "call",
                   "effect": {
                     "kind": "transfer",
-                    "subject": "validateToken(token)",
+                    "subject": "아직 신뢰하지 않은 Bearer token",
                     "before": "JwtAuthenticationFilter: Bearer token 문자열 추출",
-                    "after": "JwtTokenProvider: token 서명·만료 검증 실행"
+                    "after": "JwtTokenProvider: 한 번의 parsing으로 서명·만료·issuer·audience·issuedAt·subject 검증"
                   },
                   "evidenceScope": "code",
-                  "concept": "JWT signature / validity",
-                  "check": "token 유효성 검증을 확인합니다."
+                  "concept": "JWT 단일 parsing",
+                  "check": "검증과 subject 추출을 위해 token을 두 번 파싱하지 않는지 확인합니다.",
+                  "codePointIds": [
+                    "jwt-validate"
+                  ]
                 },
                 {
                   "from": "jwt-provider",
                   "to": "jwt-filter",
-                  "verb": "반환",
-                  "payload": "valid = true",
+                  "verb": "검증된 subject 반환",
+                  "payload": "verified subject(email)",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "valid = true",
-                    "before": "JwtAuthenticationFilter: token 유효 여부 미확정",
-                    "after": "JwtAuthenticationFilter: validateToken 결과 true"
-                  },
-                  "evidenceScope": "code",
-                  "concept": "JWT validity",
-                  "check": "validateToken의 반환형이 Boolean인지 확인합니다."
-                },
-                {
-                  "from": "jwt-filter",
-                  "to": "jwt-provider",
-                  "verb": "subject 조회",
-                  "payload": "getEmail(token)",
-                  "kind": "call",
-                  "effect": {
-                    "kind": "transfer",
-                    "subject": "getEmail(token)",
-                    "before": "JwtAuthenticationFilter: valid=true지만 principal email 없음",
-                    "after": "JwtTokenProvider: 검증된 token의 subject 추출"
-                  },
-                  "evidenceScope": "code",
-                  "concept": "JWT subject"
-                },
-                {
-                  "from": "jwt-provider",
-                  "to": "jwt-filter",
-                  "verb": "email 반환",
-                  "payload": "email",
-                  "kind": "response",
-                  "effect": {
-                    "kind": "return",
-                    "subject": "email",
+                    "subject": "검증된 email subject",
                     "before": "JwtAuthenticationFilter: Authentication principal 없음",
-                    "after": "JwtAuthenticationFilter: token subject email 확보"
+                    "after": "JwtAuthenticationFilter: Authentication을 만들 수 있는 email 확보"
                   },
                   "evidenceScope": "code",
-                  "check": "UserRepository 재조회 없이 subject를 읽는지 확인합니다."
+                  "concept": "검증된 JWT subject",
+                  "check": "실패 시 null, 성공 시 email이 반환되고 UserRepository를 다시 조회하지 않는지 확인합니다."
                 }
               ]
             },
@@ -998,9 +1003,9 @@ window.visualLabData = {
   "flows": [
     {
       "id": "login-token",
-      "title": "회원가입/로그인과 토큰 발급",
-      "summary": "사용자 저장과 비밀번호 확인 이후 JWT가 발급되고 이후 요청의 인증 근거가 됩니다.",
-      "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as AuthController\n  participant Service as AuthService\n  participant Jwt as JwtTokenProvider\n  participant Filter as JwtAuthenticationFilter\n  participant Context as SecurityContext\n  participant Authz as Authorization\n  Client->>Controller: POST /auth/login + LoginRequest\n  Controller->>Service: login(request)\n  Service->>Jwt: createToken(user.email)\n  Jwt-->>Client: TokenResponse\n  Client->>Filter: 보호 요청 + Bearer token\n  Filter->>Jwt: validateToken(token)\n  Jwt-->>Filter: true\n  Filter->>Jwt: getEmail(token)\n  Filter->>Context: Authentication(email)\n  Context->>Authz: authenticated principal",
+      "title": "로그인과 토큰 발급",
+      "summary": "사용자 조회, LOCAL 방식, 비밀번호 일치 이후 JWT가 발급되고 다음 보호 요청의 인증 근거가 됩니다.",
+      "mermaid": "sequenceDiagram\n  actor Client\n  participant Controller as AuthController\n  participant Service as AuthService\n  participant Jwt as JwtTokenProvider\n  participant Filter as JwtAuthenticationFilter\n  participant Context as SecurityContext\n  participant Authz as Authorization\n  Client->>Controller: POST /auth/login + LoginRequest\n  Controller->>Service: login(request)\n  Service->>Jwt: createToken(user.email)\n  Jwt-->>Service: signed JWT\n  Service-->>Controller: TokenResponse\n  Controller-->>Client: 200 + TokenResponse + no-store\n  Client->>Filter: 보호 요청 + Bearer token\n  Filter->>Jwt: getValidatedSubject(token)\n  Jwt-->>Filter: verified subject(email)\n  Filter->>Context: Authentication(email)\n  Context->>Authz: authenticated principal",
       "steps": [
         {
           "order": 1,
@@ -1028,13 +1033,13 @@ window.visualLabData = {
           "actor": "AuthController",
           "input": "email/password",
           "owner": "AuthService",
-          "action": "사용자를 조회하고 비밀번호를 확인합니다.",
+          "action": "사용자, LOCAL 로그인 방식, 비밀번호를 확인합니다.",
           "output": "Authenticated user",
           "note": "비밀번호는 평문 저장 대상이 아니므로 인코더로 비교합니다.",
           "id": "login-token-step-2",
           "from": "AuthController",
           "to": "AuthService",
-          "message": "사용자를 조회하고 비밀번호를 확인합니다.",
+          "message": "사용자, LOCAL 로그인 방식, 비밀번호를 확인합니다.",
           "messageKind": "request",
           "problem": "email/password",
           "concept": "AuthService",
@@ -1050,7 +1055,7 @@ window.visualLabData = {
           "input": "Authenticated user",
           "owner": "JwtTokenProvider",
           "action": "이후 요청에서 확인할 access token을 발급합니다.",
-          "output": "TokenResponse",
+          "output": "accessToken + tokenType + expiresIn",
           "note": "토큰은 로그인 이후 요청을 구분하기 위한 압축된 인증 정보입니다.",
           "id": "login-token-step-3",
           "from": "AuthService",
@@ -1059,7 +1064,7 @@ window.visualLabData = {
           "messageKind": "response",
           "problem": "Authenticated user",
           "concept": "JwtTokenProvider",
-          "check": "TokenResponse",
+          "check": "TokenResponse + Cache-Control: no-store",
           "codePointIds": [
             "jwt-create",
             "jwt-filter"
@@ -1089,26 +1094,26 @@ window.visualLabData = {
     {
       "id": "protected-api",
       "title": "보호 API와 인증 필터",
-      "summary": "토큰이 있는 이후 요청은 Controller보다 먼저 인증 필터를 지나고, 실패하면 Controller까지 도달하지 않습니다.",
+      "summary": "보호 요청의 token은 Controller보다 먼저 한 번 검증되고, 검증된 subject만 현재 사용자로 등록됩니다.",
       "steps": [
         {
           "order": 1,
           "actor": "Client",
           "input": "Authorization header",
           "owner": "JwtAuthenticationFilter",
-          "action": "요청에서 token을 꺼내 유효성을 확인합니다.",
-          "output": "Authentication or failure",
-          "note": "인증 필터는 Controller보다 먼저 실행됩니다.",
+          "action": "요청에서 token을 꺼내 한 번 파싱하고 검증된 subject를 받습니다.",
+          "output": "verified subject 또는 null",
+          "note": "서명·만료·issuer·audience·issuedAt·subject를 같은 parsing 결과에서 확인합니다.",
           "id": "protected-api-step-1",
           "from": "Client",
           "to": "JwtAuthenticationFilter",
-          "message": "요청에서 token을 꺼내 유효성을 확인합니다.",
+          "message": "token을 한 번 검증해 subject를 받습니다.",
           "messageKind": "request",
           "problem": "Authorization header",
           "concept": "JwtAuthenticationFilter",
-          "check": "Authentication or failure",
+          "check": "getValidatedSubject(token)",
           "codePointIds": [
-            "jwt-create",
+            "jwt-validate",
             "jwt-filter"
           ]
         },
@@ -1138,17 +1143,17 @@ window.visualLabData = {
           "actor": "JwtAuthenticationFilter",
           "input": "Missing or invalid token",
           "owner": "Security boundary",
-          "action": "보호 API 접근을 막고 실패 응답으로 끝냅니다.",
+          "action": "Authentication 없이 계속된 보호 요청을 authorization 경계가 거절합니다.",
           "output": "Unauthorized response",
           "note": "Controller에 도달하지 못하는 실패도 정상적인 보안 흐름입니다.",
           "id": "protected-api-step-3",
           "from": "JwtAuthenticationFilter",
           "to": "Security boundary",
-          "message": "보호 API 접근을 막고 실패 응답으로 끝냅니다.",
+          "message": "보호 요청의 미인증 접근을 401로 바꿉니다.",
           "messageKind": "error",
           "problem": "Missing or invalid token",
           "concept": "Security boundary",
-          "check": "Unauthorized response",
+          "check": "401 + WWW-Authenticate: Bearer",
           "codePointIds": [
             "jwt-create",
             "jwt-filter"
@@ -1194,7 +1199,7 @@ window.visualLabData = {
       "label": "AuthService",
       "problem": "email/password",
       "concept": "AuthService",
-      "action": "사용자를 조회하고 비밀번호를 확인합니다.",
+      "action": "사용자, LOCAL 로그인 방식, 비밀번호를 확인합니다.",
       "check": "Authenticated user",
       "codePointIds": [
         "jwt-filter",
@@ -1231,18 +1236,27 @@ window.visualLabData = {
       "title": "로그인 성공 결과로 JWT를 발급합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt",
       "language": "kotlin",
-      "snippet": "// 로그인한 email을 subject로 넣어 만료 시간이 있는 JWT를 만듭니다.\nfun createToken(email: String): String {\n    return Jwts.builder()\n        .subject(email)\n        .issuedAt(Date())\n        .expiration(Date(System.currentTimeMillis() + expirationMs))\n        .signWith(signingKey)\n        .compact()\n}",
-      "explanation": "토큰 발급은 로그인 응답에서 일어나고, 다음 요청 인증과 분리해서 봅니다.",
-      "check": "발급된 token이 어떤 사용자 식별값을 담는지 확인합니다."
+      "snippet": "// 같은 시각과 계약으로 issuer, audience, subject, 만료를 기록합니다.\nval issuedAt = clock.instant()\nreturn Jwts.builder()\n    .issuer(issuer)\n    .audience().add(audience).and()\n    .subject(email)\n    .issuedAt(Date.from(issuedAt))\n    .expiration(Date.from(issuedAt.plusMillis(expirationMs)))\n    .signWith(signingKey, Jwts.SIG.HS256)\n    .compact()",
+      "explanation": "발급은 LOCAL 로그인 성공 뒤에만 일어나고, 응답은 tokenType과 expiresIn을 함께 알립니다.",
+      "check": "HS256과 issuer, audience, subject, issuedAt, expiration이 함께 설정되는지 확인합니다."
+    },
+    {
+      "id": "jwt-validate",
+      "title": "한 번 파싱한 결과에서 검증된 subject를 꺼냅니다",
+      "file": "src/main/kotlin/com/andi/rest_crud/security/JwtTokenProvider.kt",
+      "language": "kotlin",
+      "snippet": "// 검증과 subject 조회를 분리해 같은 token을 두 번 파싱하지 않습니다.\nval parsedToken = jwtParser.parseSignedClaims(token)\nif (parsedToken.header.algorithm != Jwts.SIG.HS256.id) {\n    return null\n}\n\nval claims = parsedToken.payload\nval subject = claims.subject\n\nsubject?.takeIf {\n    it.isNotBlank() && claims.issuedAt != null && claims.expiration != null\n}",
+      "explanation": "parser가 서명·만료·issuer·audience를 확인하고, 코드는 알고리즘과 필수 claim까지 확인합니다. 파싱 실패는 null로 끝납니다.",
+      "check": "유효성 Boolean을 받은 뒤 subject를 다시 읽는 두 번째 parsing이 없는지 확인합니다."
     },
     {
       "id": "jwt-filter",
-      "title": "필터는 Authorization 헤더의 토큰을 검증합니다",
+      "title": "검증된 subject만 새 SecurityContext에 등록합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/security/JwtAuthenticationFilter.kt",
       "language": "kotlin",
-      "snippet": "// 유효한 Bearer token만 현재 요청의 Authentication으로 등록합니다.\nval token = resolveToken(request)\nif (token != null && jwtTokenProvider.validateToken(token)) {\n    val email = jwtTokenProvider.getEmail(token)\n    val authentication = UsernamePasswordAuthenticationToken(email, null, emptyList())\n    authentication.details = WebAuthenticationDetailsSource().buildDetails(request)\n    SecurityContextHolder.getContext().authentication = authentication\n}\nfilterChain.doFilter(request, response)",
-      "explanation": "보호 API 요청은 필터에서 현재 사용자를 SecurityContext에 넣은 뒤 이어집니다.",
-      "check": "토큰 없음은 401, 작성자 불일치는 403으로 분리해 봅니다."
+      "snippet": "// 기존 Authentication은 보존하고 검증된 email이 있을 때만 새 context를 만듭니다.\nif (SecurityContextHolder.getContext().authentication == null) {\n    resolveToken(request)\n        ?.let(jwtTokenProvider::getValidatedSubject)\n        ?.let { email -> setAuthentication(request, email) }\n}\nfilterChain.doFilter(request, response)",
+      "explanation": "token이 없거나 잘못되면 Authentication을 만들지 않습니다. 공개 API는 계속될 수 있고 보호 API는 authorization 경계에서 401이 됩니다.",
+      "check": "빈 Bearer와 변조·만료 token은 Authentication을 만들지 않고, 보호 요청의 401에는 Bearer challenge가 있는지 확인합니다."
     }
   ],
   "concepts": [
@@ -1260,7 +1274,7 @@ window.visualLabData = {
     },
     {
       "title": "공개 API와 보호 API를 나눕니다",
-      "body": "로그인 없이 가능한 요청과 토큰이 필요한 요청의 경계를 설정합니다."
+      "body": "잘못된 Authorization header가 공개 GET에 와도 현재 정책은 요청을 계속하고, 보호 API에서만 401로 거절합니다."
     }
   ],
   "practice": [
@@ -1326,7 +1340,7 @@ window.visualLabData = {
     },
     {
       "name": "AuthService",
-      "role": "사용자 조회, 비밀번호 확인, 토큰 발급 요청을 조립합니다.",
+      "role": "사용자 조회, LOCAL 로그인 방식, 비밀번호 확인, 토큰 발급 요청을 조립합니다.",
       "caution": "필터처럼 매 요청 토큰 검증을 맡지 않습니다."
     },
     {

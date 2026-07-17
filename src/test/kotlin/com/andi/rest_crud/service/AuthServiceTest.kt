@@ -15,6 +15,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import java.time.Clock
 import java.util.Optional
 
 class AuthServiceTest {
@@ -22,8 +23,11 @@ class AuthServiceTest {
     private val userRepository: UserRepository = mock(UserRepository::class.java)
     private val passwordEncoder = BCryptPasswordEncoder()
     private val jwtTokenProvider = JwtTokenProvider(
-        secret = "change-this-secret-for-sequence-04-change-this-secret",
-        expirationMs = 3600000L
+        secret = "test-only-secret-key-for-hs256-at-least-32-bytes",
+        expirationMs = 3600000L,
+        issuer = "spring-boot-db-access-lab-test",
+        audience = "spring-boot-db-access-lab-test-api",
+        clock = Clock.systemUTC()
     )
     private val authService = AuthService(
         userRepository = userRepository,
@@ -35,11 +39,11 @@ class AuthServiceTest {
     fun `signUp은 LOCAL 사용자 정책으로 저장한다`() {
         val request = TestFixtureFactory.signUpRequest()
         `when`(userRepository.existsByEmail(request.email)).thenReturn(false)
-        `when`(userRepository.save(any())).thenAnswer { invocation -> invocation.arguments[0] }
+        `when`(userRepository.saveAndFlush(any())).thenAnswer { invocation -> invocation.arguments[0] }
 
         authService.signUp(request)
 
-        verify(userRepository).save(
+        verify(userRepository).saveAndFlush(
             argThat { user ->
                 user.email == request.email &&
                     user.authProvider == AuthProvider.LOCAL &&
@@ -64,7 +68,9 @@ class AuthServiceTest {
         val result = authService.login(request)
 
         assertFalse(result.accessToken.isBlank())
-        assertEquals(request.email, jwtTokenProvider.getEmail(result.accessToken))
+        assertEquals(request.email, jwtTokenProvider.getValidatedSubject(result.accessToken))
+        assertEquals("Bearer", result.tokenType)
+        assertEquals(3600L, result.expiresIn)
     }
 
     @Test

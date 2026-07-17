@@ -33,13 +33,46 @@ private fun validateAuthor(post: PostEntity, currentUserEmail: String) {
 
 ```bash
 docker compose up -d
+export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
 ./gradlew test
 ./gradlew bootRun
 ```
 
 Swagger에서 게시글 생성/조회/수정/삭제와 `/auth/signup`, `/auth/login`, `/auth/me` 흐름을 확인합니다.
 
-## 5. 한계와 다음 개선 방향
+## 5. 인증과 요청 경계 구현 확인
+
+- 회원가입은 계정 생성이고 로그인은 저장된 자격 정보 확인입니다. 수동 로그인 처리와 Spring Security의 이후 요청 인증·인가를 한 책임으로 섞지 않습니다.
+- Authentication은 신원 확인, Authorization은 endpoint 접근 및 게시글 ownership 판단입니다.
+- `04-implementation`에서는 Sequence 03의 DTO Validation과 `400` 예외 응답 TODO도 다시 완성합니다.
+- 회원가입 email은 `Locale.ROOT`로 소문자 정규화하고 password는 trim하지 않습니다.
+- 중복 조회를 BCrypt보다 먼저 실행하고, 저장 시 unique race는 `UserAlreadyExistsException`으로 변환합니다.
+- JWT는 HS256, issuer, audience, issuedAt, expiration과 subject를 한 번의 parsing으로 검증합니다.
+- 로그인 응답은 `accessToken`, `tokenType`, `expiresIn`과 `Cache-Control: no-store`를 포함합니다.
+- Security가 만드는 401/403과 MVC 예외가 같은 `ErrorResponse` 구조를 사용합니다.
+- 현재 JWT subject=email과 빈 authorities는 교육용 단순화입니다. Role 기반 인가, Refresh Token, Redis 기반 token 저장·회수는 이 구현에 없습니다.
+
+운영에서는 기존 email 대소문자 중복과 DTO/컬럼 길이 초과 데이터를 먼저 진단합니다.
+
+```sql
+-- 소문자 정규화 시 충돌할 계정을 먼저 찾습니다.
+SELECT LOWER(email), COUNT(*)
+FROM users
+GROUP BY LOWER(email)
+HAVING COUNT(*) > 1;
+
+-- 새 DTO/컬럼 계약을 넘는 기존 데이터를 확인합니다.
+SELECT id FROM users WHERE CHAR_LENGTH(email) > 254;
+SELECT id FROM users WHERE CHAR_LENGTH(password) > 100;
+SELECT id FROM posts
+WHERE CHAR_LENGTH(title) > 100
+   OR CHAR_LENGTH(content) > 5000
+   OR CHAR_LENGTH(author) > 254;
+```
+
+충돌과 초과 데이터를 정리한 뒤 스키마를 명시적으로 마이그레이션합니다. `users.email`을 소문자화한다면 ownership 비교가 끊기지 않도록 연결된 `posts.author`도 같은 계정 매핑과 transaction에서 함께 변경합니다. 자동 데이터 변환이나 migration 도구 도입은 이 가이드 변경 범위에 포함하지 않습니다. `JPA_DDL_AUTO=validate` 또는 `none`, `SPRINGDOC_ENABLED=false`를 사용하고 JWT 설정을 비밀 관리 체계에 둡니다.
+
+## 6. 한계와 다음 개선 방향
 
 이 레포의 목표는 DB 저장부터 인증과 테스트까지 기본 흐름을 잇는 것입니다.
 조회 성능 문제는 Redis Cache 레포에서 다루고, 실시간 메시지는 Realtime Communication 레포에서 다룹니다.
