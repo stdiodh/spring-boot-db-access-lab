@@ -7,18 +7,21 @@ import com.andi.rest_crud.dto.PostUpdateRequest
 import com.andi.rest_crud.exception.PostNotFoundException
 import com.andi.rest_crud.repository.PostRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
+@Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository
 ) {
 
-    fun create(request: PostCreateRequest): PostResponse {
+    @Transactional
+    fun create(request: PostCreateRequest, authorEmail: String): PostResponse {
         val savedPost = postRepository.save(
             PostEntity(
                 title = request.title,
                 content = request.content,
-                author = request.author
+                author = authorEmail
             )
         )
 
@@ -34,18 +37,20 @@ class PostService(
         return PostResponse.from(findPostById(id))
     }
 
-    fun update(id: Long, request: PostUpdateRequest): PostResponse {
+    @Transactional
+    fun update(id: Long, request: PostUpdateRequest, currentUserEmail: String): PostResponse {
         val post = findPostById(id)
-        post.title = request.title
-        post.content = request.content
-        post.author = request.author
+        // TODO(Authorization) 저장된 작성자와 currentUserEmail을 비교하고,
+        // 다른 사용자의 게시글이면 ForbiddenPostAccessException을 발생시키세요.
+        post.update(request.title, request.content)
 
-        val updatedPost = postRepository.save(post)
-        return PostResponse.from(updatedPost)
+        return PostResponse.from(post)
     }
 
-    fun delete(id: Long) {
+    @Transactional
+    fun delete(id: Long, currentUserEmail: String) {
         val post = findPostById(id)
+        // TODO(Authorization) 삭제 전에도 수정과 같은 작성자 검사를 적용하세요.
         postRepository.delete(post)
     }
 
@@ -53,4 +58,5 @@ class PostService(
         return postRepository.findById(id)
             .orElseThrow { PostNotFoundException(id) }
     }
+
 }

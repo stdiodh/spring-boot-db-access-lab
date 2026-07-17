@@ -1,12 +1,9 @@
 package com.andi.rest_crud.dto
 
-import jakarta.validation.constraints.NotBlank
-
 data class PostUpdateRequest(
-    @field:NotBlank(message = "title은 비어 있을 수 없습니다.")
+    // TODO(Validation) 1. title이 비어 있지 않고 100자를 넘지 않게 검증하세요.
     val title: String,
-    @field:NotBlank(message = "content는 비어 있을 수 없습니다.")
-    val content: String,
-    @field:NotBlank(message = "author는 비어 있을 수 없습니다.")
-    val author: String
+
+    // TODO(Validation) 2. content가 비어 있지 않고 5000자를 넘지 않게 검증하세요.
+    val content: String
 )
