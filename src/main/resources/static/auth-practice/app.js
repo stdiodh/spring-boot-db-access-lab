@@ -240,7 +240,7 @@ function renderApiError(data, response, fallbackMessage) {
 
 function practiceErrorMessage(response, fallbackMessage) {
   if (response.status >= 500) {
-    return "HTTP 5xx 응답입니다. 04-implementation 브랜치에서 실습 중이라면 서버 로그와 ApiDtos.kt, ApiExceptionHandling.kt, AuthService.kt, JwtAuthentication.kt의 TODO를 확인하세요.";
+    return "HTTP 5xx 응답입니다. 04-implementation 브랜치에서 실습 중이라면 Step01부터 Step07까지의 TODO와 서버 로그를 순서대로 확인하세요.";
   }
 
   return fallbackMessage;

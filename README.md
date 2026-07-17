@@ -25,7 +25,20 @@ git fetch origin
 git diff origin/04-implementation..origin/04-answer
 ```
 
-실습 지점을 찾기 쉽도록 요청·응답 DTO는 `ApiDtos.kt`, 예외 응답은 `ApiExceptionHandling.kt`, JWT 발급·필터는 `JwtAuthentication.kt`, Security 설정·오류 처리는 `SecurityConfig.kt`에 모았습니다. answer의 각 구현 블록 바로 위에는 문법 설명이 아니라 해당 검사가 필요한 이유를 짧게 적었습니다.
+학생이 파일 사이에서 구현 순서를 잃지 않도록 starter에서 직접 구현하는 파일만 `Step01`부터 `Step08`까지 표시했습니다. 이 접두사는 실습용 탐색 장치이며 package와 class 이름에는 넣지 않습니다. Controller, Repository, 설정과 테스트는 제공되는 연결·검증 코드이므로 번호화하지 않습니다.
+
+```text
+Step01ApiDtos.kt              요청·응답 계약
+Step02User.kt                 사용자 저장 계약
+Step03PostEntity.kt           게시글 저장 계약
+Step04ApiExceptionHandling.kt 오류 응답 계약
+Step05JwtAuthentication.kt    JWT 발급·검증과 Filter
+Step06AuthService.kt          회원가입·로그인
+Step07SecurityConfig.kt       Security 경계와 401/403
+Step08PostService.kt          게시글 소유권
+```
+
+answer의 각 파일 상단에는 선행 단계, 현재 판단, 다음 연결을 적고 핵심 구현 위에는 코드 문법보다 해당 검사가 필요한 이유를 설명했습니다.
 
 ## 읽는 순서
 

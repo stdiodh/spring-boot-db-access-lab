@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 03 — 게시글 저장 계약
+ * 선행 단계: Step01의 title/content Validation과 Step02의 email 길이를 확인합니다.
+ * 이 단계의 판단: 요청 최대 길이와 작성자 식별값을 H2/MySQL 양쪽에서 같은 범위로 저장합니다.
+ * 다음 연결: Step08이 인증된 email을 author로 기록하고 수정·삭제 전에 소유권을 비교합니다.
+ */
 package com.andi.rest_crud.domain
 
 import jakarta.persistence.Column
@@ -26,10 +32,12 @@ class PostEntity(
     @Column(nullable = false, length = 254)
     var author: String
 ) {
+    // 쓰기 transaction 안에서 값을 바꾸면 JPA dirty checking이 반영하므로 Service에서 save를 반복하지 않습니다.
     fun update(title: String, content: String) {
         this.title = title
         this.content = content
     }
 
+    // 인증 여부와 별개로 저장된 작성자와 현재 principal이 같은지 판단하는 소유권 규칙입니다.
     fun isWrittenBy(email: String): Boolean = author == email
 }

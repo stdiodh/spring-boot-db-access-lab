@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 01 — API 입력·응답 계약
+ * 선행 단계: 없음. 외부 요청이 애플리케이션 안으로 들어오는 첫 경계입니다.
+ * 이 단계의 판단: @field: Validation으로 Service가 받아도 되는 값의 범위를 먼저 고정합니다.
+ * 다음 연결: Step02/03의 DB column 길이와 Step04의 Validation 오류 응답이 이 계약을 그대로 따릅니다.
+ */
 package com.andi.rest_crud.dto
 
 import com.andi.rest_crud.domain.PostEntity
@@ -61,6 +67,7 @@ data class CurrentUserResponse(
 )
 
 // 클라이언트가 JWT payload를 직접 해석하지 않도록 전달 방식과 남은 만료 시간을 함께 제공합니다.
+// expiresIn은 내부 millisecond 설정을 그대로 노출하지 않고 HTTP 클라이언트가 바로 쓰기 쉬운 초 단위로 반환합니다.
 data class TokenResponse(
     val accessToken: String,
     val tokenType: String = "Bearer",

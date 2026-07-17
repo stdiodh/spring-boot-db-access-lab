@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 06 — 회원가입·로그인 서비스
+ * 선행 단계: Step01 요청 계약, Step02 DB 제약, Step04 예외, Step05 JwtTokenProvider를 사용합니다.
+ * 이 단계의 판단: email 정규화·BCrypt·unique 경쟁 처리는 가입에, 자격 증명 확인·token 발급은 로그인에 둡니다.
+ * 다음 연결: 발급된 token은 Step05 Filter를 지나 Step07의 보호 API에서 현재 사용자 신원이 됩니다.
+ */
 package com.andi.rest_crud.service
 
 import com.andi.rest_crud.domain.User
@@ -17,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.Locale
 
 @Service
+// 조회가 기본이므로 readOnly로 두고, 계정을 저장하는 signUp만 쓰기 transaction으로 덮어씁니다.
 @Transactional(readOnly = true)
 class AuthService(
     private val userRepository: UserRepository,
@@ -40,6 +47,7 @@ class AuthService(
 
         // 사전 조회와 저장 사이에 다른 요청이 끼어도 DB 내부 오류 대신 같은 409 도메인 오류를 반환합니다.
         try {
+            // flush를 여기서 강제해야 unique 위반이 transaction 종료 뒤가 아니라 try/catch 안에서 발생합니다.
             userRepository.saveAndFlush(
                 User(
                     email = email,
@@ -59,7 +67,7 @@ class AuthService(
         // 가입 때와 같은 원문으로 비교해야 공백이 포함된 비밀번호도 정확히 인증할 수 있습니다.
         val rawPassword = request.password
 
-        // 존재하지 않는 email도 비밀번호 불일치와 같은 예외로 처리해 계정 존재 여부를 노출하지 않습니다.
+        // 존재하지 않는 email도 비밀번호 불일치와 같은 예외로 처리해 응답의 code/message로 계정 존재를 드러내지 않습니다.
         val user = userRepository.findByEmail(email)
             .orElseThrow { InvalidCredentialsException() }
 
@@ -83,6 +91,7 @@ class AuthService(
         return CurrentUserResponse(email = requireNotNull(user.email))
     }
 
+    // Locale.ROOT를 사용해야 서버 언어 설정과 무관하게 같은 email 정규화 결과를 얻습니다.
     private fun normalizeEmail(email: String): String = email.lowercase(Locale.ROOT)
 
     private fun DataIntegrityViolationException.isUniqueConstraintViolation(): Boolean {

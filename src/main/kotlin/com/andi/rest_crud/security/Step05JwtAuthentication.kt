@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 05 — JWT 발급·검증과 요청 인증
+ * 선행 단계: Step04에서 인증 실패가 API 오류로 표현되는 경계를 확인합니다.
+ * 이 단계의 판단: Provider는 token 자체를 검증하고, Filter는 검증된 subject만 SecurityContext로 옮깁니다.
+ * 다음 연결: Step06은 로그인 성공 시 token을 발급하고, Step07은 Filter를 보호 API 앞에 배치합니다.
+ */
 package com.andi.rest_crud.security
 
 import io.jsonwebtoken.JwtException
@@ -36,6 +42,7 @@ class JwtTokenProvider(
     }
 
     private val signingKey: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(StandardCharsets.UTF_8))
+    // verifyWith는 서명을, requireIssuer/requireAudience는 우리 서버가 발급한 용도의 token인지 확인합니다.
     private val jwtParser = Jwts.parser()
         .verifyWith(signingKey)
         .requireIssuer(issuer)
@@ -63,6 +70,7 @@ class JwtTokenProvider(
         // 한 번만 파싱하고 JwtException/IllegalArgumentException만 인증 실패로 바꿔, 관련 없는 오류는 숨기지 않습니다.
         return try {
             val parsedToken = jwtParser.parseSignedClaims(token)
+            // key 검증과 별개로 이번 실습에서 선택한 HS256 이외의 알고리즘은 명시적으로 거부합니다.
             if (parsedToken.header.algorithm != Jwts.SIG.HS256.id) {
                 return null
             }
@@ -102,10 +110,12 @@ class JwtAuthenticationFilter(
                 ?.let { email -> setAuthentication(request, email) }
         }
 
+        // token이 없거나 무효여도 chain은 계속합니다. 공개 API는 익명으로, 보호 API는 Step07에서 401이 됩니다.
         filterChain.doFilter(request, response)
     }
 
     private fun setAuthentication(request: HttpServletRequest, email: String) {
+        // principal에는 검증된 email만 넣고, Role 인가는 범위 밖이므로 authorities는 비워 둡니다.
         val authentication = UsernamePasswordAuthenticationToken(email, null, emptyList())
         authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
 

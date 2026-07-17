@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 08 — 게시글 소유권 인가
+ * 선행 단계: Step03의 author, Step04의 403/404 예외, Step07이 전달한 인증 email을 사용합니다.
+ * 이 단계의 판단: Authentication으로 확인한 신원과 저장된 작성자가 같은지 변경 전에 비교합니다.
+ * 완료 상태: 인증과 별개로 실제 작업 권한을 판단하면서 signup부터 ownership까지 한 흐름이 닫힙니다.
+ */
 package com.andi.rest_crud.service
 
 import com.andi.rest_crud.domain.PostEntity
@@ -18,6 +24,7 @@ class PostService(
 
     @Transactional
     fun create(request: PostCreateRequest, authorEmail: String): PostResponse {
+        // 작성자를 body에서 받지 않고 검증된 principal에서만 받아 다른 사용자를 사칭하지 못하게 합니다.
         val savedPost = postRepository.save(
             PostEntity(
                 title = request.title,
@@ -44,6 +51,7 @@ class PostService(
         // 값을 바꾸기 전에 작성자를 확인해야 다른 사용자의 게시글이 transaction 안에서 수정되지 않습니다.
         validateAuthor(post, currentUserEmail)
         post.update(request.title, request.content)
+        // 쓰기 transaction의 dirty checking이 변경을 반영하므로 repository.save를 다시 호출하지 않습니다.
 
         return PostResponse.from(post)
     }
@@ -56,6 +64,7 @@ class PostService(
         postRepository.delete(post)
     }
 
+    // 조회 경로를 한곳에 모아 get/update/delete가 같은 404 규칙을 사용합니다.
     private fun findPostById(id: Long): PostEntity {
         return postRepository.findById(id)
             .orElseThrow { PostNotFoundException(id) }

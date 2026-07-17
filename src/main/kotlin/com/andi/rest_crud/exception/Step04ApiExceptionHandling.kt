@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 04 — 애플리케이션 오류 계약
+ * 선행 단계: Step01의 입력 오류와 이후 Service가 던질 도메인 예외 종류를 확인합니다.
+ * 이 단계의 판단: Controller 밖에서 발생한 실패를 code/message/errors 형태와 정확한 HTTP status로 번역합니다.
+ * 다음 연결: Step06의 인증 실패와 Step08의 403/404가 DB 내부 정보 없이 같은 응답 문법을 사용합니다.
+ */
 package com.andi.rest_crud.exception
 
 import org.springframework.http.HttpHeaders
@@ -11,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 
+// code는 클라이언트 분기, message는 사용자 설명, errors는 필드별 Validation 실패에 사용합니다.
 data class ErrorResponse(
     val code: String,
     val message: String,
@@ -97,6 +104,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException::class)
     fun handleInvalidCredentialsException(exception: InvalidCredentialsException): ResponseEntity<ErrorResponse> {
+        // 로그인 실패도 401 응답 정책에 따라 Bearer challenge header를 함께 반환합니다.
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
             .body(
@@ -131,6 +139,7 @@ class GlobalExceptionHandler {
     }
 
     private fun constraintPriority(code: String?): Int {
+        // 빈 값에는 Email/Size보다 NotBlank를 우선해 같은 입력이 언제나 같은 첫 메시지를 갖게 합니다.
         return when (code?.substringBefore('.')) {
             "NotBlank" -> 0
             "Email" -> 1
