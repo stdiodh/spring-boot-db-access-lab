@@ -1,5 +1,7 @@
 package com.andi.rest_crud.dto
 
+import com.andi.rest_crud.domain.PostEntity
+
 data class UserSignUpRequest(
     // TODO(Validation) 1. email이 비어 있지 않고 이메일 형식이며 254자를 넘지 않게 검증하세요.
     // TODO(Validation) 2. Kotlin에서는 제약 조건이 field에 적용되도록 use-site target을 확인하세요.
@@ -34,4 +36,28 @@ data class PostUpdateRequest(
 
     // TODO(Validation) 2. content가 비어 있지 않고 5000자를 넘지 않게 검증하세요.
     val content: String
+)
+
+data class CurrentUserResponse(
+    val email: String
+)
+
+data class PostResponse(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val author: String
+) {
+    companion object {
+        fun from(entity: PostEntity): PostResponse = PostResponse(
+            id = entity.id,
+            title = entity.title,
+            content = entity.content,
+            author = entity.author
+        )
+    }
+}
+
+data class TokenResponse(
+    val accessToken: String
 )

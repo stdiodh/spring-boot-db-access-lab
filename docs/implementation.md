@@ -12,7 +12,7 @@ input validation -> signup -> login -> token issue -> token validation -> protec
 
 수정할 파일을 아래 순서로 따라갑니다. DTO, 예외, JWT 클래스는 역할별 묶음 파일 안에 있으며 별도 파일을 새로 만들 필요가 없습니다.
 
-1. `dto/RequestValidation.kt`에서 네 요청 DTO의 03 Validation을 다시 완성합니다.
+1. `dto/ApiDtos.kt`에서 네 요청 DTO의 03 Validation을 다시 완성합니다.
 2. `domain/User.kt`, `domain/PostEntity.kt`에서 저장 제약을 입력 계약과 맞춥니다.
 3. `exception/ApiExceptionHandling.kt`에서 Validation과 API 예외 응답을 연결합니다.
 4. `service/AuthService.kt`에서 회원가입과 로그인 흐름을 연결합니다.
@@ -122,7 +122,7 @@ http://localhost:8080/swagger
 
 인증과 Validation TODO를 완성한 뒤 브라우저에서 `http://localhost:8080/auth-practice/index.html`을 엽니다. email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me`를 한 화면에서 확인하고, 마지막에 표시되는 email이 입력한 계정과 같은지 확인합니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
 
-실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 현재 단계의 `RequestValidation.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
+실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 현재 단계의 `ApiDtos.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
 
 테스트:
 
