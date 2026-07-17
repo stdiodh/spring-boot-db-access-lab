@@ -45,18 +45,16 @@ git checkout 03-implementation
 MySQL이 필요한 시퀀스에서는 먼저 의존 서비스를 실행합니다.
 
 ```bash
+cp .env.example .env
 docker compose up -d
-export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
 ./gradlew bootRun
 ```
 
-Docker MySQL은 로컬에 이미 설치된 MySQL의 `3306`과 충돌하지 않도록 host의 `3307`을 사용합니다. 다른 DB를 사용하려면 `DB_URL`을 명시적으로 재정의합니다.
+복사한 `.env`의 값은 로컬 환경에 맞게 변경합니다. Spring Boot는 프로젝트 루트의 `.env`를 자동으로 읽으며, 같은 key가 OS 환경 변수에도 있으면 OS 환경 변수 값을 우선 사용합니다.
 
-```bash
-export DB_URL='jdbc:mysql://localhost:3307/aandi_lab?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8'
-```
+Docker MySQL은 로컬에 이미 설치된 MySQL의 `3306`과 충돌하지 않도록 host의 `3307`을 사용합니다. 다른 DB를 사용하려면 `.env`의 `DB_URL` 또는 OS 환경 변수를 변경합니다.
 
-`JWT_SECRET`은 필수이며 UTF-8 기준 32바이트 이상이어야 합니다. 값이 없거나 짧으면 애플리케이션 시작이 실패합니다. `JWT_EXPIRATION_MS`의 기본값은 3,600,000ms이며, issuer와 audience는 `JWT_ISSUER`, `JWT_AUDIENCE`로 재정의할 수 있습니다. 실제 secret과 `.env` 파일은 커밋하지 않습니다.
+`JWT_SECRET`은 필수이며 UTF-8 기준 32바이트 이상이어야 합니다. 값이 없거나 짧으면 애플리케이션 시작이 실패합니다. `JWT_EXPIRATION_MS`의 기본값은 3,600,000ms이며, issuer와 audience는 `JWT_ISSUER`, `JWT_AUDIENCE`로 재정의할 수 있습니다. `.env.example`만 예시로 공유하고 실제 secret이 들어 있는 `.env`는 절대 커밋하지 않습니다.
 
 Swagger UI 기본 경로:
 
