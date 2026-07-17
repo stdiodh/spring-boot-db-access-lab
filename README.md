@@ -30,14 +30,16 @@ git checkout -b feat/<이름>
 2. [구현 가이드](./docs/implementation.md)
 3. [체크리스트](./docs/checklist.md)
 
-실제로 수정할 파일은 아래 순서로 확인합니다. 관련 DTO, 예외, JWT 클래스는 한 흐름을 한 파일에서 읽을 수 있도록 묶었습니다.
+실제로 수정할 파일은 `Step01`부터 `Step08`까지 번호 순서로 확인합니다. 번호는 학습 중 다음 파일을 빠르게 찾기 위한 표시이며, 클래스 이름과 패키지 구조는 실무 코드처럼 유지합니다.
 
-1. `src/main/kotlin/com/andi/rest_crud/dto/ApiDtos.kt`
-2. `src/main/kotlin/com/andi/rest_crud/domain/User.kt`, `src/main/kotlin/com/andi/rest_crud/domain/PostEntity.kt`
-3. `src/main/kotlin/com/andi/rest_crud/exception/ApiExceptionHandling.kt`
-4. `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
-5. `src/main/kotlin/com/andi/rest_crud/security/JwtAuthentication.kt`, `src/main/kotlin/com/andi/rest_crud/security/SecurityConfig.kt`
-6. `src/main/kotlin/com/andi/rest_crud/service/PostService.kt`
+1. `src/main/kotlin/com/andi/rest_crud/dto/Step01ApiDtos.kt`
+2. `src/main/kotlin/com/andi/rest_crud/domain/Step02User.kt`
+3. `src/main/kotlin/com/andi/rest_crud/domain/Step03PostEntity.kt`
+4. `src/main/kotlin/com/andi/rest_crud/exception/Step04ApiExceptionHandling.kt`
+5. `src/main/kotlin/com/andi/rest_crud/security/Step05JwtAuthentication.kt`
+6. `src/main/kotlin/com/andi/rest_crud/service/Step06AuthService.kt`
+7. `src/main/kotlin/com/andi/rest_crud/security/Step07SecurityConfig.kt`
+8. `src/main/kotlin/com/andi/rest_crud/service/Step08PostService.kt`
 
 ## 실행 / 테스트 방법
 
@@ -63,7 +65,7 @@ http://localhost:8080/auth-practice/index.html
 
 인증 TODO를 완성한 뒤 email과 password를 직접 입력해 계정을 만들고 로그인합니다. 화면은 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
 
-실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 현재 단계의 `ApiDtos.kt`, `ApiExceptionHandling.kt`, `AuthService.kt`, `JwtAuthentication.kt` TODO를 확인합니다.
+실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 `Step01ApiDtos.kt`, `Step04ApiExceptionHandling.kt`, `Step05JwtAuthentication.kt`, `Step06AuthService.kt` TODO를 번호 순서로 확인합니다.
 
 테스트 실행:
 

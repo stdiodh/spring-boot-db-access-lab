@@ -1,3 +1,4 @@
+// Step 04: Validation·도메인 예외를 일관된 HTTP 오류 응답으로 변환합니다.
 package com.andi.rest_crud.exception
 
 import org.springframework.http.HttpStatus

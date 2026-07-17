@@ -1,3 +1,4 @@
+// Step 03: 게시글 저장 컬럼 제약을 DTO 계약과 맞춥니다.
 package com.andi.rest_crud.domain
 
 import jakarta.persistence.Entity

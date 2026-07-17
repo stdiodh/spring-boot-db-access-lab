@@ -1,3 +1,4 @@
+// Step 01: API 입력·응답 DTO의 Validation 계약을 먼저 완성합니다.
 package com.andi.rest_crud.dto
 
 import com.andi.rest_crud.domain.PostEntity

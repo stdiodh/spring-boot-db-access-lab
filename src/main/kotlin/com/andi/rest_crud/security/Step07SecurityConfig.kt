@@ -1,3 +1,4 @@
+// Step 07: 공개 API와 보호 API의 경계에 JWT 필터를 연결합니다.
 package com.andi.rest_crud.security
 
 import jakarta.servlet.http.HttpServletRequest

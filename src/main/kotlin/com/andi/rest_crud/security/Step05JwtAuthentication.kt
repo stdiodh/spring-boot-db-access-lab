@@ -1,3 +1,4 @@
+// Step 05: JWT 발급·검증과 요청 인증 필터를 연결합니다.
 package com.andi.rest_crud.security
 
 import io.jsonwebtoken.Jwts

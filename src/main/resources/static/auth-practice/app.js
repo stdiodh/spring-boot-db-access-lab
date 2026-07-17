@@ -234,8 +234,8 @@ function renderApiError(response, data, fallbackMessage) {
   if (response.status >= 500) {
     showError(
       "서버가 5xx로 응답했습니다. 서버 로그를 먼저 확인하고, " +
-      "현재 단계의 ApiDtos.kt, ApiExceptionHandling.kt, " +
-      "AuthService.kt, JwtAuthentication.kt TODO를 확인하세요."
+      "Step01ApiDtos.kt, Step04ApiExceptionHandling.kt, " +
+      "Step05JwtAuthentication.kt, Step06AuthService.kt TODO를 번호 순서로 확인하세요."
     );
     return;
   }

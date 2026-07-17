@@ -1,3 +1,4 @@
+// Step 08: 인증된 사용자를 작성자로 저장하고 게시글 소유권을 검사합니다.
 package com.andi.rest_crud.service
 
 import com.andi.rest_crud.domain.PostEntity

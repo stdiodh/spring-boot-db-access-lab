@@ -1,3 +1,4 @@
+// Step 06: 회원가입·로그인·현재 사용자 조회 흐름을 완성합니다.
 package com.andi.rest_crud.service
 
 import com.andi.rest_crud.domain.User
