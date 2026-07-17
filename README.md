@@ -2,12 +2,15 @@
 
 ## 이 시퀀스에서 다루는 문제
 
-이전 시퀀스까지는 게시글 CRUD와 요청 검증을 다뤘습니다. 이번 시퀀스는 회원가입과 로그인 흐름을 추가하고, 로그인 성공 후 발급한 JWT로 보호된 API에 접근하는 문제를 다룹니다.
+이전 시퀀스까지는 게시글 CRUD와 요청 검증을 다뤘습니다. 이번 시퀀스는 03에서 배운 Validation을 인증 요청에도 다시 연결한 뒤, 회원가입과 로그인 흐름을 추가하고 로그인 성공 후 발급한 JWT로 보호된 API에 접근하는 문제를 다룹니다.
+
+starter에는 Validation 정답을 남겨 두지 않았습니다. 회원가입·로그인·게시글 요청의 제약 조건과 일관된 400 응답을 먼저 완성해야 인증 흐름의 입력 경계가 닫힙니다.
 
 OAuth2, SMTP, 비밀번호 재설정, Redis, 고급 권한 모델은 이번 범위에 넣지 않습니다.
 
 ## 학습 목표
 
+- 03에서 배운 DTO Validation과 예외 응답을 인증 입력에 다시 적용합니다.
 - 회원가입과 로그인 요청 흐름을 구현합니다.
 - JWT 발급과 검증 흐름을 이해합니다.
 - 인증 필터가 요청에서 토큰을 읽어 인증 정보를 만드는 위치를 설명합니다.
@@ -29,6 +32,8 @@ git checkout -b feat/<이름>
 
 핵심 파일은 아래 순서로 확인합니다.
 
+- `src/main/kotlin/com/andi/rest_crud/dto/*Request.kt`
+- `src/main/kotlin/com/andi/rest_crud/exception/GlobalExceptionHandler.kt`
 - `src/main/kotlin/com/andi/rest_crud/domain/User.kt`
 - `src/main/kotlin/com/andi/rest_crud/repository/UserRepository.kt`
 - `src/main/kotlin/com/andi/rest_crud/service/AuthService.kt`
@@ -58,6 +63,8 @@ http://localhost:8080/swagger
 
 ## 완료 기준
 
+- 잘못된 회원가입·로그인·게시글 요청은 일관된 400 응답으로 거절됩니다.
+- 게시글 작성자는 요청 body가 아니라 인증된 사용자 정보로 결정됩니다.
 - 회원가입과 로그인 흐름을 설명합니다.
 - 로그인 성공 시 JWT가 발급됩니다.
 - 인증 필터가 Bearer token을 읽어 인증 정보를 구성합니다.
@@ -74,6 +81,8 @@ http://localhost:8080/swagger
 
 ## 수업 중 질문
 
+- DTO 제약이 없으면 잘못된 입력이 어느 계층까지 흘러가나요?
+- 같은 필드에서 여러 제약이 실패하면 어떤 메시지를 선택해야 하나요?
 - 로그인 성공 후 서버가 왜 토큰을 발급하나요?
 - 필터는 Controller보다 앞에서 어떤 일을 하나요?
 - 공개 API와 보호 API는 Security 설정에서 어떻게 나뉘나요?
