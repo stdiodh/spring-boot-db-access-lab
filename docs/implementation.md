@@ -1,247 +1,173 @@
-# 구현 가이드
+# 05 OAuth2와 SMTP 계정 복구 구현 가이드
 
-## 1. 구현 전에 확인할 문제
+## 1. 구현 기준
 
-이번 answer는 사용자 인증 상태를 만드는 비교 기준입니다. 회원가입, 로그인, JWT 발급, JWT 검증, 보호 API 접근 흐름이 연결되어 있습니다.
-
-```text
-signup -> login -> access token issue -> JWT validation filter
--> SecurityContext -> protected API -> post ownership authorization
-```
-
-회원가입은 계정 생성이고 로그인은 자격 증명 확인입니다. 로그인은 `AuthService`에서 수동으로 처리하고, 로그인 뒤 요청의 인증과 인가는 Spring Security가 처리합니다. API 경로와 subject=email 계약은 유지합니다.
-
-## 2. 구현 순서
-
-먼저 `.env`의 DB 접속 정보와 `JWT_SECRET`을 준비합니다. 설정 파일은 Spring Boot가 정한 이름을 사용하므로 실습 번호를 붙이지 않습니다. 그다음 아래 파일을 번호 순서대로 구현합니다.
+최신 `04-answer`의 signup, login, JWT, 오류 응답, 보호 API, 게시글 ownership과 회귀 테스트를 보존합니다. 05에서는 OAuth profile, 내부 계정 연결, redirect, 계정 복구와 SMTP adapter만 구현합니다.
 
 ```text
-01 dto/Step01ApiDtos.kt                    요청·응답 DTO와 입력 계약
-02 domain/Step02User.kt                    email과 BCrypt 저장 계약
-03 domain/Step03PostEntity.kt              게시글과 작성자 저장 계약
-04 exception/Step04ApiExceptionHandling.kt ErrorResponse, 도메인 예외, 전역 handler
-05 security/Step05JwtAuthentication.kt     JWT 발급·검증과 인증 Filter
-06 service/Step06AuthService.kt            회원가입, 로그인, 현재 사용자 조회
-07 security/Step07SecurityConfig.kt         공개/보호 경계, Clock, Security 401/403
-08 service/Step08PostService.kt             게시글 작성자 저장과 ownership 인가
+OAuth result -> verified profile -> internal account -> JWT -> redirect
+Recovery request -> LOCAL policy -> demo link -> mail port -> SMTP
 ```
 
-번호는 실습에서만 사용하는 탐색 순서입니다. package와 class 이름은 그대로 유지하므로 운영 코드의 계층 구조와 Spring component scan은 바뀌지 않습니다. Controller와 Repository는 연결 코드, 테스트는 검증 코드이므로 번호를 붙이지 않습니다. Step08까지 구현한 뒤 실제 signup/login token을 포함한 전체 테스트를 실행합니다.
+## 2. 구현 파일 순서
 
-## 3. Step01-03. 입력과 저장 계약
+| 순서 | 파일 | 책임 |
+|---:|---|---|
+| 1 | `src/main/kotlin/com/andi/rest_crud/oauth/security/CustomOAuthUserService.kt` | 외부 속성 검증·정규화 |
+| 2 | `src/main/kotlin/com/andi/rest_crud/oauth/service/OAuthAccountService.kt` | 내부 사용자 연결과 JWT |
+| 3 | `src/main/kotlin/com/andi/rest_crud/oauth/security/OAuthLoginHandlers.kt` | 공개 redirect |
+| 4 | `src/main/kotlin/com/andi/rest_crud/recovery/service/AccountRecoveryService.kt` | LOCAL 복구 정책 |
+| 5 | `src/main/kotlin/com/andi/rest_crud/recovery/mail/SmtpRecoveryMailSender.kt` | SMTP 메시지와 발송 |
 
-### 해야 할 일
+연결 파일:
 
-`Step01ApiDtos.kt`의 Validation 범위와 `Step02User.kt`, `Step03PostEntity.kt`의 DB column 범위를 맞춥니다.
+- `common/config/SecurityConfig.kt`
+- `user/domain/User.kt`, `user/repository/UserRepository.kt`
+- `oauth/model/OAuthUserProfile.kt`, `oauth/dto/OAuthLoginResponse.kt`
+- `recovery/controller/AccountRecoveryController.kt`
+- `recovery/dto/PasswordResetMailRequest.kt`
+- `recovery/mail/RecoveryMailSender.kt`
 
-### 왜 이 작업을 하는가
+## 3. Step 1 - 설정과 Security 경계
 
-검증만으로 막은 값이 DB에서 잘리거나, DB가 허용하지 않는 값을 DTO가 받으면 계층 계약이 어긋납니다. JWT secret은 코드에 둘 수 없는 운영 민감값입니다.
+확인할 환경변수:
 
-### 확인 방법
+- OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- redirect/recovery: `APP_FRONTEND_URL`, `APP_PASSWORD_RESET_URL`, `APP_RECOVERY_MAIL_FROM`
+- SMTP: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`
 
-- `JWT_SECRET`이 필수이고 UTF-8 기준 32바이트 미만이면 시작이 실패하는지 확인합니다.
-- `JWT_EXPIRATION_MS` 기본값이 3,600,000ms인지 확인합니다.
-- email 254자, password 8~64자, title 100자, content 5000자 계약에 `@field:`가 적용됐는지 확인합니다.
-- login password에는 최소 길이를 강제하지 않고 최대 64자만 제한하는지 확인합니다.
-- `User.email` unique 제약과 길이, BCrypt 저장 길이, `PostEntity` 길이가 H2/MySQL에서 맞는지 확인합니다.
+실제 값은 `.env`나 실행 환경에만 둡니다.
 
-## 4. Step04. 오류 응답 계약
+Security 확인:
 
-### 해야 할 일
+- OAuth 시작·callback과 `/account-recovery/password-reset`은 공개합니다.
+- `/auth/me`와 게시글 변경은 Bearer JWT를 요구합니다.
+- OAuth `state`용 임시 session은 허용하되 보호 API session 인증으로 사용하지 않습니다.
 
-Validation 실패와 Service의 도메인 예외를 `ErrorResponse(code, message, errors)`와 올바른 HTTP status로 바꿉니다.
+## 4. Step 2 - OAuth profile 검증
 
-### 왜 이 작업을 하는가
+`CustomOAuthUserService.kt`에서 다음을 확인합니다.
 
-Service가 DB나 보안 라이브러리 내부 오류를 그대로 노출하면 클라이언트가 실패 원인을 안정적으로 처리할 수 없습니다. request body, method parameter, malformed JSON도 서로 구분하되 같은 기본 응답 문법을 사용해야 합니다.
+1. registration ID를 provider로 정규화합니다.
+2. Google `sub`를 providerId로 읽습니다.
+3. email이 있고 비어 있지 않은지 확인합니다.
+4. `email_verified=true`인지 확인합니다.
+5. provider, providerId, email 길이 계약을 확인합니다.
+6. Handler가 읽을 정규화된 속성만 반환합니다.
 
-### 오류 매핑
+필수 값이 없거나 verified가 아니면 OAuth 경계에서 거부하고 원본 오류·attributes를 외부에 노출하지 않습니다.
 
-| 상황 | 상태 | code |
-|---|---:|---|
-| request body / method parameter validation | 400 | `VALIDATION_ERROR` |
-| malformed JSON | 400 | `MALFORMED_JSON` |
-| 중복 회원가입 | 409 | `USER_ALREADY_EXISTS` |
-| 로그인 자격 증명 실패 | 401 | `INVALID_CREDENTIALS` |
-| 보호 API 인증 실패 | 401 | `UNAUTHORIZED` |
-| 게시글 ownership 부족 | 403 | `FORBIDDEN_POST_ACCESS` |
-| Spring Security 접근 거부 | 403 | `ACCESS_DENIED` |
-| 게시글 없음 | 404 | `POST_NOT_FOUND` |
+## 5. Step 3 - 내부 계정 연결
 
-같은 필드에 여러 Validation 오류가 생기면 `NotBlank -> Email -> Size` 우선순위로 첫 오류만 결정적으로 남깁니다. Filter 단계의 401/403은 MVC 전역 handler에 도달하지 않으므로 Step07에서 같은 `ErrorResponse`를 별도로 직렬화합니다.
+`OAuthAccountService.kt`의 판단 순서:
 
-## 5. Step05. JWT 발급·검증과 Filter
+1. profile을 다시 검증·정규화합니다.
+2. `provider + providerId`로 기존 사용자를 찾습니다.
+3. 기존 사용자는 DB의 내부 email을 유지하고 그 값으로 JWT를 발급합니다.
+4. identity가 없고 같은 email 계정이 있으면 자동 연결하지 않습니다.
+5. 충돌이 없을 때만 신규 OAuth 계정을 저장합니다.
+6. DB unique 저장 경쟁은 내부 제약을 숨긴 도메인 실패로 바꿉니다.
+7. 성공 결과에 우리 서비스 JWT와 신규 여부를 담습니다.
 
-### 해야 할 일
+기존 provider email을 내부 email에 자동 반영하면 JWT subject와 게시글 ownership이 흔들릴 수 있습니다. email 변경은 이번 로그인 흐름과 분리합니다.
 
-`JwtTokenProvider`에서 token을 발급·검증하고, `JwtAuthenticationFilter`에서 검증된 subject만 `SecurityContext`로 옮깁니다.
+## 6. Step 4 - OAuth redirect
 
-### 왜 이 작업을 하는가
+`OAuthLoginHandlers.kt`:
 
-발급은 HS256을 명시하고 `issuedAt`, `expiration`, issuer, audience, subject를 넣습니다. 검증 함수는 JWT를 한 번 파싱해 서명, 만료, issuer, audience, HS256과 필수 claim을 확인한 뒤 검증된 subject만 반환합니다. `Clock`을 주입해 시간 테스트가 실제 대기를 요구하지 않게 합니다.
+- 성공 query에는 최소 공개 상태만 넣습니다.
+- JWT는 query가 아니라 fragment의 `access_token`에만 둡니다.
+- 응답에 `Cache-Control: no-store`를 설정합니다.
+- link_required와 failed에는 token, fragment, email, 내부 오류를 넣지 않습니다.
 
-### 확인 방법
+현재 화면은 fragment를 자동으로 읽거나 제거하거나 API에 사용하지 않습니다. 주소에서 로컬 token을 수동으로 복사해 curl 또는 Postman의 `Authorization: Bearer <token>`으로 `/auth/me`를 확인하고 URL을 직접 지웁니다. 이 방식은 운영 token 전달 설계가 아닙니다.
 
-- `JwtException`과 토큰 인자 관련 `IllegalArgumentException`만 잘못된 토큰으로 처리하는지 확인합니다.
-- 정상, 변조, 만료, issuer 불일치, audience 불일치 테스트를 확인합니다.
-- 기존 Authentication을 덮어쓰지 않고 요청마다 빈 `SecurityContext`를 만드는지 확인합니다.
-- Bearer prefix가 없거나 token이 공백이면 인증을 만들지 않는지 확인합니다.
-- 현재 subject=email이 학습용 단순화이며 운영에서는 불변 userId를 권장함을 설명합니다.
+## 7. Step 5 - 계정 복구
 
-## 6. Step06. 회원가입·로그인 서비스
+실제 endpoint: `POST /account-recovery/password-reset`
 
-### 해야 할 일
+`AccountRecoveryService.kt`:
 
-`AuthService`에서 회원가입을 안전하게 저장하고 로그인 요청을 검증해 JWT를 발급하는 흐름을 연결합니다.
+1. email을 `Locale.ROOT` 규칙으로 소문자화합니다.
+2. 계정이 없으면 조용히 종료합니다.
+3. `LOCAL`이 아니면 조용히 종료합니다.
+4. LOCAL 사용자만 email 없는 demo reset link를 만듭니다.
+5. `RecoveryMailSender`로 발송합니다.
+6. 예상 가능한 메일 전송 실패는 외부로 전파하지 않습니다.
+7. email, token, link, SMTP 내부 오류를 로그에 넣지 않습니다.
 
-### 왜 이 작업을 하는가
+유효한 DTO 요청은 내부 결과와 무관하게 202입니다. 빈 값, 잘못된 형식, 254자 초과는 400입니다.
 
-email은 `lowercase(Locale.ROOT)`로 일관되게 정규화해야 합니다. 중복 사전 조회만으로는 동시 요청 경쟁을 막을 수 없으므로 DB unique 제약과 저장 예외 변환도 필요합니다. signup은 계정 생성이고 login은 자격 증명 확인 뒤 token을 발급하는 별도 작업입니다.
+구현하지 않는 것: token 저장·hash·사용자 매핑·만료·단일 사용·실제 password 변경·rate limit.
 
-### 확인 방법
+## 8. Step 6 - SMTP adapter
 
-- `existsByEmail()`이 비용이 큰 BCrypt encode보다 먼저 호출되는지 확인합니다.
-- password가 trim되지 않고 그대로 encode/matches에 전달되는지 확인합니다.
-- signup이 transaction 안에서 `saveAndFlush()`하고 email unique 종류의 `DataIntegrityViolationException`만 409로 바꾸는지 확인합니다.
-- 없는 email과 잘못된 password가 같은 code/message로 실패하는지 확인합니다.
-- 로그인 응답에 `accessToken`, `tokenType="Bearer"`, 초 단위 `expiresIn`과 `Cache-Control: no-store`가 있는지 확인합니다.
-- Filter가 만든 principal로 `/auth/me`가 현재 email을 반환하는지 확인합니다.
+`SmtpRecoveryMailSender.kt`:
 
-## 7. Step07. Security 요청 경계
+- `RecoveryMailSender`를 구현합니다.
+- `APP_RECOVERY_MAIL_FROM`을 발신자로 사용합니다.
+- 수신자, 제목, 본문, demo link를 구성합니다.
+- `JavaMailSender`로 보내고 mail 예외를 recovery 도메인 실패로 바꿉니다.
+- 연결·읽기·쓰기 timeout은 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`으로 유한하게 둡니다.
 
-### 해야 할 일
+Service는 `JavaMailSender`를 직접 알지 않아야 합니다. 테스트는 sender 또는 `JavaMailSender`를 mock하므로 외부 SMTP에 연결하지 않습니다.
 
-`SecurityConfig`에서 공개/보호 API를 구분하고 Step05 Filter와 Security 전용 401/403 handler를 연결합니다.
+## 9. 테스트
 
-### 왜 이 작업을 하는가
-
-회원가입, 로그인과 게시글 GET은 token 없이 접근 가능해야 하고, `/auth/me`와 게시글 변경은 인증 후 접근해야 합니다. Filter는 Controller보다 먼저 실행되어야 보호 API가 principal을 신뢰할 수 있습니다.
-
-### 확인 방법
-
-- 변조·만료 token이 있는 보호 API는 401인지 확인합니다.
-- 잘못된 Authorization이 있는 공개 API는 헤더를 무시하고 공개 상태로 처리하는지 확인합니다.
-- 401에 `WWW-Authenticate: Bearer`가 있고 401/403 모두 `ErrorResponse` JSON인지 확인합니다.
-- authorities는 비어 있고 Role 인가는 이번 범위가 아님을 확인합니다.
-- Bearer header 기반 Access Token only 구조와 CSRF 비활성화의 전제를 설명합니다.
-
-## 8. Step08. 게시글 소유권 인가
-
-### 해야 할 일
-
-인증된 principal을 게시글 작성자로 저장하고 수정·삭제 전에 현재 사용자와 저장된 작성자를 비교합니다.
-
-### 왜 이 작업을 하는가
-
-Authentication은 요청자가 누구인지 확인할 뿐 어떤 게시글을 변경할 수 있는지까지 결정하지 않습니다. 따라서 인증 정보가 없으면 401, 인증됐지만 작성자가 아니면 403으로 구분합니다.
-
-### 확인 방법
-
-- 게시글 GET은 공개 상태로 유지되는지 확인합니다.
-- 작성 요청의 author를 body가 아니라 검증된 principal에서 가져오는지 확인합니다.
-- 작성자와 비작성자의 PUT/DELETE가 각각 성공과 403으로 나뉘는지 확인합니다.
-- 없는 게시글은 Step04의 `POST_NOT_FOUND` 404로 반환되는지 확인합니다.
-
-## 9. 실행과 회귀 확인
+`05-implementation`은 TODO를 호출하는 테스트가 구현 전 실패하는 것이 정상입니다. 설정·컴파일 실패와 의도된 TODO 실패를 구분합니다.
 
 ```bash
-docker compose up -d
-export JWT_SECRET='local-dev-only-jwt-secret-change-me-123456'
-./gradlew bootRun
-```
-
-로컬 MySQL은 다른 기본 설치와 충돌하지 않도록 host `3307`에 열리고, 애플리케이션 기본 URL도 `jdbc:mysql://localhost:3307/aandi_lab`을 사용합니다. 다른 DB를 사용할 때는 `DB_URL`을 지정합니다.
-
-Swagger UI:
-
-```text
-http://localhost:8080/swagger
-```
-
-`/swagger`는 `/swagger-ui/index.html`로 redirect됩니다. 따라서 공개 경로에는 진입 URL뿐 아니라 실제 UI 자산인 `/swagger-ui/**`와 문서 설정인 `/v3/api-docs/**`가 함께 있어야 합니다.
-
-브라우저에서 `http://localhost:8080`을 열면 인증 실습 화면으로 이동합니다. `/auth-practice`와 `/auth-practice/`도 같은 화면으로 이동합니다. email과 password를 직접 입력해 `회원가입 -> 로그인 -> /auth/me -> POST /posts`를 한 화면에서 확인하고, 로그인 후 표시되는 email이 게시물 응답의 `author`와 같은지 확인합니다. 작성자 입력칸은 두지 않고 서버가 `Principal.name`으로 작성자를 결정합니다. 공개 `GET /posts` 목록은 로그인 없이 조회합니다. 로그인 응답의 Access Token 전체 값은 화면에서 선택하거나 복사할 수 있으며, `Header.Payload.Signature` 구조와 실제 `Authorization: Bearer <token>` 사용 경로를 함께 보여줍니다. 로컬 실습용 token만 jwt.io의 Encoded 칸에 직접 붙여넣어 구조를 확인하고, 운영 token과 `JWT_SECRET`은 입력하지 않습니다. Access Token은 페이지 메모리에만 있으므로 새로고침하면 다시 로그인해야 합니다.
-
-### 인증 실습 사이트 구현·검증 계획
-
-1. 인증 없이 페이지, 정적 자산, 공개 `GET /posts` 목록과 Swagger UI 자산에 접근되는지 확인합니다.
-2. signup과 login 뒤 `/auth/me`가 반환한 email을 읽기 전용 Principal로 표시하고 게시물 입력 영역을 엽니다.
-3. `{title, content}`만 Bearer token과 함께 `POST /posts`로 보내고, 201 응답의 `author`가 Principal과 같은지 확인합니다.
-4. token 삭제·401·새로고침 뒤 작성 영역이 다시 잠기고, 입력 오류와 HTTP 응답이 화면에 설명되는지 확인합니다.
-
-jwt.io에서 내용을 decode한 결과와 서버가 token을 유효하다고 판단하는 것은 다릅니다. 실제 유효성은 보호 요청의 `JwtAuthenticationFilter`가 서명, 만료, issuer, audience를 검증해 결정합니다.
-
-테스트:
-
-```bash
+./gradlew test --tests '*CustomOAuthUserServiceTest'
+./gradlew test --tests '*OAuthAccountServiceTest'
+./gradlew test --tests '*OAuthLoginHandler*Test'
+./gradlew test --tests '*OAuth*IntegrationTest'
+./gradlew test --tests '*AccountRecoveryServiceTest'
+./gradlew test --tests '*SmtpRecoveryMailSenderTest'
+./gradlew test --tests '*AccountRecoveryController*Test'
 ./gradlew test
 ```
 
-테스트에는 회원가입/로그인 Validation과 오류, 실제 signup -> login 응답 token -> `/auth/me`, 인증 실습 사이트의 게시물 작업대와 정적 자산, Swagger redirect·UI 자산·OpenAPI 설정 공개, JWT 서명·만료·issuer·audience, 게시글 공개 조회/인증 작성/작성자와 비작성자의 수정·삭제가 포함되어야 합니다.
+실제 클래스 이름은 현재 `src/test/kotlin/com/andi/rest_crud` 트리에서 확인합니다. `05-answer`은 외부 credential 없이 전체 테스트가 통과해야 합니다.
 
-### 운영 전 데이터 진단
+자동 테스트는 OAuth 검증·계정 정책·redirect·session 경계, LOCAL recovery·202·SMTP 실패, 메시지 조립과 최신 04 회귀를 확인합니다.
 
-신규 H2/MySQL 스키마가 정상 생성되는 것과 기존 운영 데이터 migration이 안전한 것은 다른 문제입니다. 기존 DB가 있다면 변경 전에 아래 진단부터 실행합니다.
+## 10. 외부 수동 검증
 
-```sql
--- 소문자 정규화 시 하나의 email로 충돌할 계정을 찾습니다.
-SELECT LOWER(email) AS normalized_email, COUNT(*) AS account_count
-FROM users
-GROUP BY LOWER(email)
-HAVING COUNT(*) > 1;
+Google:
 
--- 새 DTO/column 길이 계약을 넘는 기존 행을 찾습니다.
-SELECT id, CHAR_LENGTH(email) AS email_length
-FROM users
-WHERE CHAR_LENGTH(email) > 254;
+1. `/login/oauth2/code/google`을 callback URI로 등록합니다.
+2. `/oauth2/authorization/google`에서 로그인합니다.
+3. 공개 query와 fragment를 주소에서 관찰합니다.
+4. 로컬 token을 수동 복사해 curl/Postman으로 `/auth/me`를 호출합니다.
+5. URL을 직접 지우고 OAuth session만으로 보호 API가 열리지 않는지 확인합니다.
 
-SELECT id, CHAR_LENGTH(password) AS password_length
-FROM users
-WHERE CHAR_LENGTH(password) > 100;
+SMTP:
 
-SELECT id,
-       CHAR_LENGTH(title) AS title_length,
-       CHAR_LENGTH(content) AS content_length,
-       CHAR_LENGTH(author) AS author_length
-FROM posts
-WHERE CHAR_LENGTH(title) > 100
-   OR CHAR_LENGTH(content) > 5000
-   OR CHAR_LENGTH(author) > 254;
-```
+1. LOCAL 테스트 계정을 준비합니다.
+2. `SPRING_MAIL_*`과 `APP_RECOVERY_MAIL_FROM`을 로컬 secret으로 주입합니다.
+3. 복구 endpoint가 202를 반환하고 메일이 도착하는지 확인합니다.
+4. 없는 계정과 OAuth 계정도 같은 공개 응답인지 확인합니다.
+5. credential, email, token, link가 로그에 없는지 확인합니다.
 
-충돌과 초과 데이터를 먼저 해결한 뒤 별도 migration으로 column과 unique index를 변경합니다. 기존 `users.email`을 소문자화한다면 ownership 비교가 끊기지 않도록 연결된 `posts.author`도 같은 계정 매핑과 transaction에서 함께 변경합니다. 이 시퀀스에는 Flyway/Liquibase나 자동 일괄 email 변경을 추가하지 않습니다.
+실제 provider 성공은 자동 테스트와 별도 증거입니다.
 
-운영 실행 값은 다음처럼 학습 기본값과 분리합니다.
+## 11. 완료 기준
 
-```bash
-# 실제 값은 배포 환경의 secret/configuration store에서 주입합니다.
-export DB_URL='jdbc:mysql://db-host:3306/aandi_lab'
-export DB_USERNAME='app_user'
-export DB_PASSWORD='<managed-secret>'
-export JWT_SECRET='<managed-secret-at-least-32-bytes>'
-export JWT_ISSUER='aandi-production'
-export JWT_AUDIENCE='aandi-api'
-export JPA_DDL_AUTO='validate'
-export SPRINGDOC_ENABLED='false'
-```
-
-## 마지막 확인
-
-- 회원가입과 로그인 흐름을 설명합니다.
-- 토큰 발급과 검증 위치를 구분합니다.
-- 공개 API, 보호 API와 게시글 ownership 인가를 구분합니다.
-- JWT payload가 암호화된 비밀 영역이 아님을 설명합니다.
-- 현재 구현이 Access Token only이고 Refresh Token/Redis를 추가하지 않았습니다.
-- OAuth2, SMTP, 비밀번호 재설정, AuthenticationManager 전환으로 범위를 확장하지 않았습니다.
-- 브라우저 쿠키 저장으로 바꿀 때 CSRF 정책을 다시 검토해야 함을 설명합니다.
-- 기존 데이터 진단과 명시적 DB migration이 신규 스키마 smoke test와 다른 검증임을 설명합니다.
+- 최신 04 회귀를 유지했습니다.
+- package가 `common/user/auth/oauth/recovery/post` 역할과 맞습니다.
+- provider identity, 자동 연결 금지, 내부 email 안정성을 설명합니다.
+- STATELESS API와 임시 OAuth state session을 구분합니다.
+- fragment를 수동 관찰용 데모로 한정합니다.
+- recovery 202, LOCAL-only, mail port 분리를 지킵니다.
+- reset link의 미구현 보안 범위를 설명합니다.
+- `./gradlew test`와 `git diff --check`를 확인합니다.
 
 <details>
 <summary>멘토용 진행 포인트</summary>
 
-- starter와 비교할 때 AuthService, JwtAuthentication의 provider와 filter, SecurityConfig 순서로 확인합니다.
-- 힌트가 필요하면 로그인 응답, Authorization header, filter 검증 순서로 좁혀갑니다.
-- 다음 OAuth2 시퀀스로 넘어가기 전 자체 JWT의 역할을 설명하게 합니다.
+- profile -> account -> redirect -> recovery -> SMTP 순서로 테스트를 좁힙니다.
+- 편의를 이유로 자동 연결·내부 email 변경을 추가하지 않게 합니다.
+- demo fragment와 reset token을 운영 설계로 일반화하지 않게 합니다.
+- 실제 메일보다 sender 조건과 공개 응답을 먼저 확인합니다.
 
 </details>
