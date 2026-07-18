@@ -38,14 +38,18 @@ class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleValidationException(exception: MethodArgumentNotValidException): ErrorResponse {
-        // 같은 필드의 여러 실패가 검증 실행 순서에 따라 바뀌지 않아야 클라이언트가 늘 같은 오류를 봅니다.
+        // 실습 빈칸 대응: request body의 field 오류를 공통 Validation 응답으로 바꿉니다.
+        // 설명 포인트: 같은 입력은 검증 실행 순서와 무관하게 같은 첫 오류를 보여줘야 합니다.
+        // 확인 질문: 한 field가 여러 제약을 어기면 어떤 메시지를 우선해야 할까요?
         return validationErrorResponse(toFirstFieldErrors(exception.bindingResult.fieldErrors))
     }
 
     @ExceptionHandler(HandlerMethodValidationException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleMethodValidationException(exception: HandlerMethodValidationException): ErrorResponse {
-        // path와 query parameter도 요청 본문과 같은 오류 계약을 사용해야 호출자가 한 형식으로 처리할 수 있습니다.
+        // 실습 빈칸 대응: path와 query parameter 오류도 공통 Validation 응답으로 바꿉니다.
+        // 설명 포인트: 입력 위치가 달라도 클라이언트가 받는 오류 문법은 같아야 합니다.
+        // 확인 질문: body 오류와 method parameter 오류는 같은 예외로 들어올까요?
         val errors = linkedMapOf<String, String>()
 
         exception.parameterValidationResults
@@ -68,7 +72,9 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleHttpMessageNotReadableException(): ErrorResponse {
-        // JSON 자체를 읽지 못한 경우에는 특정 필드의 값 오류와 구분되는 원인을 알려야 합니다.
+        // 실습 빈칸 대응: 읽을 수 없는 JSON을 field Validation과 다른 400 응답으로 표현합니다.
+        // 설명 포인트: 역직렬화에 실패하면 DTO 제약 검증 단계까지 도달하지 못합니다.
+        // 확인 질문: 문법이 깨진 JSON에서 field별 오류를 만들 수 있을까요?
         return ErrorResponse(
             code = "MALFORMED_JSON",
             message = "요청 본문을 읽을 수 없습니다. JSON 형식을 확인해 주세요."

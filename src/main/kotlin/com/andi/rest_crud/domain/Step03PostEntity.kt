@@ -20,15 +20,21 @@ class PostEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
 
-    // 요청 검증과 같은 길이를 DB에도 적용해 통과한 제목이 저장 중 잘리지 않게 합니다.
+    // 실습 빈칸 대응: title 컬럼은 요청 DTO와 같은 최대 길이를 사용합니다.
+    // 설명 포인트: Validation을 통과한 제목은 저장 단계에서도 그대로 보존되어야 합니다.
+    // 확인 질문: DTO와 컬럼 길이 중 어느 쪽이 더 짧을 때 문제가 생길까요?
     @Column(nullable = false, length = 100)
     var title: String,
 
-    // JPA 표준 length 매핑을 사용해 H2와 MySQL 모두 5000자 계약을 같은 방식으로 생성합니다.
+    // 실습 빈칸 대응: content 컬럼은 지원 DB 모두에서 본문 저장 범위를 보장합니다.
+    // 설명 포인트: 개발용 H2와 수업용 MySQL이 같은 길이 계약을 가져야 합니다.
+    // 확인 질문: 한 DB에서만 통과하는 매핑은 테스트 신뢰도에 어떤 영향을 줄까요?
     @Column(nullable = false, length = 5000)
     var content: String,
 
-    // 작성자에는 인증된 User.email을 저장하므로 email과 같은 최대 길이를 보장합니다.
+    // 실습 빈칸 대응: author 컬럼은 사용자 email과 같은 길이의 식별값을 저장합니다.
+    // 설명 포인트: 작성자 비교에 쓸 값은 원본 사용자 식별자와 같은 저장 범위를 가져야 합니다.
+    // 확인 질문: author가 잘리면 이후 소유권 비교는 어떤 결과를 낼까요?
     @Column(nullable = false, length = 254)
     var author: String
 ) {
@@ -38,6 +44,8 @@ class PostEntity(
         this.content = content
     }
 
-    // 인증 여부와 별개로 저장된 작성자와 현재 principal이 같은지 판단하는 소유권 규칙입니다.
+    // 실습 빈칸 대응: 저장된 작성자와 현재 principal이 같은지 판단합니다.
+    // 설명 포인트: 인증 성공은 신원을 증명할 뿐, 특정 게시글의 소유권까지 보장하지 않습니다.
+    // 확인 질문: 로그인한 사용자라면 모든 게시글을 수정해도 될까요?
     fun isWrittenBy(email: String): Boolean = author == email
 }

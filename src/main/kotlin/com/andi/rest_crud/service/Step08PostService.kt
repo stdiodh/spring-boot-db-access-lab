@@ -71,7 +71,9 @@ class PostService(
     }
 
     private fun validateAuthor(post: PostEntity, currentUserEmail: String) {
-        // Authentication은 신원만 증명하므로 실제 작업 권한은 저장된 작성자와 별도로 비교합니다.
+        // 실습 빈칸 대응: 현재 사용자가 저장된 게시글 작성자인지 검사합니다.
+        // 설명 포인트: Authentication은 신원만 증명하므로 작업 대상의 소유권은 별도로 판단합니다.
+        // 확인 질문: 이 검사를 update 이후에 하면 어떤 잘못된 상태가 생길 수 있을까요?
         if (!post.isWrittenBy(currentUserEmail)) {
             throw ForbiddenPostAccessException(post.id)
         }

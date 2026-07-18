@@ -21,11 +21,15 @@ class User(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
 
-    // DTO가 허용한 email을 DB가 그대로 저장하고, 최종 중복 방지는 unique 제약이 맡도록 계약을 맞춥니다.
+    // 실습 빈칸 대응: email 컬럼은 DTO의 최대 길이와 unique 저장 계약을 함께 지킵니다.
+    // 설명 포인트: 요청을 통과한 값이 DB에서 잘리지 않아야 계층 간 계약이 일치합니다.
+    // 확인 질문: 중복 사전 조회가 있어도 unique 제약을 유지해야 하는 이유는 무엇일까요?
     @Column(nullable = false, unique = true, length = 254)
     var email: String,
 
-    // BCrypt 문자열은 원문보다 길어지므로 해시가 잘리면 정상 비밀번호도 다시 검증할 수 없습니다.
+    // 실습 빈칸 대응: password 컬럼은 BCrypt 결과를 온전히 저장할 수 있어야 합니다.
+    // 설명 포인트: 원문 입력 길이와 암호화된 저장 문자열 길이는 서로 다른 계약입니다.
+    // 확인 질문: 해시가 일부 잘리면 올바른 password도 왜 인증에 실패할까요?
     @Column(nullable = false, length = 100)
     var password: String
 )

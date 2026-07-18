@@ -104,7 +104,9 @@ class SecurityConfig(
                     .accessDeniedHandler(jsonAccessDeniedHandler)
             }
             .authorizeHttpRequests { auth ->
-                // 계정 생성과 로그인·학습 화면·조회만 공개하고, 신원이나 데이터를 바꾸는 요청은 인증 뒤에 둡니다.
+                // 실습 빈칸 대응: endpoint별 공개 조회와 인증이 필요한 변경 요청의 경계를 정합니다.
+                // 설명 포인트: URL뿐 아니라 HTTP method까지 봐야 같은 /posts 경로의 권한을 나눌 수 있습니다.
+                // 확인 질문: GET /posts는 공개하면서 POST /posts는 보호하는 이유는 무엇일까요?
                 auth
                     .requestMatchers(
                         "/",
@@ -126,7 +128,9 @@ class SecurityConfig(
             // 기본 로그인 방식은 끄고 signup → 수동 login → Bearer JWT 흐름만 남깁니다.
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
-            // Controller보다 먼저 JWT를 읽어야 보호 API가 Principal을 신뢰할 수 있습니다.
+            // 실습 빈칸 대응: JWT 필터를 기본 username/password 인증 필터보다 앞에 둡니다.
+            // 설명 포인트: Controller에 도달하기 전에 SecurityContext에 검증된 신원이 준비되어야 합니다.
+            // 확인 질문: 이 필터를 등록하지 않으면 유효한 Bearer token 요청은 어떻게 보일까요?
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()

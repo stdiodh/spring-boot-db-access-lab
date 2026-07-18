@@ -55,7 +55,9 @@ class JwtTokenProvider(
     fun createToken(email: String): String {
         val issuedAt = clock.instant()
 
-        // email을 이번 학습 흐름의 사용자 연결 키인 subject로 넣고, 발급자·대상·시간까지 서명합니다.
+        // 실습 빈칸 대응: 로그인한 사용자의 신원과 토큰 사용 조건을 서명해 발급합니다.
+        // 설명 포인트: payload는 암호화된 비밀이 아니라 위변조 여부를 검증할 서명 대상입니다.
+        // 확인 질문: subject에 password 같은 민감 정보를 넣으면 왜 안 될까요?
         return Jwts.builder()
             .issuer(issuer)
             .audience().add(audience).and()
@@ -67,7 +69,9 @@ class JwtTokenProvider(
     }
 
     fun getValidatedSubject(token: String): String? {
-        // 한 번만 파싱하고 JwtException/IllegalArgumentException만 인증 실패로 바꿔, 관련 없는 오류는 숨기지 않습니다.
+        // 실습 빈칸 대응: 토큰을 검증한 결과에서 신뢰할 수 있는 subject만 꺼냅니다.
+        // 설명 포인트: 검증과 subject 추출은 같은 parsing 결과를 사용해야 판단이 분리되지 않습니다.
+        // 확인 질문: payload를 decode한 email만으로 사용자를 인증할 수 있을까요?
         return try {
             val parsedToken = jwtParser.parseSignedClaims(token)
             // key 검증과 별개로 이번 실습에서 선택한 HS256 이외의 알고리즘은 명시적으로 거부합니다.

@@ -33,11 +33,13 @@ class AuthService(
 
     @Transactional
     fun signUp(request: UserSignUpRequest) {
+        // 실습 빈칸 대응: 가입 규칙과 사용자 저장 책임을 이 Service 경계에서 완성합니다.
         val email = normalizeEmail(request.email)
         // password의 앞뒤 공백도 사용자가 정한 자격 정보이므로 정규화하거나 trim하지 않습니다.
         val rawPassword = request.password
 
-        // 흔한 중복은 비용이 큰 BCrypt보다 먼저 거르고, 동시 요청 경쟁은 아래 DB unique 제약으로 다시 막습니다.
+        // 설명 포인트: 빠른 사전 확인과 DB unique 제약은 서로 다른 중복 발생 시점을 맡습니다.
+        // 확인 질문: 사전 조회만으로 동시에 들어온 같은 email 가입을 모두 막을 수 있을까요?
         if (userRepository.existsByEmail(email)) {
             throw UserAlreadyExistsException()
         }
@@ -63,15 +65,16 @@ class AuthService(
     }
 
     fun login(request: LoginRequest): TokenResponse {
+        // 실습 빈칸 대응: 자격 증명을 확인한 뒤에만 Access Token 응답을 만듭니다.
         val email = normalizeEmail(request.email)
         // 가입 때와 같은 원문으로 비교해야 공백이 포함된 비밀번호도 정확히 인증할 수 있습니다.
         val rawPassword = request.password
 
-        // 존재하지 않는 email도 비밀번호 불일치와 같은 예외로 처리해 응답의 code/message로 계정 존재를 드러내지 않습니다.
+        // 설명 포인트: 없는 email과 틀린 password는 같은 실패로 보여 계정 존재 여부를 숨깁니다.
         val user = userRepository.findByEmail(email)
             .orElseThrow { InvalidCredentialsException() }
 
-        // BCrypt는 같은 원문도 매번 다른 hash가 되므로 문자열 비교가 아니라 encoder 검증을 사용합니다.
+        // 확인 질문: BCrypt 결과를 문자열 동등 비교하면 왜 정상 password도 실패할까요?
         if (!passwordEncoder.matches(rawPassword, requireNotNull(user.password))) {
             throw InvalidCredentialsException()
         }
@@ -84,7 +87,9 @@ class AuthService(
     }
 
     fun getCurrentUser(email: String): CurrentUserResponse {
-        // 필터가 검증한 principal도 저장 규칙과 같은 방식으로 조회해 현재 신원을 확인합니다.
+        // 실습 빈칸 대응: 검증된 principal을 현재 사용자 응답으로 연결합니다.
+        // 설명 포인트: 유효한 토큰의 subject도 현재 DB 계정 상태를 대신하지는 않습니다.
+        // 확인 질문: 토큰의 email을 그대로 반환하지 않고 사용자를 다시 조회하는 이유는 무엇일까요?
         val user = userRepository.findByEmail(normalizeEmail(email))
             .orElseThrow { InvalidCredentialsException() }
 
