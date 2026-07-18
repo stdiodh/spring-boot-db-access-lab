@@ -11,6 +11,28 @@ spring:
     hibernate:
       ddl-auto: create-drop
     open-in-view: false
+  mail:
+    host: localhost
+    port: 2525
+    username: test-user
+    password: test-password
+    properties:
+      "[mail.smtp.auth]": true
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": true
+      "[mail.smtp.connectiontimeout]": 1000
+      "[mail.smtp.timeout]": 1000
+      "[mail.smtp.writetimeout]": 1000
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            scope:
+              - profile
+              - email
 
 springdoc:
   swagger-ui:
@@ -21,3 +43,8 @@ jwt:
   expiration-ms: 3600000
   issuer: spring-boot-db-access-lab-test
   audience: spring-boot-db-access-lab-test-api
+
+app:
+  frontend-url: http://localhost:8080/auth-practice/index.html
+  password-reset-url: http://localhost:8080/auth-practice/reset-password.html
+  recovery-mail-from: no-reply@test.local
