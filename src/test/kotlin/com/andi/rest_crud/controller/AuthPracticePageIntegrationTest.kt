@@ -34,6 +34,12 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
             .andExpect(content().string(containsString("id=\"authForm\"")))
             .andExpect(content().string(containsString("id=\"fullToken\"")))
+            .andExpect(content().string(containsString("id=\"postForm\"")))
+            .andExpect(content().string(containsString("id=\"postTitle\"")))
+            .andExpect(content().string(containsString("id=\"postContent\"")))
+            .andExpect(content().string(containsString("id=\"postList\"")))
+            .andExpect(content().string(containsString("SecurityContext Principal")))
+            .andExpect(content().string(containsString("Post.author")))
             .andExpect(content().string(containsString("https://www.jwt.io/#debugger-io")))
 
         mockMvc.perform(get("/auth-practice/styles.css"))

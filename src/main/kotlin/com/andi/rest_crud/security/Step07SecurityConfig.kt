@@ -105,10 +105,12 @@ class SecurityConfig(
             }
             .authorizeHttpRequests { auth ->
                 // TODO(Security) 공개 API와 보호 API를 HTTP method까지 구분하세요.
+                // /swagger는 UI로 redirect되므로 실제 화면 자산인 /swagger-ui/**도 함께 공개해야 합니다.
                 auth
                     .requestMatchers(
                         "/",
                         "/swagger/**",
+                        "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/auth-practice",
                         "/auth-practice/",

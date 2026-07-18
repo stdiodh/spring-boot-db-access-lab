@@ -4,7 +4,7 @@
 
 이전 시퀀스까지는 게시글 CRUD와 요청 검증을 다뤘습니다. 이번 시퀀스는 03에서 배운 Validation을 인증 요청에도 다시 연결한 뒤, `signup -> login -> access token 발급 -> JWT 검증 필터 -> SecurityContext -> 보호 API -> 게시글 소유권 인가` 흐름을 완성하는 문제를 다룹니다.
 
-직접 수정하는 범위는 `Step01`부터 `Step08`까지입니다. 제공된 Controller, Repository, 설정 연결 코드와 58개 테스트도 이 여덟 파일의 TODO와 같은 API·보안 계약을 사용합니다. 따라서 테스트를 고쳐 통과시키지 않고 TODO를 모두 완성해야 합니다. 시작 상태에서는 핵심 테스트가 실패하고, 구현 계약을 모두 연결한 뒤 전체 테스트가 통과하는 흐름이 정상입니다.
+직접 수정하는 범위는 `Step01`부터 `Step08`까지입니다. 제공된 Controller, Repository, 설정 연결 코드와 60개 테스트도 이 여덟 파일의 TODO와 같은 API·보안 계약을 사용합니다. 따라서 테스트를 고쳐 통과시키지 않고 TODO를 모두 완성해야 합니다. 시작 상태에서는 핵심 테스트가 실패하고, 구현 계약을 모두 연결한 뒤 전체 테스트가 통과하는 흐름이 정상입니다.
 
 OAuth2, SMTP, 비밀번호 재설정, Redis, 고급 권한 모델은 이번 범위에 넣지 않습니다.
 
@@ -61,13 +61,15 @@ Swagger UI:
 http://localhost:8080/swagger
 ```
 
+`/swagger`는 실제 UI인 `/swagger-ui/index.html`로 이동하므로 Security 설정에서 `/swagger-ui/**`와 `/v3/api-docs/**`도 공개합니다.
+
 Sequence 04 인증 실습 화면:
 
 ```text
 http://localhost:8080/auth-practice/index.html
 ```
 
-인증 TODO를 완성한 뒤 email과 password를 직접 입력해 계정을 만들고 로그인합니다. 화면은 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+인증 TODO를 완성한 뒤 email과 password를 직접 입력해 계정을 만들고 로그인합니다. 화면은 로그인 응답의 Access Token으로 `/auth/me`를 호출해 서버가 확인한 신원을 보여줍니다. 신원 확인 뒤에는 같은 Bearer token으로 `POST /posts`를 호출하고, 서버가 결정한 `author`를 공개 `GET /posts` 목록에서 확인합니다. 작성자 입력칸은 두지 않습니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
 
 실습 화면에서 5xx 응답이 나오면 원인을 단정하지 말고 서버 로그를 먼저 확인합니다. 그다음 `Step01ApiDtos.kt`, `Step04ApiExceptionHandling.kt`, `Step05JwtAuthentication.kt`, `Step06AuthService.kt` TODO를 번호 순서로 확인합니다.
 
@@ -77,7 +79,7 @@ http://localhost:8080/auth-practice/index.html
 ./gradlew test
 ```
 
-제공된 58개 테스트는 Validation, 응답 DTO, 회원가입 중복 경쟁, 로그인, JWT 서명·만료·issuer·audience, Filter, JSON 401/403, 게시글 소유권을 같은 계약으로 검증합니다. TODO가 남은 시작 상태에서 실패하는 것은 의도된 학습 신호입니다. 테스트 구현이나 기대값을 바꾸지 말고 실패한 이름을 다음 Step을 찾는 단서로 사용합니다.
+제공된 60개 테스트는 Validation, 응답 DTO, 회원가입 중복 경쟁, 로그인, JWT 서명·만료·issuer·audience, Filter, JSON 401/403, 게시글 소유권, 인증 실습 사이트와 Swagger 공개 경로를 같은 계약으로 검증합니다. TODO가 남은 시작 상태에서 실패하는 것은 의도된 학습 신호입니다. 테스트 구현이나 기대값을 바꾸지 말고 실패한 이름을 다음 Step을 찾는 단서로 사용합니다.
 
 ## 완료 기준
 
@@ -89,7 +91,7 @@ http://localhost:8080/auth-practice/index.html
 - 보호된 API는 토큰 없이 접근할 수 없습니다.
 - 401과 403이 공통 `ErrorResponse` 형식의 JSON으로 반환됩니다.
 - 게시글 수정·삭제는 인증된 작성자만 성공합니다.
-- 제공된 58개 테스트를 수정하지 않은 상태에서 `./gradlew test`가 통과합니다.
+- 제공된 60개 테스트를 수정하지 않은 상태에서 `./gradlew test`가 통과합니다.
 
 <details>
 <summary>멘토용 진행 포인트</summary>
@@ -97,7 +99,7 @@ http://localhost:8080/auth-practice/index.html
 ## 수업 전 확인
 
 - JWT secret은 환경 변수로 전달하고 실제 값을 저장소에 남기지 않는지 확인합니다.
-- starter의 58개 테스트가 TODO 완성 전 실패하고 완성 후 통과하는지 확인합니다.
+- starter의 60개 테스트가 TODO 완성 전 실패하고 완성 후 통과하는지 확인합니다.
 - OAuth2/SMTP는 다음 시퀀스 범위입니다.
 
 ## 수업 중 질문

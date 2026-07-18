@@ -23,11 +23,11 @@
   <main id="main-content" class="page-shell">
     <section class="intro" aria-labelledby="page-title">
       <div>
-        <p class="eyebrow">직접 확인할 흐름 · signup → login → /auth/me</p>
-        <h1 id="page-title">내가 입력한 계정이<br>요청의 신원이 되는지 확인합니다.</h1>
+        <p class="eyebrow">직접 확인할 흐름 · signup → login → /auth/me → POST /posts</p>
+        <h1 id="page-title">내 계정이 요청의 신원이 되고,<br>게시글의 작성자가 됩니다.</h1>
         <p class="intro__description">
           이 실습의 아이디는 email입니다. 계정을 만든 뒤 같은 정보로 로그인하면,
-          서버가 보호 API에서 확인한 email까지 한 흐름으로 보여줍니다.
+          서버가 보호 API에서 확인한 email을 게시글 작성자로 기록하는 데까지 한 흐름으로 보여줍니다.
         </p>
       </div>
       <div class="runtime-note" aria-label="실습 환경 정보">
@@ -288,8 +288,110 @@
       <span id="identityStatus" class="identity-proof__status">확인 전</span>
     </section>
 
+    <section id="postWorkbench" class="post-workbench" aria-labelledby="post-workbench-title">
+      <div class="post-workbench__heading">
+        <div>
+          <p class="eyebrow">Authorization in action</p>
+          <h2 id="post-workbench-title">Principal을 게시글 작성자로 전달합니다.</h2>
+          <p>
+            작성자 입력칸은 없습니다. 서버가 검증한 <code>Principal.name</code>만
+            <code>Post.author</code>로 저장해 클라이언트의 작성자 사칭을 막습니다.
+          </p>
+        </div>
+        <button id="refreshPostsButton" class="text-button" type="button">
+          공개 목록 새로고침
+        </button>
+      </div>
+
+      <div id="authorHandoff" class="author-handoff" data-state="locked" role="status" aria-live="polite">
+        <div class="author-handoff__node">
+          <span>SecurityContext Principal</span>
+          <strong id="postAuthor">로그인 신원 확인 전</strong>
+        </div>
+        <span class="author-handoff__arrow" aria-hidden="true">──→</span>
+        <div class="author-handoff__node author-handoff__node--target">
+          <span><code>POST /posts</code></span>
+          <strong>서버가 author로 기록</strong>
+        </div>
+      </div>
+
+      <div class="post-grid">
+        <section class="post-composer" aria-labelledby="post-composer-title">
+          <div class="post-panel-heading">
+            <div>
+              <p class="eyebrow">Authenticated write</p>
+              <h3 id="post-composer-title">게시물 입력</h3>
+            </div>
+            <code>201 Created</code>
+          </div>
+
+          <form id="postForm" class="post-form" novalidate>
+            <fieldset id="postFields" disabled>
+              <legend class="sr-only">게시물 작성 필드</legend>
+
+              <div class="field">
+                <label for="postTitle">제목</label>
+                <input
+                  id="postTitle"
+                  name="title"
+                  type="text"
+                  aria-describedby="postTitleCount postTitleError"
+                  placeholder="JWT가 작성자를 만드는 흐름"
+                >
+                <div class="field__meta">
+                  <span id="postTitleError" class="field__error"></span>
+                  <span id="postTitleCount" class="character-count">0 / 100</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="postContent">내용</label>
+                <textarea
+                  id="postContent"
+                  name="content"
+                  rows="7"
+                  aria-describedby="postContentCount postContentError"
+                  placeholder="로그인 응답의 token이 POST /posts에서 어떻게 사용되는지 적어보세요."
+                ></textarea>
+                <div class="field__meta">
+                  <span id="postContentError" class="field__error"></span>
+                  <span id="postContentCount" class="character-count">0 / 5000</span>
+                </div>
+              </div>
+
+              <button id="createPostButton" class="button button--signal post-submit" type="submit">
+                Bearer token으로 게시물 등록
+              </button>
+            </fieldset>
+          </form>
+
+          <p id="postNotice" class="post-notice" role="status" aria-live="polite">
+            로그인하고 <code>/auth/me</code> 확인까지 성공하면 작성 영역이 열립니다.
+          </p>
+          <p id="postError" class="post-error" role="alert" hidden></p>
+        </section>
+
+        <section class="post-feed" aria-labelledby="post-feed-title">
+          <div class="post-panel-heading">
+            <div>
+              <p class="eyebrow">Public read</p>
+              <h3 id="post-feed-title">공개 게시물 목록</h3>
+            </div>
+            <code>GET /posts</code>
+          </div>
+
+          <p id="postListStatus" class="post-list-status" role="status" aria-live="polite">
+            로그인 없이도 위의 새로고침 버튼으로 목록을 조회할 수 있습니다.
+          </p>
+          <div id="postList" class="post-list">
+            <p class="post-list__empty">아직 목록을 요청하지 않았습니다.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+
     <footer class="page-footer">
-      <p>새로고침하면 메모리 token이 사라집니다. 이 화면은 Access Token only 흐름만 확인합니다.</p>
+      <p>새로고침하면 메모리 token이 사라져 게시물 작성 영역도 다시 잠깁니다.</p>
       <a href="/swagger">Swagger 열기</a>
     </footer>
   </main>

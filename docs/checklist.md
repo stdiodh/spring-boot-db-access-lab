@@ -80,8 +80,12 @@
 - [ ] 테스트 실패를 테스트 수정이나 기대값 완화로 숨기지 않습니다.
 - [ ] DTO·오류, 회원가입·로그인, JWT, Filter, Security, 게시글 소유권 테스트를 모두 확인합니다.
 - [ ] 실제 `signup -> login 응답 token -> /auth/me` 통합 흐름이 성공합니다.
-- [ ] 제공된 58개 테스트를 수정하지 않고 `./gradlew test`가 통과합니다.
+- [ ] 제공된 60개 테스트를 수정하지 않고 `./gradlew test`가 통과합니다.
 - [ ] 인증 실습 화면에서 계정을 만들고 로그인해 `/auth/me`가 같은 email을 반환하는지 확인합니다.
+- [ ] `/auth/me` 성공 뒤 게시물 입력 영역이 열리고 Bearer token으로 `POST /posts` 201을 확인합니다.
+- [ ] 게시물 작성자 입력칸 없이 응답의 `author`가 검증된 Principal email과 같은지 확인합니다.
+- [ ] 공개 `GET /posts` 목록은 로그인 없이 조회할 수 있습니다.
+- [ ] `/swagger` redirect 뒤 `/swagger-ui/**` 자산과 `/v3/api-docs/**` 설정이 인증 없이 열립니다.
 - [ ] 실습 화면에서 5xx 응답이 나오면 서버 로그를 먼저 확인한 뒤 관련 Step의 TODO를 확인합니다.
 
 ## 8. 설명할 수 있어야 하는 것
@@ -113,6 +117,6 @@
 - 보완 필요 기준: 토큰 발급만 보고 Filter 검증, JSON 401/403 또는 게시글 소유권 흐름을 설명하지 못합니다.
 - 질문 예시: "이 요청은 Controller에 도달하기 전에 어떤 필터를 지나고, 작성자 권한은 어디에서 판단하나요?"
 - 비교 포인트: `Step05JwtAuthentication.kt`, `Step06AuthService.kt`, `Step07SecurityConfig.kt`, `Step03PostEntity.kt`, `Step08PostService.kt` 순서로 봅니다.
-- 58개 테스트 실패를 구현 위치를 찾는 단서로 사용하고, 테스트를 변경해 통과시키지 않게 합니다.
+- 60개 테스트 실패를 구현 위치를 찾는 단서로 사용하고, 테스트를 변경해 통과시키지 않게 합니다.
 
 </details>
