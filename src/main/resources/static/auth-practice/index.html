@@ -174,25 +174,106 @@
           <pre id="responseBody" tabindex="0">아직 요청하지 않았습니다.</pre>
         </div>
 
-        <details id="tokenDetails" class="token-details" hidden>
-          <summary>발급된 token 정보 보기</summary>
-          <dl>
-            <div>
-              <dt>Type</dt>
-              <dd id="tokenType">—</dd>
-            </div>
-            <div>
-              <dt>Expires</dt>
-              <dd id="tokenExpires">—</dd>
-            </div>
-            <div>
-              <dt>Fingerprint</dt>
-              <dd id="tokenFingerprint">—</dd>
-            </div>
-          </dl>
-          <p>전체 token은 DOM이나 브라우저 저장소에 남기지 않고 이 페이지의 JavaScript 메모리에만 둡니다.</p>
-        </details>
       </aside>
+    </section>
+
+    <section id="tokenLab" class="token-lab" aria-labelledby="token-lab-title" hidden>
+      <div class="token-lab__heading">
+        <div>
+          <p class="eyebrow">Login response → inspect → reuse</p>
+          <h2 id="token-lab-title">발급된 Access Token을 직접 확인합니다.</h2>
+          <p>
+            로그인 응답으로 받은 JWT 문자열을 가리지 않고 그대로 보여줍니다.
+          </p>
+        </div>
+        <dl class="token-meta" aria-label="발급된 토큰 정보">
+          <div>
+            <dt>Type</dt>
+            <dd id="tokenType">—</dd>
+          </div>
+          <div>
+            <dt>Expires</dt>
+            <dd id="tokenExpires">—</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="token-value">
+        <label for="fullToken">로그인 응답의 <code>accessToken</code></label>
+        <textarea
+          id="fullToken"
+          rows="5"
+          readonly
+          wrap="soft"
+          spellcheck="false"
+          aria-describedby="tokenSafetyNote"
+        ></textarea>
+        <div class="token-value__actions">
+          <button id="copyTokenButton" class="copy-token-button" type="button">
+            Access Token 복사
+          </button>
+          <span id="copyStatus" class="copy-status" role="status" aria-live="polite">
+            jwt.io에는 자동으로 전송하지 않습니다.
+          </span>
+        </div>
+      </div>
+
+      <figure class="token-handoff" aria-labelledby="token-handoff-caption">
+        <div class="handoff-map">
+          <div class="handoff-node handoff-node--source">
+            <span class="handoff-node__role">로그인 응답</span>
+            <code>POST /auth/login</code>
+            <strong>200 OK</strong>
+          </div>
+
+          <div class="handoff-arrow handoff-arrow--primary" aria-hidden="true">→</div>
+
+          <div class="handoff-node handoff-node--token">
+            <span class="handoff-node__role">발급된 값</span>
+            <div class="jwt-parts" aria-label="JWT는 Header, Payload, Signature 세 부분으로 구성됩니다">
+              <span class="jwt-part jwt-part--header">Header</span>
+              <span class="jwt-part__dot" aria-hidden="true">.</span>
+              <span class="jwt-part jwt-part--payload">Payload</span>
+              <span class="jwt-part__dot" aria-hidden="true">.</span>
+              <span class="jwt-part jwt-part--signature">Signature</span>
+            </div>
+            <strong>점으로 나뉜 하나의 JWT</strong>
+          </div>
+
+          <div class="handoff-branch handoff-branch--observe">
+            <div class="handoff-branch__arrow" aria-hidden="true">┄→</div>
+            <div class="handoff-node handoff-node--observe">
+              <span class="handoff-node__role">선택 관찰 · 서버 실행과 무관</span>
+              <a
+                href="https://www.jwt.io/#debugger-io"
+                target="_blank"
+                rel="noopener noreferrer"
+              >jwt.io Debugger 열기 <span aria-hidden="true">↗</span></a>
+              <strong>읽을 수 있음 ≠ 유효함</strong>
+              <small>Header와 Payload에서 <code>alg</code>, <code>sub</code>, <code>iss</code>, <code>aud</code>, <code>iat</code>, <code>exp</code>를 읽습니다.</small>
+            </div>
+          </div>
+
+          <div class="handoff-branch handoff-branch--request">
+            <div class="handoff-branch__arrow" aria-hidden="true">──→</div>
+            <div class="handoff-node handoff-node--request">
+              <span class="handoff-node__role">실행 경로 · 실제 서버 인증 처리</span>
+              <code>GET /auth/me + Authorization: Bearer &lt;token&gt;</code>
+              <strong>JwtAuthenticationFilter → SecurityContext → Controller</strong>
+              <small>서명, 만료, issuer, audience 검증은 이 경로에서 수행합니다.</small>
+            </div>
+          </div>
+        </div>
+        <figcaption id="token-handoff-caption">
+          같은 토큰을 한쪽에서는 구조를 읽는 데 사용하고, 다른 쪽에서는 서버에 신원을 증명하는 데 사용합니다.
+        </figcaption>
+      </figure>
+
+      <p id="tokenSafetyNote" class="token-safety">
+        <strong>로컬 실습용 token만 복사하세요.</strong>
+        운영 token과 <code>JWT_SECRET</code>은 외부 도구에 입력하지 않습니다. 이 화면도 token을 브라우저 저장소에 남기지 않습니다.
+        실습이 끝나면 시스템 클립보드와 jwt.io 입력칸의 token도 지웁니다.
+      </p>
     </section>
 
     <section id="identityProof" class="identity-proof" data-state="waiting" aria-labelledby="identity-title">

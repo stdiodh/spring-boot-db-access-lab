@@ -17,5 +17,7 @@ springdoc:
     enabled: false
 
 jwt:
-  secret: "change-this-secret-for-sequence-04-change-this-secret"
+  secret: "test-only-secret-key-for-hs256-at-least-32-bytes"
   expiration-ms: 3600000
+  issuer: spring-boot-db-access-lab-test
+  audience: spring-boot-db-access-lab-test-api

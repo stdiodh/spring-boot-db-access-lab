@@ -41,5 +41,7 @@ out/
 .DS_Store
 data/
 
-### Local environment ###
+### Local secrets ###
 .env
+.env.*
+!.env.example
