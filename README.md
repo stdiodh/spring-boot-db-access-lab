@@ -65,13 +65,15 @@ Swagger UI:
 http://localhost:8080/swagger
 ```
 
+`/swagger`는 실제 UI인 `/swagger-ui/index.html`로 이동하므로 Security 설정에서 `/swagger-ui/**`와 `/v3/api-docs/**`도 공개합니다. 운영에서는 아래 설명처럼 `SPRINGDOC_ENABLED=false`로 문서 자체를 끕니다.
+
 Sequence 04 인증 실습 화면:
 
 ```text
 http://localhost:8080
 ```
 
-`/`, `/auth-practice`, `/auth-practice/`는 모두 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token 전체 값과 `Header.Payload.Signature` 구조를 보여주고 같은 token으로 `/auth/me`를 호출해 서버가 확인한 신원을 연결합니다. 실습용 token은 복사해 [jwt.io Debugger](https://www.jwt.io/#debugger-io)의 Encoded 칸에서 구조만 확인할 수 있습니다. Token을 링크에 자동으로 싣지 않으며, 운영 token과 `JWT_SECRET`은 외부 도구에 입력하지 않습니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
+`/`, `/auth-practice`, `/auth-practice/`는 모두 실제 화면인 `/auth-practice/index.html`로 이동합니다. email과 password를 직접 입력해 계정을 만든 뒤 로그인하면, 화면이 로그인 응답의 Access Token 전체 값과 `Header.Payload.Signature` 구조를 보여주고 같은 token으로 `/auth/me`를 호출해 서버가 확인한 신원을 연결합니다. 신원 확인이 성공하면 게시물 입력 영역이 열리고, 같은 Bearer token으로 `POST /posts`를 호출합니다. 작성자 입력값은 받지 않으며 응답의 `author`가 서버가 확인한 email과 같은지 확인합니다. 공개 `GET /posts` 목록은 로그인 없이도 새로고침할 수 있습니다. 실습용 token은 복사해 [jwt.io Debugger](https://www.jwt.io/#debugger-io)의 Encoded 칸에서 구조만 확인할 수 있습니다. Token을 링크에 자동으로 싣지 않으며, 운영 token과 `JWT_SECRET`은 외부 도구에 입력하지 않습니다. Token은 브라우저 저장소가 아닌 현재 페이지의 JavaScript 메모리에만 보관합니다.
 
 jwt.io에서 Header와 Payload를 읽을 수 있다는 사실은 token이 유효하다는 뜻이 아닙니다. 서명, 만료, issuer, audience 검증은 실제 보호 요청에서 `JwtAuthenticationFilter`가 수행합니다.
 
@@ -80,6 +82,8 @@ jwt.io에서 Header와 Payload를 읽을 수 있다는 사실은 token이 유효
 ```bash
 ./gradlew test
 ```
+
+총 60개 테스트가 인증·JWT·게시글 소유권과 함께 인증 실습 사이트 및 Swagger 공개 경로를 검증합니다.
 
 로그인 성공 응답은 기존 `accessToken`을 유지하고 전달 방식과 남은 만료 시간을 함께 제공합니다. 응답에는 `Cache-Control: no-store`가 설정됩니다.
 

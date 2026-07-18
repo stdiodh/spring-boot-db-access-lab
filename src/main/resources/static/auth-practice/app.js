@@ -3,7 +3,8 @@
 const api = {
   signup: "/auth/signup",
   login: "/auth/login",
-  me: "/auth/me"
+  me: "/auth/me",
+  posts: "/posts"
 };
 
 const elements = {
@@ -35,7 +36,23 @@ const elements = {
   identityProof: document.querySelector("#identityProof"),
   identityTitle: document.querySelector("#identity-title"),
   identityDescription: document.querySelector("#identityDescription"),
-  identityStatus: document.querySelector("#identityStatus")
+  identityStatus: document.querySelector("#identityStatus"),
+  authorHandoff: document.querySelector("#authorHandoff"),
+  postAuthor: document.querySelector("#postAuthor"),
+  postForm: document.querySelector("#postForm"),
+  postFields: document.querySelector("#postFields"),
+  postTitle: document.querySelector("#postTitle"),
+  postContent: document.querySelector("#postContent"),
+  postTitleError: document.querySelector("#postTitleError"),
+  postContentError: document.querySelector("#postContentError"),
+  postTitleCount: document.querySelector("#postTitleCount"),
+  postContentCount: document.querySelector("#postContentCount"),
+  createPostButton: document.querySelector("#createPostButton"),
+  postNotice: document.querySelector("#postNotice"),
+  postError: document.querySelector("#postError"),
+  refreshPostsButton: document.querySelector("#refreshPostsButton"),
+  postListStatus: document.querySelector("#postListStatus"),
+  postList: document.querySelector("#postList")
 };
 
 const stages = {
@@ -46,8 +63,10 @@ const stages = {
 
 let authSession = null;
 let accountEmail = null;
+let verifiedEmail = null;
 let busy = false;
 let exchangeHistory = [];
+let visiblePosts = [];
 
 elements.originLabel.textContent = window.location.origin;
 
@@ -108,6 +127,7 @@ function renderFieldErrors(errors = {}) {
 function setBusy(isBusy) {
   busy = isBusy;
   elements.authForm.setAttribute("aria-busy", String(isBusy));
+  elements.postForm.setAttribute("aria-busy", String(isBusy));
   elements.email.disabled = isBusy;
   elements.password.disabled = isBusy;
   elements.passwordToggle.disabled = isBusy;
@@ -116,6 +136,8 @@ function setBusy(isBusy) {
   elements.verifyButton.disabled = isBusy || authSession === null;
   elements.clearButton.disabled = isBusy || authSession === null;
   elements.copyTokenButton.disabled = isBusy || authSession === null;
+  elements.postFields.disabled = isBusy || verifiedEmail === null;
+  elements.refreshPostsButton.disabled = isBusy;
 }
 
 function readCredentials() {
@@ -188,6 +210,21 @@ function safeResponse(data) {
   };
 }
 
+function safeRequestBody(body) {
+  if (!body || typeof body !== "object") {
+    return body;
+  }
+
+  if ("password" in body) {
+    return {
+      ...body,
+      password: "[입력값 숨김]"
+    };
+  }
+
+  return body;
+}
+
 function renderExchange({ method, endpoint, response, requestBody, authorization, data }) {
   elements.requestMethod.textContent = method;
   elements.requestEndpoint.textContent = endpoint;
@@ -197,10 +234,7 @@ function renderExchange({ method, endpoint, response, requestBody, authorization
   const request = { method, endpoint };
 
   if (requestBody !== undefined) {
-    request.body = {
-      email: requestBody.email,
-      password: "[입력값 숨김]"
-    };
+    request.body = safeRequestBody(requestBody);
   }
 
   if (authorization) {
@@ -289,6 +323,126 @@ async function copyToken() {
   }
 }
 
+function setPostNotice(message, tone = "default") {
+  elements.postNotice.textContent = message;
+  elements.postNotice.dataset.tone = tone;
+}
+
+function showPostError(message) {
+  elements.postError.textContent = message;
+  elements.postError.hidden = false;
+}
+
+function clearPostErrors() {
+  elements.postError.textContent = "";
+  elements.postError.hidden = true;
+
+  for (const [input, error] of [
+    [elements.postTitle, elements.postTitleError],
+    [elements.postContent, elements.postContentError]
+  ]) {
+    input.removeAttribute("aria-invalid");
+    error.textContent = "";
+  }
+}
+
+function renderPostFieldErrors(errors = {}) {
+  for (const [field, input, error] of [
+    ["title", elements.postTitle, elements.postTitleError],
+    ["content", elements.postContent, elements.postContentError]
+  ]) {
+    if (typeof errors[field] === "string" && errors[field]) {
+      input.setAttribute("aria-invalid", "true");
+      error.textContent = errors[field];
+    }
+  }
+}
+
+function resetPostComposer() {
+  verifiedEmail = null;
+  elements.authorHandoff.dataset.state = "locked";
+  elements.postAuthor.textContent = "로그인 신원 확인 전";
+  elements.postFields.disabled = true;
+  clearPostErrors();
+  setPostNotice("로그인하고 /auth/me 확인까지 성공하면 작성 영역이 열립니다.");
+}
+
+function unlockPostComposer(email) {
+  verifiedEmail = email;
+  elements.authorHandoff.dataset.state = "ready";
+  elements.postAuthor.textContent = email;
+  elements.postFields.disabled = busy;
+  clearPostErrors();
+  setPostNotice(`${email} 신원으로 게시물을 작성할 수 있습니다. author는 서버가 결정합니다.`, "success");
+}
+
+function updatePostCounters() {
+  elements.postTitleCount.textContent = `${elements.postTitle.value.length} / 100`;
+  elements.postContentCount.textContent = `${elements.postContent.value.length} / 5000`;
+}
+
+function setPostListStatus(message) {
+  elements.postListStatus.textContent = message;
+}
+
+function createPostCard(post) {
+  const article = document.createElement("article");
+  article.className = "post-card";
+
+  const header = document.createElement("div");
+  header.className = "post-card__header";
+
+  const id = document.createElement("span");
+  id.className = "post-card__id";
+  id.textContent = `#${post.id}`;
+
+  const title = document.createElement("h4");
+  title.textContent = post.title;
+
+  const content = document.createElement("p");
+  content.className = "post-card__content";
+  content.textContent = post.content;
+
+  const author = document.createElement("p");
+  author.className = "post-card__author";
+  author.append("author · ");
+
+  const authorName = document.createElement("strong");
+  authorName.textContent = post.author;
+  author.append(authorName);
+
+  header.append(id, title);
+  article.append(header, content, author);
+  return article;
+}
+
+function renderPosts(posts, statusMessage) {
+  visiblePosts = [...posts].sort((left, right) => right.id - left.id);
+  elements.postList.replaceChildren();
+
+  if (visiblePosts.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "post-list__empty";
+    empty.textContent = "등록된 게시물이 없습니다. 로그인 후 첫 게시물을 작성해 보세요.";
+    elements.postList.append(empty);
+  } else {
+    const fragment = document.createDocumentFragment();
+
+    for (const post of visiblePosts) {
+      fragment.append(createPostCard(post));
+    }
+
+    elements.postList.append(fragment);
+  }
+
+  setPostListStatus(statusMessage);
+}
+
+function prependCreatedPost(post) {
+  const posts = [post, ...visiblePosts.filter((item) => item.id !== post.id)];
+  renderPosts(posts, `201 Created · #${post.id} 게시물을 목록에 반영했습니다.`);
+}
+
 function resetIdentity() {
   elements.identityProof.dataset.state = "waiting";
   elements.identityTitle.textContent = "아직 로그인 신원을 확인하지 않았습니다.";
@@ -301,6 +455,7 @@ function showIdentity(email) {
   elements.identityTitle.textContent = `서버가 나를 ${email}로 확인했습니다.`;
   elements.identityDescription.textContent = "JWT subject가 Authentication principal로 등록되고, 보호 API가 같은 email을 반환했습니다.";
   elements.identityStatus.textContent = "로그인 완료";
+  unlockPostComposer(email);
 }
 
 function clearPasswordField() {
@@ -315,6 +470,7 @@ function clearAuthenticatedIdentity() {
   clearTokenReceipt();
   setStage("principal", "waiting", "아직 Authentication 없음");
   resetIdentity();
+  resetPostComposer();
 }
 
 function showIdentityError(message) {
@@ -322,6 +478,7 @@ function showIdentityError(message) {
   elements.identityTitle.textContent = "현재 사용자 확인에 실패했습니다.";
   elements.identityDescription.textContent = message;
   elements.identityStatus.textContent = "확인 실패";
+  resetPostComposer();
 }
 
 async function signup() {
@@ -510,6 +667,109 @@ async function verifyCurrentUser() {
   }
 }
 
+async function createPost() {
+  if (!authSession || !verifiedEmail) {
+    showPostError("먼저 로그인해 서버가 확인한 신원을 준비하세요.");
+    return;
+  }
+
+  clearPostErrors();
+  setBusy(true);
+  setRequestState("busy", "요청 중");
+  setPostNotice(`${verifiedEmail} Principal을 author로 전달하고 있습니다.`);
+
+  const requestBody = {
+    title: elements.postTitle.value,
+    content: elements.postContent.value
+  };
+  const authorization = `${authSession.tokenType} ${authSession.accessToken}`;
+  let shouldFocusPostTitle = false;
+
+  try {
+    const { response, data } = await requestJson({
+      method: "POST",
+      endpoint: api.posts,
+      body: requestBody,
+      authorization
+    });
+
+    renderExchange({
+      method: "POST",
+      endpoint: api.posts,
+      response,
+      requestBody,
+      authorization,
+      data
+    });
+
+    if (response.status === 201 && data?.id !== undefined) {
+      elements.postTitle.value = "";
+      elements.postContent.value = "";
+      updatePostCounters();
+      prependCreatedPost(data);
+      setPostNotice(`게시물 #${data.id}을 등록했습니다. 응답의 author가 로그인 email과 같은지 확인하세요.`, "success");
+      shouldFocusPostTitle = true;
+      return;
+    }
+
+    renderPostFieldErrors(data?.errors);
+
+    if (response.status === 401) {
+      clearAuthenticatedIdentity();
+      setStage("token", "error", "401 token 재발급 필요");
+      setStage("principal", "error", "Authentication 만료");
+      setProgress(isCurrentAccount() ? 1 : 0);
+      showIdentityError("게시물 작성 요청에서 token을 인증하지 못했습니다. 다시 로그인하세요.");
+    } else {
+      setPostNotice(`${verifiedEmail} 신원은 유지됩니다. 입력값과 응답을 확인한 뒤 다시 시도하세요.`);
+    }
+
+    showPostError(practiceErrorMessage(response, data?.message || "게시물을 등록할 수 없습니다. 응답을 확인하세요."));
+  } catch (error) {
+    renderNetworkError("POST", api.posts, error);
+    setPostNotice("게시물 등록 요청을 완료하지 못했습니다. 서버 연결 상태를 확인하세요.");
+    showPostError("서버에 연결할 수 없습니다. Spring Boot 실행 상태를 확인하세요.");
+  } finally {
+    setBusy(false);
+
+    if (shouldFocusPostTitle) {
+      elements.postTitle.focus();
+    }
+  }
+}
+
+async function loadPosts() {
+  setBusy(true);
+  setRequestState("busy", "요청 중");
+  setPostListStatus("공개 게시물 목록을 요청하고 있습니다.");
+
+  try {
+    const { response, data } = await requestJson({
+      method: "GET",
+      endpoint: api.posts
+    });
+
+    renderExchange({
+      method: "GET",
+      endpoint: api.posts,
+      response,
+      data
+    });
+
+    if (response.ok && Array.isArray(data)) {
+      renderPosts(data, `200 OK · 게시물 ${data.length}개를 조회했습니다.`);
+      return;
+    }
+
+    setPostListStatus(practiceErrorMessage(response, data?.message || "게시물 목록을 불러오지 못했습니다."));
+  } catch (error) {
+    renderNetworkError("GET", api.posts, error);
+    setPostListStatus("서버에 연결할 수 없습니다. Spring Boot 실행 상태를 확인하세요.");
+  } finally {
+    setBusy(false);
+  }
+}
+
 function clearSession() {
   clearAuthenticatedIdentity();
   setStage("token", isCurrentAccount() ? "active" : "waiting", isCurrentAccount() ? "다시 로그인 가능" : "아직 token 없음");
@@ -555,6 +815,31 @@ elements.copyTokenButton.addEventListener("click", () => {
   }
 });
 
+elements.postForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  if (!busy) {
+    void createPost();
+  }
+});
+
+elements.refreshPostsButton.addEventListener("click", () => {
+  if (!busy) {
+    void loadPosts();
+  }
+});
+
+for (const [input, error] of [
+  [elements.postTitle, elements.postTitleError],
+  [elements.postContent, elements.postContentError]
+]) {
+  input.addEventListener("input", () => {
+    input.removeAttribute("aria-invalid");
+    error.textContent = "";
+    updatePostCounters();
+  });
+}
+
 elements.email.addEventListener("input", () => {
   if (isCurrentAccount()) {
     setStage("account", "success", "이 email의 계정 준비됨");
@@ -581,3 +866,5 @@ elements.passwordToggle.addEventListener("click", () => {
 setBusy(false);
 clearTokenReceipt();
 resetIdentity();
+resetPostComposer();
+updatePostCounters();

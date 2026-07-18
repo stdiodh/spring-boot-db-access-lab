@@ -9,7 +9,11 @@
 - [ ] 실제 signup -> login 응답 token -> `/auth/me` 흐름이 성공합니다.
 - [ ] 인증 실습 화면에서 직접 계정을 만들고 로그인한 뒤 `/auth/me`가 같은 email을 반환하는지 확인했습니다.
 - [ ] 인증 실습 화면에서 전체 token과 `Header.Payload.Signature`를 확인하고, jwt.io 관찰 분기와 실제 Bearer 요청 경로를 구분합니다.
+- [ ] `/auth/me` 성공 뒤 게시물 입력 영역이 열리고 Bearer token으로 `POST /posts` 201을 확인합니다.
+- [ ] 게시물 작성자 입력칸 없이 응답의 `author`가 검증된 Principal email과 같은지 확인합니다.
+- [ ] 공개 `GET /posts` 목록은 로그인 없이 조회할 수 있습니다.
 - [ ] `/`, `/auth-practice`, `/auth-practice/`가 인증 실습 화면으로 이동합니다.
+- [ ] `/swagger` redirect 뒤 `/swagger-ui/**` 자산과 `/v3/api-docs/**` 설정이 인증 없이 열립니다.
 - [ ] 게시글 GET은 공개되고 POST/PUT/DELETE는 인증이 필요합니다.
 - [ ] 작성자가 게시글을 수정/삭제할 수 있고 비작성자는 403을 받습니다.
 
@@ -76,6 +80,7 @@
 - [ ] `/auth/me`의 없음/정상/변조/만료/빈 Bearer 테스트가 통과합니다.
 - [ ] JWT subject/signature/expiration/issuer/audience 단위 테스트가 통과합니다.
 - [ ] 게시글 공개 GET, 비인증 POST, 작성자 저장, 작성자/비작성자 PUT·DELETE 테스트가 통과합니다.
+- [ ] 인증 실습 사이트 게시물 작업대와 Swagger UI 공개 경로 통합 테스트가 통과합니다.
 - [ ] `./gradlew test` 전체가 통과합니다.
 
 ## 7. 운영 배포 확인

@@ -107,10 +107,12 @@ class SecurityConfig(
                 // 실습 빈칸 대응: endpoint별 공개 조회와 인증이 필요한 변경 요청의 경계를 정합니다.
                 // 설명 포인트: URL뿐 아니라 HTTP method까지 봐야 같은 /posts 경로의 권한을 나눌 수 있습니다.
                 // 확인 질문: GET /posts는 공개하면서 POST /posts는 보호하는 이유는 무엇일까요?
+                // /swagger는 UI로 redirect되므로 실제 화면 자산인 /swagger-ui/**도 함께 공개해야 합니다.
                 auth
                     .requestMatchers(
                         "/",
                         "/swagger/**",
+                        "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/auth-practice",
                         "/auth-practice/",
