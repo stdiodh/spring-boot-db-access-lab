@@ -1,33 +1,60 @@
 package com.andi.rest_crud.recovery.service
 
-import com.andi.rest_crud.recovery.mail.RecoveryMailDeliveryException
-import com.andi.rest_crud.recovery.mail.RecoveryMailSender
+import com.andi.rest_crud.recovery.domain.PasswordResetToken
+import com.andi.rest_crud.recovery.dto.PasswordResetConfirmRequest
+import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
+import com.andi.rest_crud.recovery.mail.PasswordResetMailRequestedEvent
+import com.andi.rest_crud.recovery.repository.PasswordResetTokenRepository
+import com.andi.rest_crud.recovery.security.PasswordResetTokenCodec
 import com.andi.rest_crud.user.repository.UserRepository
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.util.UriComponentsBuilder
+import java.time.Clock
+import java.time.Duration
 import java.util.Locale
-import java.util.UUID
 
 @Service
 @Transactional(readOnly = true)
 class AccountRecoveryService(
     private val userRepository: UserRepository,
-    private val recoveryMailSender: RecoveryMailSender,
-    @Value("\${app.password-reset-url}") private val passwordResetUrl: String
+    private val passwordResetTokenRepository: PasswordResetTokenRepository,
+    private val passwordEncoder: PasswordEncoder,
+    private val tokenCodec: PasswordResetTokenCodec,
+    private val eventPublisher: ApplicationEventPublisher,
+    private val clock: Clock,
+    @Value("\${app.password-reset-url}") private val passwordResetUrl: String,
+    @Value("\${app.password-reset-token-ttl}") private val tokenTtl: Duration,
+    @Value("\${app.password-reset-resend-cooldown}") private val resendCooldown: Duration
 ) {
 
-    fun requestPasswordReset(email: String) {
-        // TODO: Locale.ROOT 조회, LOCAL 전용 발송과 민감 정보 없는 delivery 실패 처리를 구현하세요.
-        TODO("비밀번호 재설정 요청 처리를 완성하세요.")
+    init {
+        require(!tokenTtl.isNegative && !tokenTtl.isZero) {
+            "app.password-reset-token-ttl은 0보다 커야 합니다."
+        }
+        require(!resendCooldown.isNegative) {
+            "app.password-reset-resend-cooldown은 음수일 수 없습니다."
+        }
     }
 
-    private fun createResetLink(): String {
-        // 이 token은 흐름 확인용 불투명 데모 값이며 저장·검증되지 않아 실제 비밀번호를 변경할 수 없습니다.
+    @Transactional
+    fun requestPasswordReset(email: String) {
+        // TODO: LOCAL 사용자 lock, cooldown, hash 저장과 AFTER_COMMIT mail event 발행을 구현하세요.
+        TODO("비밀번호 재설정 token 발급을 완성하세요.")
+    }
+
+    @Transactional
+    fun confirmPasswordReset(request: PasswordResetConfirmRequest) {
+        // TODO: token hash와 사용자 lock으로 만료·단일 사용을 확인하고 password 변경을 같은 transaction에 묶으세요.
+        TODO("비밀번호 재설정 확정을 완성하세요.")
+    }
+
+    private fun createResetLink(rawToken: String): String {
         return UriComponentsBuilder.fromUriString(passwordResetUrl)
-            .queryParam("token", UUID.randomUUID().toString())
+            .fragment("reset_token=$rawToken")
             .build()
             .encode()
             .toUriString()
@@ -35,6 +62,5 @@ class AccountRecoveryService(
 
     private companion object {
         const val LOCAL_PROVIDER = "LOCAL"
-        val log = LoggerFactory.getLogger(AccountRecoveryService::class.java)
     }
 }

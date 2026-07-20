@@ -13,7 +13,7 @@ class SmtpRecoveryMailSender(
 ) : RecoveryMailSender {
 
     override fun sendPasswordResetMail(recipientEmail: String, resetLink: String) {
-        // TODO: 설정한 발신자와 데모 안내를 구성하고 MailException을 delivery 예외로 변환하세요.
-        TODO("비밀번호 재설정 SMTP 발송을 완성하세요.")
+        // TODO: 발신자·수신자·일회용 link를 담은 message를 만들고 MailException을 도메인 예외로 변환하세요.
+        TODO("SMTP 복구 메일 발송을 완성하세요.")
     }
 }
