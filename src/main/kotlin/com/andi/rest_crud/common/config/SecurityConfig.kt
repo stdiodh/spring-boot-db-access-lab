@@ -125,9 +125,13 @@ class SecurityConfig(
                         "/auth-practice/**",
                         "/auth/signup",
                         "/auth/login",
-                        "/account-recovery/password-reset",
                         "/oauth2/**",
                         "/login/oauth2/**"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/account-recovery/password-reset",
+                        "/account-recovery/password-reset/confirm"
                     ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/posts", "/posts/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/posts").authenticated()

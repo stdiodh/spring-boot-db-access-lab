@@ -4,6 +4,7 @@ import com.andi.rest_crud.auth.exception.InvalidCredentialsException
 import com.andi.rest_crud.auth.exception.UserAlreadyExistsException
 import com.andi.rest_crud.post.exception.ForbiddenPostAccessException
 import com.andi.rest_crud.post.exception.PostNotFoundException
+import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -103,6 +104,15 @@ class GlobalExceptionHandler {
                     message = exception.message ?: "인증에 실패했습니다."
                 )
             )
+    }
+
+    @ExceptionHandler(InvalidPasswordResetTokenException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleInvalidPasswordResetTokenException(exception: InvalidPasswordResetTokenException): ErrorResponse {
+        return ErrorResponse(
+            code = "INVALID_PASSWORD_RESET_TOKEN",
+            message = exception.message ?: "비밀번호 재설정 링크가 유효하지 않습니다."
+        )
     }
 
     private fun toFirstFieldErrors(fieldErrors: List<FieldError>): Map<String, String> {

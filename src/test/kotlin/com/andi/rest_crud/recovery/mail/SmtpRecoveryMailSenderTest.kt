@@ -21,7 +21,7 @@ class SmtpRecoveryMailSenderTest {
 
     @Test
     fun `SMTP message는 설정된 발신자와 복구 안내를 담는다`() {
-        val resetLink = "https://frontend.example/reset?recovery=password-reset&token=demo-token"
+        val resetLink = "https://frontend.example/reset#reset_token=opaque-token"
 
         sender.sendPasswordResetMail("student@example.com", resetLink)
 
@@ -34,9 +34,10 @@ class SmtpRecoveryMailSenderTest {
         assertTrue(message.text.orEmpty().contains(resetLink))
         assertTrue(
             message.text.orEmpty().contains(
-                "이 링크는 학습용 데모이며 실제 비밀번호 변경 기능과 연결되지 않습니다."
+                "이 링크는 제한된 시간 동안 한 번만 사용할 수 있습니다."
             )
         )
+        assertTrue(message.text.orEmpty().contains("요청하지 않았다면 이 메일을 무시하세요."))
     }
 
     @Test
@@ -47,7 +48,7 @@ class SmtpRecoveryMailSenderTest {
         val exception = assertThrows(RecoveryMailDeliveryException::class.java) {
             sender.sendPasswordResetMail(
                 "student@example.com",
-                "https://frontend.example/reset?token=demo-token"
+                "https://frontend.example/reset#reset_token=opaque-token"
             )
         }
 

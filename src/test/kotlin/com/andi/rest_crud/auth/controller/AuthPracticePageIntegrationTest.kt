@@ -33,6 +33,13 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
             .andExpect(content().string(containsString("id=\"authForm\"")))
+            .andExpect(content().string(containsString("id=\"secretAirlock\"")))
+            .andExpect(content().string(containsString("id=\"googleLoginLink\"")))
+            .andExpect(content().string(containsString("href=\"/oauth2/authorization/google\"")))
+            .andExpect(content().string(containsString("id=\"recoveryRequestForm\"")))
+            .andExpect(content().string(containsString("id=\"recoveryEmail\"")))
+            .andExpect(content().string(containsString("id=\"resetForm\"")))
+            .andExpect(content().string(containsString("id=\"newPassword\"")))
             .andExpect(content().string(containsString("id=\"fullToken\"")))
             .andExpect(content().string(containsString("id=\"postForm\"")))
             .andExpect(content().string(containsString("id=\"postTitle\"")))
@@ -49,5 +56,9 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
         mockMvc.perform(get("/auth-practice/app.js"))
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith("text/javascript"))
+            .andExpect(content().string(containsString("consumeSecurityRedirect")))
+            .andExpect(content().string(containsString("window.history.replaceState")))
+            .andExpect(content().string(containsString("reset_token")))
+            .andExpect(content().string(containsString("/account-recovery/password-reset/confirm")))
     }
 }

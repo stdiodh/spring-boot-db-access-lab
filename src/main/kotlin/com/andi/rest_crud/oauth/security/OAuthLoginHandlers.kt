@@ -86,7 +86,7 @@ private fun Authentication.toOAuthUserProfile(): OAuthUserProfile? {
 }
 
 private fun successRedirectUrl(frontendUrl: String, result: OAuthLoginResponse): String {
-    // 데모 Access Token은 query가 아닌 fragment에만 두어 서버 로그와 referrer 전달 범위를 줄입니다.
+    // 우리 API용 Access Token은 query가 아닌 fragment에만 두어 서버 로그와 referrer 전달 범위를 줄입니다.
     return UriComponentsBuilder.fromUriString(frontendUrl)
         .queryParam("oauth", "success")
         .queryParam("provider", result.provider)

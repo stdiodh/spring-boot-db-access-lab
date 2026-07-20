@@ -1,9 +1,13 @@
 "use strict";
 
+let landingSecurityPayload = consumeSecurityRedirect();
+
 const api = {
   signup: "/auth/signup",
   login: "/auth/login",
   me: "/auth/me",
+  recoveryRequest: "/account-recovery/password-reset",
+  recoveryConfirm: "/account-recovery/password-reset/confirm",
   posts: "/posts"
 };
 
@@ -18,6 +22,27 @@ const elements = {
   loginButton: document.querySelector("#loginButton"),
   verifyButton: document.querySelector("#verifyButton"),
   clearButton: document.querySelector("#clearButton"),
+  secretAirlock: document.querySelector("#secretAirlock"),
+  urlScrubState: document.querySelector("#urlScrubState"),
+  urlScrubNotice: document.querySelector("#urlScrubNotice"),
+  googleLoginLink: document.querySelector("#googleLoginLink"),
+  oauthNotice: document.querySelector("#oauthNotice"),
+  recoveryRequestForm: document.querySelector("#recoveryRequestForm"),
+  recoveryEmail: document.querySelector("#recoveryEmail"),
+  recoveryEmailError: document.querySelector("#recoveryEmailError"),
+  recoveryRequestButton: document.querySelector("#recoveryRequestButton"),
+  recoveryNotice: document.querySelector("#recoveryNotice"),
+  recoveryError: document.querySelector("#recoveryError"),
+  resetPanel: document.querySelector("#resetPanel"),
+  resetPanelTitle: document.querySelector("#reset-panel-title"),
+  resetForm: document.querySelector("#resetForm"),
+  newPassword: document.querySelector("#newPassword"),
+  confirmPassword: document.querySelector("#confirmPassword"),
+  newPasswordError: document.querySelector("#newPasswordError"),
+  confirmPasswordError: document.querySelector("#confirmPasswordError"),
+  resetPasswordButton: document.querySelector("#resetPasswordButton"),
+  resetNotice: document.querySelector("#resetNotice"),
+  resetError: document.querySelector("#resetError"),
   emailError: document.querySelector("#emailError"),
   passwordError: document.querySelector("#passwordError"),
   formNotice: document.querySelector("#formNotice"),
@@ -62,6 +87,7 @@ const stages = {
 };
 
 let authSession = null;
+let passwordResetToken = null;
 let accountEmail = null;
 let verifiedEmail = null;
 let busy = false;
@@ -69,6 +95,25 @@ let exchangeHistory = [];
 let visiblePosts = [];
 
 elements.originLabel.textContent = window.location.origin;
+
+function consumeSecurityRedirect() {
+  const query = new URLSearchParams(window.location.search);
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const payload = {
+    oauthStatus: query.get("oauth"),
+    provider: query.get("provider"),
+    isNewUser: query.get("isNewUser"),
+    accessToken: fragment.get("access_token"),
+    resetToken: fragment.get("reset_token")
+  };
+  const hasSecurityPayload = Object.values(payload).some((value) => value !== null);
+
+  if (hasSecurityPayload) {
+    window.history.replaceState(null, document.title, window.location.pathname);
+  }
+
+  return { ...payload, wasScrubbed: hasSecurityPayload };
+}
 
 function setStage(name, state, label) {
   const stage = stages[name];
@@ -92,6 +137,17 @@ function setNotice(message, tone = "default") {
   elements.formNotice.dataset.tone = tone;
 }
 
+function setEntryNotice(element, message, tone = "default") {
+  element.textContent = message;
+  element.dataset.tone = tone;
+}
+
+function markAirlockScrubbed(context) {
+  elements.secretAirlock.dataset.state = "scrubbed";
+  elements.urlScrubState.textContent = "URL 정리 완료";
+  elements.urlScrubNotice.textContent = `${context} 값을 확인하고 현재 주소와 history entry에서 제거했습니다. 필요한 secret만 브라우저 메모리에 유지합니다.`;
+}
+
 function showError(message) {
   elements.formError.textContent = message;
   elements.formError.hidden = false;
@@ -108,6 +164,26 @@ function clearErrors() {
     input.removeAttribute("aria-invalid");
     error.textContent = "";
   }
+}
+
+function clearRecoveryErrors() {
+  elements.recoveryEmail.removeAttribute("aria-invalid");
+  elements.recoveryEmailError.textContent = "";
+  elements.recoveryError.textContent = "";
+  elements.recoveryError.hidden = true;
+}
+
+function clearResetErrors() {
+  for (const [input, error] of [
+    [elements.newPassword, elements.newPasswordError],
+    [elements.confirmPassword, elements.confirmPasswordError]
+  ]) {
+    input.removeAttribute("aria-invalid");
+    error.textContent = "";
+  }
+
+  elements.resetError.textContent = "";
+  elements.resetError.hidden = true;
 }
 
 function renderFieldErrors(errors = {}) {
@@ -127,6 +203,8 @@ function renderFieldErrors(errors = {}) {
 function setBusy(isBusy) {
   busy = isBusy;
   elements.authForm.setAttribute("aria-busy", String(isBusy));
+  elements.recoveryRequestForm.setAttribute("aria-busy", String(isBusy));
+  elements.resetForm.setAttribute("aria-busy", String(isBusy));
   elements.postForm.setAttribute("aria-busy", String(isBusy));
   elements.email.disabled = isBusy;
   elements.password.disabled = isBusy;
@@ -136,6 +214,11 @@ function setBusy(isBusy) {
   elements.verifyButton.disabled = isBusy || authSession === null;
   elements.clearButton.disabled = isBusy || authSession === null;
   elements.copyTokenButton.disabled = isBusy || authSession === null;
+  elements.recoveryEmail.disabled = isBusy;
+  elements.recoveryRequestButton.disabled = isBusy;
+  elements.newPassword.disabled = isBusy;
+  elements.confirmPassword.disabled = isBusy;
+  elements.resetPasswordButton.disabled = isBusy || passwordResetToken === null;
   elements.postFields.disabled = isBusy || verifiedEmail === null;
   elements.refreshPostsButton.disabled = isBusy;
 }
@@ -215,14 +298,13 @@ function safeRequestBody(body) {
     return body;
   }
 
-  if ("password" in body) {
-    return {
-      ...body,
-      password: "[입력값 숨김]"
-    };
+  const safeBody = {};
+
+  for (const [key, value] of Object.entries(body)) {
+    safeBody[key] = /password|token/i.test(key) ? "[입력값 숨김]" : value;
   }
 
-  return body;
+  return safeBody;
 }
 
 function renderExchange({ method, endpoint, response, requestBody, authorization, data }) {
@@ -274,7 +356,7 @@ function renderApiError(data, response, fallbackMessage) {
 
 function practiceErrorMessage(response, fallbackMessage) {
   if (response.status >= 500) {
-    return "HTTP 5xx 응답입니다. 04-implementation 브랜치에서 실습 중이라면 Step01부터 Step07까지의 TODO와 서버 로그를 순서대로 확인하세요.";
+    return "HTTP 5xx 응답입니다. 05-implementation 브랜치에서 실습 중이라면 TODO와 서버 로그를 순서대로 확인하세요.";
   }
 
   return fallbackMessage;
@@ -643,6 +725,9 @@ async function verifyCurrentUser() {
     });
 
     if (response.ok && typeof data?.email === "string") {
+      accountEmail = normalizeEmail(data.email);
+      elements.email.value = data.email;
+      setStage("account", "success", "내부 계정 확인");
       setStage("principal", "success", "200 email 확인");
       setProgress(2);
       showIdentity(data.email);
@@ -664,6 +749,254 @@ async function verifyCurrentUser() {
     renderNetworkError("GET", api.me, error);
     showIdentityError("서버에 연결할 수 없습니다. Spring Boot 실행 상태를 확인하세요.");
     showError("현재 사용자 확인 요청을 완료하지 못했습니다.");
+  }
+}
+
+async function requestPasswordReset() {
+  clearRecoveryErrors();
+
+  const email = elements.recoveryEmail.value;
+  if (!email || !elements.recoveryEmail.validity.valid) {
+    elements.recoveryEmail.setAttribute("aria-invalid", "true");
+    elements.recoveryEmailError.textContent = "올바른 email을 254자 이내로 입력하세요.";
+    elements.recoveryEmail.focus();
+    return;
+  }
+
+  setBusy(true);
+  setRequestState("busy", "요청 중");
+  setEntryNotice(elements.recoveryNotice, "계정 여부를 드러내지 않는 복구 요청을 접수하고 있습니다.");
+
+  try {
+    const { response, data } = await requestJson({
+      method: "POST",
+      endpoint: api.recoveryRequest,
+      body: { email }
+    });
+
+    renderExchange({
+      method: "POST",
+      endpoint: api.recoveryRequest,
+      response,
+      requestBody: { email: "[입력값 숨김]" },
+      data
+    });
+
+    if (response.status === 202) {
+      elements.recoveryEmail.value = "";
+      setEntryNotice(
+        elements.recoveryNotice,
+        "요청을 접수했습니다. 계정 여부와 메일 전송 결과는 표시하지 않습니다.",
+        "success"
+      );
+      return;
+    }
+
+    if (typeof data?.errors?.email === "string") {
+      elements.recoveryEmail.setAttribute("aria-invalid", "true");
+      elements.recoveryEmailError.textContent = data.errors.email;
+    }
+
+    elements.recoveryError.textContent = practiceErrorMessage(
+      response,
+      "복구 요청 형식을 확인한 뒤 다시 시도하세요."
+    );
+    elements.recoveryError.hidden = false;
+    setEntryNotice(elements.recoveryNotice, "복구 요청을 접수하지 못했습니다.", "error");
+  } catch (error) {
+    renderNetworkError("POST", api.recoveryRequest, error);
+    elements.recoveryError.textContent = "서버에 연결할 수 없습니다. Spring Boot 실행 상태를 확인하세요.";
+    elements.recoveryError.hidden = false;
+    setEntryNotice(elements.recoveryNotice, "복구 요청을 완료하지 못했습니다.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
+function validateNewPassword() {
+  clearResetErrors();
+  const newPassword = elements.newPassword.value;
+  let valid = true;
+
+  if (newPassword.length < 8 || newPassword.length > 64 || newPassword.trim().length === 0) {
+    elements.newPassword.setAttribute("aria-invalid", "true");
+    elements.newPasswordError.textContent = "새 비밀번호는 공백만으로 구성하지 않은 8~64자여야 합니다.";
+    valid = false;
+  }
+
+  if (elements.confirmPassword.value !== newPassword) {
+    elements.confirmPassword.setAttribute("aria-invalid", "true");
+    elements.confirmPasswordError.textContent = "새 비밀번호와 확인 값이 같아야 합니다.";
+    valid = false;
+  }
+
+  if (!valid) {
+    (elements.newPassword.hasAttribute("aria-invalid")
+      ? elements.newPassword
+      : elements.confirmPassword).focus();
+  }
+
+  return valid;
+}
+
+function retirePasswordResetToken(message, tone) {
+  passwordResetToken = null;
+  elements.newPassword.value = "";
+  elements.confirmPassword.value = "";
+  elements.resetForm.hidden = true;
+  setEntryNotice(elements.resetNotice, message, tone);
+  setBusy(false);
+}
+
+async function confirmPasswordReset() {
+  if (!passwordResetToken) {
+    retirePasswordResetToken("재설정 링크가 유효하지 않거나 이미 처리되었습니다.", "error");
+    return;
+  }
+
+  if (!validateNewPassword()) {
+    return;
+  }
+
+  const requestBody = {
+    token: passwordResetToken,
+    newPassword: elements.newPassword.value
+  };
+
+  setBusy(true);
+  setRequestState("busy", "요청 중");
+  setEntryNotice(elements.resetNotice, "서버가 token hash·만료·사용 여부를 확인하고 있습니다.");
+
+  try {
+    const { response, data } = await requestJson({
+      method: "POST",
+      endpoint: api.recoveryConfirm,
+      body: requestBody
+    });
+
+    renderExchange({
+      method: "POST",
+      endpoint: api.recoveryConfirm,
+      response,
+      requestBody,
+      data
+    });
+
+    if (response.status === 204) {
+      retirePasswordResetToken(
+        "비밀번호를 변경했고 일회용 token을 폐기했습니다. 새 비밀번호로 로그인하세요.",
+        "success"
+      );
+      return;
+    }
+
+    if (typeof data?.errors?.newPassword === "string") {
+      elements.newPassword.setAttribute("aria-invalid", "true");
+      elements.newPasswordError.textContent = data.errors.newPassword;
+    } else if (response.status === 400) {
+      retirePasswordResetToken("재설정 링크가 유효하지 않거나 만료되었습니다.", "error");
+    }
+
+    elements.resetError.textContent = practiceErrorMessage(
+      response,
+      "비밀번호를 변경하지 못했습니다. 재설정 링크를 다시 요청하세요."
+    );
+    elements.resetError.hidden = false;
+  } catch (error) {
+    renderNetworkError("POST", api.recoveryConfirm, error);
+    elements.resetError.textContent = "서버에 연결할 수 없습니다. 같은 페이지에서 다시 시도할 수 있습니다.";
+    elements.resetError.hidden = false;
+    setEntryNotice(elements.resetNotice, "비밀번호 변경 요청을 완료하지 못했습니다.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
+function showInvalidResetLink() {
+  elements.resetPanel.hidden = false;
+  elements.resetForm.hidden = true;
+  passwordResetToken = null;
+  setEntryNotice(elements.resetNotice, "재설정 링크가 유효하지 않거나 만료되었습니다.", "error");
+}
+
+async function initializeLandingSecurityPayload(payload) {
+  if (!payload?.wasScrubbed) {
+    return;
+  }
+
+  markAirlockScrubbed(payload.resetToken !== null ? "비밀번호 재설정 redirect" : "OAuth redirect");
+
+  if (payload.accessToken !== null && payload.resetToken !== null) {
+    payload.accessToken = null;
+    payload.resetToken = null;
+    showInvalidResetLink();
+    setEntryNotice(elements.oauthNotice, "서로 다른 redirect secret이 함께 도착해 모두 폐기했습니다.", "error");
+    return;
+  }
+
+  if (payload.resetToken !== null) {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(payload.resetToken)) {
+      payload.resetToken = null;
+      showInvalidResetLink();
+      return;
+    }
+
+    passwordResetToken = payload.resetToken;
+    payload.resetToken = null;
+    elements.resetPanel.hidden = false;
+    elements.resetForm.hidden = false;
+    setEntryNotice(
+      elements.resetNotice,
+      "주소에서 reset token을 회수했습니다. 비밀번호를 변경하면 같은 token은 다시 사용할 수 없습니다.",
+      "notice"
+    );
+    setBusy(false);
+    elements.resetPanelTitle.focus({ preventScroll: true });
+    return;
+  }
+
+  if (payload.oauthStatus === "success") {
+    if (!payload.accessToken) {
+      setEntryNotice(elements.oauthNotice, "OAuth 결과에 사용할 수 있는 access token이 없습니다.", "error");
+      return;
+    }
+
+    authSession = {
+      accessToken: payload.accessToken,
+      tokenType: "Bearer",
+      expiresIn: null
+    };
+    payload.accessToken = null;
+    setStage("account", "active", "OAuth 내부 계정 확인 중");
+    setStage("token", "success", "redirect token 회수");
+    setStage("principal", "active", "/auth/me 확인 중");
+    setProgress(2);
+    showTokenReceipt();
+    setEntryNotice(elements.oauthNotice, "주소를 정리했습니다. 이제 서버 응답으로 로그인 신원을 확인합니다.");
+    setBusy(true);
+
+    try {
+      await verifyCurrentUser();
+      setEntryNotice(
+        elements.oauthNotice,
+        verifiedEmail
+          ? "Google redirect를 처리했고 /auth/me가 내부 계정 신원을 확인했습니다."
+          : "Google token을 받았지만 서버가 현재 사용자를 확인하지 못했습니다.",
+        verifiedEmail ? "success" : "error"
+      );
+    } finally {
+      setBusy(false);
+    }
+    return;
+  }
+
+  payload.accessToken = null;
+  if (payload.oauthStatus === "link_required") {
+    setEntryNotice(elements.oauthNotice, "같은 email의 기존 계정이 있어 자동 연결하지 않았습니다.", "notice");
+  } else if (payload.oauthStatus === "failed") {
+    setEntryNotice(elements.oauthNotice, "Google 로그인을 완료하지 못했습니다. 다시 시도하세요.", "error");
+  } else {
+    setEntryNotice(elements.oauthNotice, "인식할 수 없는 redirect 값은 사용하지 않고 주소에서 제거했습니다.", "error");
   }
 }
 
@@ -815,6 +1148,22 @@ elements.copyTokenButton.addEventListener("click", () => {
   }
 });
 
+elements.recoveryRequestForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  if (!busy) {
+    void requestPasswordReset();
+  }
+});
+
+elements.resetForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  if (!busy) {
+    void confirmPasswordReset();
+  }
+});
+
 elements.postForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -837,6 +1186,20 @@ for (const [input, error] of [
     input.removeAttribute("aria-invalid");
     error.textContent = "";
     updatePostCounters();
+  });
+}
+
+elements.recoveryEmail.addEventListener("input", clearRecoveryErrors);
+
+for (const [input, error] of [
+  [elements.newPassword, elements.newPasswordError],
+  [elements.confirmPassword, elements.confirmPasswordError]
+]) {
+  input.addEventListener("input", () => {
+    input.removeAttribute("aria-invalid");
+    error.textContent = "";
+    elements.resetError.textContent = "";
+    elements.resetError.hidden = true;
   });
 }
 
@@ -868,3 +1231,7 @@ clearTokenReceipt();
 resetIdentity();
 resetPostComposer();
 updatePostCounters();
+
+const initialSecurityPayload = landingSecurityPayload;
+landingSecurityPayload = null;
+void initializeLandingSecurityPayload(initialSecurityPayload);

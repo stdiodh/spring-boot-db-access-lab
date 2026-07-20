@@ -22,7 +22,7 @@ class SmtpRecoveryMailSender(
 
                 $resetLink
 
-                이 링크는 학습용 데모이며 실제 비밀번호 변경 기능과 연결되지 않습니다.
+                이 링크는 제한된 시간 동안 한 번만 사용할 수 있습니다.
                 요청하지 않았다면 이 메일을 무시하세요.
             """.trimIndent()
         }
