@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.after
 import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.reset
-import org.mockito.Mockito.timeout
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,6 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.transaction.support.TransactionTemplate
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 @SpringBootTest
@@ -37,8 +38,10 @@ class RecoveryMailEventIntegrationTest @Autowired constructor(
             "https://frontend.example/reset#reset_token=token"
         )
         val dispatchThreadName = AtomicReference<String>()
+        val completed = CountDownLatch(1)
         doAnswer {
             dispatchThreadName.set(Thread.currentThread().name)
+            completed.countDown()
             null
         }.`when`(recoveryMailSender).sendPasswordResetMail(event.recipientEmail, event.resetLink)
 
@@ -47,7 +50,8 @@ class RecoveryMailEventIntegrationTest @Autowired constructor(
             verifyNoInteractions(recoveryMailSender)
         }
 
-        verify(recoveryMailSender, timeout(2_000))
+        assertTrue(completed.await(2, TimeUnit.SECONDS))
+        verify(recoveryMailSender)
             .sendPasswordResetMail(event.recipientEmail, event.resetLink)
         assertTrue(dispatchThreadName.get().startsWith("recovery-mail-"))
     }
