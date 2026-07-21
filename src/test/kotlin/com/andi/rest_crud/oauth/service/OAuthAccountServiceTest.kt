@@ -58,11 +58,18 @@ class OAuthAccountServiceTest {
     }
 
     @Test
-    fun `검증되지 않은 email 프로필은 저장소 호출 전에 거부한다`() {
-        assertThrows(OAuthProfileRejectedException::class.java) {
-            service.handleOAuthLogin(
-                OAuthUserProfile("google", "provider-1", "student@example.com", false)
-            )
+    fun `검증되지 않았거나 DB 길이 계약을 넘는 프로필은 저장소 호출 전에 거부한다`() {
+        val rejectedProfiles = listOf(
+            OAuthUserProfile("google", "provider-1", "student@example.com", false),
+            OAuthUserProfile("g".repeat(33), "provider-1", "student@example.com", true),
+            OAuthUserProfile("google", "p".repeat(256), "student@example.com", true),
+            OAuthUserProfile("google", "provider-1", "a".repeat(243) + "@example.com", true)
+        )
+
+        rejectedProfiles.forEach { profile ->
+            assertThrows(OAuthProfileRejectedException::class.java) {
+                service.handleOAuthLogin(profile)
+            }
         }
 
         verifyNoInteractions(userRepository, passwordEncoder, jwtTokenProvider)
