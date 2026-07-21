@@ -152,11 +152,24 @@ docker compose ps
 - OAuth 시작: `http://localhost:8080/oauth2/authorization/google`
 - Google callback: `http://localhost:8080/login/oauth2/code/google`
 
+## Visual Lab
+
+OAuth 계정 판단과 reset token의 발급·비동기 메일·확정 생명주기를 네 가지 조건으로 비교합니다. 애플리케이션과 함께 띄울 때는 다른 port를 사용합니다.
+
+```bash
+python3 -m http.server 8081 -d docs/visual-lab
+```
+
+```text
+http://localhost:8081/sequences/05/
+```
+
 ## 문서
 
 - [이론 정리](./docs/theory.md)
 - [구현 가이드](./docs/implementation.md)
 - [체크리스트](./docs/checklist.md)
+- [Visual Lab](./docs/visual-lab/sequences/05/index.html)
 
 표준 문서는 이 README와 위 세 파일만 사용합니다.
 

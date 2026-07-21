@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 410" role="img" aria-labelledby="seq04-title seq04-desc">
+  <title id="seq04-title">04 인증과 인가 경계 지도</title>
+  <desc id="seq04-desc">시스템 밖 자격 정보가 입구·출구 인증을 통과해 서비스·정책에서 JWT를 발급받고, 보호 요청은 인증 401과 인가 403을 구분해 application 진입 여부를 판단하는 지도</desc>
+  <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#2955E4"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;fill:#111B3F}
+      .frame{fill:#FFFFFF;stroke:#6F82B8;stroke-width:2}
+      .node{stroke-width:2.5}
+      .layer-outside{fill:#F1F5F9;stroke:#5B677A}
+      .layer-interface{fill:#E6F4F7;stroke:#0E7490}
+      .layer-application{fill:#F2EDFF;stroke:#6D43A8}
+      .layer-resource{fill:#EAF5EE;stroke:#2C7352}
+      .layer-integration{fill:#FFF4D6;stroke:#926000}
+      .layer-runtime{fill:#EEF2F7;stroke:#52627A}
+      [data-layer="outside"] .layer{fill:#5B677A}
+      [data-layer="resource"] .layer{fill:#2C7352}
+      .flow{fill:none;stroke:#2955E4;stroke-width:3;marker-end:url(#arrow)}
+      .group{font-size:27px;font-weight:850;fill:#0C2691}
+      .layer,.shared-layer{font-size:25px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:27px;font-weight:800;text-anchor:middle}
+      .danger{font-size:25px;font-weight:850;fill:#B4233C;text-anchor:middle}
+      .body{font-size:25px;font-weight:700;fill:#4B587C;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="720" height="410" fill="#F8F9FB"/>
+  <rect x="16" y="16" width="688" height="378" rx="18" class="frame"/>
+
+  <text x="34" y="56" class="group">로그인 · 신원을 확인하고 token 발급</text>
+  <g data-layer="outside">
+    <rect x="34" y="72" width="170" height="92" rx="10" class="node layer-outside"/>
+    <text x="119" y="97" class="layer">시스템 밖</text>
+    <text x="119" y="137" class="name">자격 정보</text>
+  </g>
+  <path d="M204 118h34" class="flow"/>
+  <g data-layer="interface">
+    <rect x="243" y="72" width="150" height="92" rx="10" class="node layer-interface"/>
+    <text x="318" y="97" class="layer">입구·출구</text>
+    <text x="318" y="137" class="name">인증</text>
+  </g>
+  <path d="M393 118h34" class="flow"/>
+  <g data-layer="application">
+    <rect x="432" y="72" width="220" height="92" rx="10" class="node layer-application"/>
+    <text x="542" y="97" class="layer">서비스·정책</text>
+    <text x="542" y="137" class="name">JWT 발급</text>
+  </g>
+
+  <text x="34" y="198" class="group">보호 요청 · 401과 403은 다른 판단</text>
+  <text x="344" y="230" class="shared-layer">입구·출구</text>
+  <g data-layer="outside">
+    <rect x="32" y="248" width="140" height="120" rx="10" class="node layer-outside"/>
+    <text x="102" y="280" class="layer">시스템 밖</text>
+    <text x="102" y="316" class="name">Bearer</text>
+    <text x="102" y="350" class="body">token</text>
+  </g>
+  <path d="M172 308h10" class="flow"/>
+  <g data-layer="interface">
+    <rect x="188" y="248" width="144" height="120" rx="10" class="node layer-interface"/>
+    <text x="260" y="300" class="name">인증</text>
+    <text x="260" y="340" class="danger">× 401</text>
+  </g>
+  <path d="M332 308h18" class="flow"/>
+  <g data-layer="interface">
+    <rect x="356" y="248" width="144" height="120" rx="10" class="node layer-interface"/>
+    <text x="428" y="300" class="name">인가</text>
+    <text x="428" y="340" class="danger">× 403</text>
+  </g>
+  <path d="M500 308h18" class="flow"/>
+  <g data-layer="application">
+    <rect x="524" y="248" width="164" height="120" rx="10" class="node layer-application"/>
+    <text x="606" y="280" class="layer">서비스·정책</text>
+    <text x="606" y="316" class="name">허용</text>
+    <text x="606" y="350" class="body">서비스 진입</text>
+  </g>
+</svg>

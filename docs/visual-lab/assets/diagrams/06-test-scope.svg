@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 482" role="img" aria-labelledby="seq06-title seq06-desc">
+  <title id="seq06-title">06 단위 테스트 범위 지도</title>
+  <desc id="seq06-desc">시스템 밖 Fixture가 서비스·정책 Service를 실행하고 상태·데이터 Repository mock과 상호작용한 결과를 시스템 밖 Assertion이 확인하며 HTTP 입구·출구는 별도 검증으로 남는 지도</desc>
+  <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#2955E4"/></marker>
+    <marker id="return-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#176F72"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;fill:#111B3F}
+      .frame{fill:#FFFFFF;stroke:#6F82B8;stroke-width:2}
+      .scope{fill:#FFFFFF;stroke:#94A3B8;stroke-width:2;stroke-dasharray:8 6}
+      .node{stroke-width:2.5}
+      .layer-outside{fill:#F1F5F9;stroke:#5B677A}
+      .layer-interface{fill:#E6F4F7;stroke:#0E7490}
+      .layer-application{fill:#F2EDFF;stroke:#6D43A8}
+      .layer-resource{fill:#EAF5EE;stroke:#2C7352}
+      .layer-integration{fill:#FFF4D6;stroke:#926000}
+      .layer-runtime{fill:#EEF2F7;stroke:#52627A}
+      [data-layer="outside"] .layer{fill:#5B677A}
+      [data-layer="resource"] .layer{fill:#2C7352}
+      .flow{fill:none;stroke:#2955E4;stroke-width:3;marker-end:url(#arrow)}
+      .return{fill:none;stroke:#176F72;stroke-width:3;marker-end:url(#return-arrow)}
+      .group{font-size:27px;font-weight:850;fill:#0C2691}
+      .layer{font-size:25px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:27px;font-weight:800;text-anchor:middle}
+      .body{font-size:25px;font-weight:650;fill:#4B587C;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="720" height="482" fill="#F8F9FB"/>
+  <rect x="16" y="16" width="688" height="450" rx="18" class="frame"/>
+
+  <g data-semantic="boundary">
+    <rect x="32" y="42" width="656" height="286" rx="15" class="scope"/>
+    <text x="50" y="76" class="group">단위 테스트 경계 · HTTP 없이 확인</text>
+  </g>
+  <g data-layer="outside">
+    <rect x="48" y="96" width="160" height="106" rx="10" class="node layer-outside"/>
+    <text x="128" y="132" class="layer">시스템 밖</text>
+    <text x="128" y="174" class="name">Fixture</text>
+  </g>
+  <path d="M208 149h67" class="flow"/>
+  <g data-layer="application">
+    <rect x="280" y="96" width="160" height="106" rx="10" class="node layer-application"/>
+    <text x="360" y="132" class="layer">서비스·정책</text>
+    <text x="360" y="174" class="name">Service</text>
+  </g>
+  <path d="M440 149h67" class="flow"/>
+  <g data-layer="outside">
+    <rect x="512" y="96" width="160" height="106" rx="10" class="node layer-outside"/>
+    <text x="592" y="132" class="layer">시스템 밖</text>
+    <text x="592" y="174" class="name">Assertion</text>
+  </g>
+
+  <path d="M340 202v14" class="flow"/>
+  <g data-layer="resource">
+    <rect x="250" y="222" width="220" height="92" rx="10" class="node layer-resource"/>
+    <text x="360" y="254" class="layer">상태·데이터</text>
+    <text x="360" y="294" class="name">Repository mock</text>
+  </g>
+  <path d="M380 222v-14" class="return"/>
+
+  <text x="42" y="368" class="group">입구·출구 · 단위 테스트 밖</text>
+  <g data-layer="interface">
+    <rect x="110" y="386" width="500" height="64" rx="10" class="node layer-interface"/>
+    <text x="360" y="427" class="name">HTTP 계약 · 400 / 401 / 403</text>
+  </g>
+</svg>

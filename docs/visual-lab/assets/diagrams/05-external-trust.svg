@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-labelledby="seq05-title seq05-desc">
+  <title id="seq05-title">05 외부 인증 신뢰 경계 지도</title>
+  <desc id="seq05-desc">시스템 밖 OAuth Provider 결과가 외부 신뢰 경계를 넘어 서비스·정책의 email 신뢰 판단을 통과할 때만 내부 JWT로 이어지고, 충돌은 차단되는 지도</desc>
+  <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#2955E4"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;fill:#111B3F}
+      .frame{fill:#FFFFFF;stroke:#6F82B8;stroke-width:2}
+      .node{stroke-width:2.5}
+      .layer-outside{fill:#F1F5F9;stroke:#5B677A}
+      .layer-interface{fill:#E6F4F7;stroke:#0E7490}
+      .layer-application{fill:#F2EDFF;stroke:#6D43A8}
+      .layer-resource{fill:#EAF5EE;stroke:#2C7352}
+      .layer-integration{fill:#FFF4D6;stroke:#926000}
+      .layer-runtime{fill:#EEF2F7;stroke:#52627A}
+      [data-layer="outside"] .layer{fill:#5B677A}
+      [data-layer="resource"] .layer{fill:#2C7352}
+      .flow{fill:none;stroke:#2955E4;stroke-width:3;marker-end:url(#arrow)}
+      .boundary{stroke:#94A3B8;stroke-width:2.5;stroke-dasharray:8 6}
+      .stop{stroke:#B4233C;stroke-width:2.5;stroke-dasharray:6 4}
+      .failure{fill:#FFF1F2;stroke:#B4233C;stroke-width:2.5}
+      .boundary-name{font-size:25px;font-weight:800;fill:#52627A;text-anchor:middle}
+      .layer{font-size:25px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:28px;font-weight:800;text-anchor:middle}
+      .body{font-size:25px;font-weight:650;fill:#4B587C;text-anchor:middle}
+      .danger{font-size:27px;font-weight:850;fill:#8F1830;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="720" height="320" fill="#F8F9FB"/>
+  <rect x="20" y="16" width="680" height="288" rx="18" class="frame"/>
+
+  <g data-layer="outside">
+    <rect x="36" y="36" width="174" height="138" rx="11" class="node layer-outside"/>
+    <text x="123" y="72" class="layer">시스템 밖</text>
+    <text x="123" y="108" class="name">Provider</text>
+    <text x="123" y="144" class="body">OAuth 성공</text>
+  </g>
+  <g data-semantic="boundary">
+    <line x1="238" y1="36" x2="238" y2="184" class="boundary"/>
+    <text x="238" y="204" class="boundary-name">외부 신뢰 경계</text>
+  </g>
+  <path d="M210 105h42" class="flow"/>
+  <g data-layer="application">
+    <rect x="257" y="36" width="200" height="138" rx="12" class="node layer-application"/>
+    <text x="357" y="72" class="layer">서비스·정책</text>
+    <text x="357" y="108" class="name">신뢰 판단</text>
+    <text x="357" y="144" class="body">email 확인</text>
+  </g>
+  <path d="M457 105h42" class="flow"/>
+  <g data-layer="application">
+    <rect x="499" y="36" width="185" height="138" rx="11" class="node layer-application"/>
+    <text x="591.5" y="72" class="layer">서비스·정책</text>
+    <text x="591.5" y="108" class="name">내부 JWT</text>
+    <text x="591.5" y="144" class="body">통과 뒤 발급</text>
+  </g>
+
+  <path d="M357 174v41" class="stop"/>
+  <g data-semantic="state">
+    <rect x="237" y="222" width="240" height="60" rx="10" class="failure"/>
+    <text x="357" y="260" class="danger">× 확인 또는 차단</text>
+  </g>
+</svg>
