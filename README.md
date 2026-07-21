@@ -66,15 +66,21 @@ src/main/kotlin/com/andi/rest_crud/
 
 ## 구현 순서
 
-1. `oauth/security/CustomOAuthUserService.kt`
-2. `oauth/service/OAuthAccountService.kt`
-3. `oauth/security/OAuthLoginHandlers.kt`
-4. `recovery/security/PasswordResetTokenCodec.kt`와 token 저장 계약
-5. `recovery/service/AccountRecoveryService.kt`
-6. `recovery/mail/RecoveryMailDispatch.kt`와 `SmtpRecoveryMailSender.kt`
-7. `static/auth-practice`의 URL token 소비와 복구 화면
+`05-implementation`에서 직접 수정할 범위는 **5개 파일의 TODO 6개**입니다.
+각 단계에서는 테스트를 먼저 읽고, 지정된 TODO만 구현한 뒤 대상 테스트가 통과하면 다음 파일로 이동합니다.
 
-Controller, DTO, repository와 최신 04 회귀 코드는 제공된 연결 계약입니다.
+| Step | 직접 수정할 파일 | TODO |
+|---:|---|---|
+| 1 | `oauth/security/CustomOAuthUserService.kt` | 외부 profile 검증·정규화 |
+| 2 | `oauth/service/OAuthAccountService.kt` | 내부 계정 연결과 JWT 발급 |
+| 3 | `oauth/security/OAuthLoginHandlers.kt` | OAuth 성공 redirect |
+| 4-A | `recovery/service/AccountRecoveryService.kt` | reset token 발급·cooldown |
+| 4-B | `recovery/service/AccountRecoveryService.kt` | token 확정·비밀번호 변경 |
+| 5 | `recovery/mail/SmtpRecoveryMailSender.kt` | SMTP 메시지 조립·발송 |
+
+`PasswordResetTokenCodec`, `PasswordResetToken`, repository, controller, `RecoveryMailDispatch`, Security 설정과 정적 화면은 제공된 연결 계약입니다. 처음부터 고치지 말고, 위 TODO를 구현할 때 호출 순서와 기대 결과를 확인하는 용도로 읽습니다.
+
+환경 설정을 포함한 파일별 테스트와 세부 완료 조건은 [구현 가이드](./docs/implementation.md)의 Step 0부터 순서대로 따릅니다.
 
 ## 핵심 계약
 

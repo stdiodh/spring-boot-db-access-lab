@@ -11,31 +11,40 @@ Recovery request -> LOCAL lock -> hashed token rotation -> AFTER_COMMIT event ->
 Reset confirm -> hash lookup + lock -> BCrypt update + single-use mark
 ```
 
-## 2. 구현 파일 순서
+## 2. 시작 전에 수정 범위 좁히기
 
-| 순서 | 파일 | 책임 |
-|---:|---|---|
-| 1 | `src/main/kotlin/com/andi/rest_crud/oauth/security/CustomOAuthUserService.kt` | 외부 속성 검증·정규화 |
-| 2 | `src/main/kotlin/com/andi/rest_crud/oauth/service/OAuthAccountService.kt` | 내부 사용자 연결과 JWT |
-| 3 | `src/main/kotlin/com/andi/rest_crud/oauth/security/OAuthLoginHandlers.kt` | 공개 redirect |
-| 4 | `src/main/kotlin/com/andi/rest_crud/recovery/security/PasswordResetTokenCodec.kt` | 32-byte raw token 생성과 SHA-256 hash |
-| 5 | `src/main/kotlin/com/andi/rest_crud/recovery/domain/PasswordResetToken.kt` | 사용자별 token 수명 주기 |
-| 6 | `src/main/kotlin/com/andi/rest_crud/recovery/service/AccountRecoveryService.kt` | 발급·cooldown·확정·비밀번호 변경 |
-| 7 | `src/main/kotlin/com/andi/rest_crud/recovery/mail/RecoveryMailDispatch.kt` | AFTER_COMMIT 비동기 발송 |
-| 8 | `src/main/kotlin/com/andi/rest_crud/recovery/mail/SmtpRecoveryMailSender.kt` | SMTP 메시지와 외부 호출 |
-| 9 | `src/main/resources/static/auth-practice/*` | fragment 즉시 소비와 복구 시연 |
+`05-implementation`에서 직접 구현할 곳은 **5개 파일의 TODO 6개**입니다. 아래 표에 없는 production 파일은 먼저 수정하지 않습니다.
 
-연결 파일:
+각 번호 Step은 같은 순서로 진행합니다. Step 4-A와 4-B는 한 production 파일 안의 두 하위 작업입니다.
 
-- `common/config/SecurityConfig.kt`
-- `user/domain/User.kt`, `user/repository/UserRepository.kt`
-- `oauth/model/OAuthUserProfile.kt`, `oauth/dto/OAuthLoginResponse.kt`
-- `recovery/controller/AccountRecoveryController.kt`
-- `recovery/dto/PasswordResetMailRequest.kt`, `PasswordResetConfirmRequest.kt`
-- `recovery/mail/RecoveryMailSender.kt`
-- `recovery/repository/PasswordResetTokenRepository.kt`
+1. 대응 테스트에서 입력, 호출 순서와 기대 결과를 읽습니다.
+2. 지정된 production 파일의 TODO만 구현합니다.
+3. Step 전용 테스트를 실행합니다.
+4. 통과하면 변경 범위를 확인하고 다음 Step으로 이동합니다.
 
-## 3. Step 1 - 설정과 Security 경계
+| Step | 테스트에서 먼저 읽을 계약 | 직접 수정할 파일과 메서드 | 완료 gate |
+|---:|---|---|---|
+| 1 | `CustomOAuthUserServiceTest` | `oauth/security/CustomOAuthUserService.kt`의 `normalizePrincipal` | profile 테스트 통과 |
+| 2 | `OAuthAccountServiceTest` | `oauth/service/OAuthAccountService.kt`의 `handleOAuthLogin` | account 테스트 통과 |
+| 3 | `OAuthLoginHandlersTest` | `oauth/security/OAuthLoginHandlers.kt`의 `onAuthenticationSuccess` | handler 테스트 통과 |
+| 4-A | `AccountRecoveryServiceTest`의 요청 관련 테스트 | `recovery/service/AccountRecoveryService.kt`의 `requestPasswordReset` | 요청·cooldown 계약 충족 |
+| 4-B | `AccountRecoveryServiceTest`의 확정 관련 테스트 | 같은 파일의 `confirmPasswordReset` | service·동시성 테스트 통과 |
+| 5 | `SmtpRecoveryMailSenderTest` | `recovery/mail/SmtpRecoveryMailSender.kt`의 `sendPasswordResetMail` | mail 테스트 통과 |
+
+Step 4-A만 끝낸 시점에는 같은 테스트 클래스의 confirm 관련 3개가 아직 실패합니다. IDE에서 요청 관련 5개 테스트만 먼저 확인하거나, 4-B까지 같은 파일을 완성한 뒤 아래 service gate를 실행합니다.
+
+다음은 이미 구현된 scaffold입니다. TODO 구현에 필요한 계약을 읽고 테스트하되, 처음부터 수정 대상으로 잡지 않습니다.
+
+| 영역 | 읽기 전용 파일 | 확인할 계약 |
+|---|---|---|
+| OAuth 모델 | `OAuthUserProfile.kt`, `OAuthLoginResponse.kt` | 정규화 결과와 로그인 응답 |
+| 사용자 저장 | `User.kt`, `UserRepository.kt` | 길이·unique 제약과 lock 조회 |
+| reset token | `PasswordResetToken.kt`, `PasswordResetTokenCodec.kt`, `PasswordResetTokenRepository.kt` | hash·회전·만료와 lock 조회 |
+| 복구 연결 | controller, DTO, exception, `RecoveryMailSender.kt` | 공개 HTTP 응답과 추상화 경계 |
+| 비동기 발송 | `RecoveryMailDispatch.kt` | AFTER_COMMIT·bounded executor·비식별 로그 |
+| 화면·보안 | `SecurityConfig.kt`, `static/auth-practice/*` | 공개 endpoint와 URL secret 소비 |
+
+## 3. Step 0 - 설정과 Security 경계
 
 확인할 환경변수:
 
@@ -60,7 +69,7 @@ Security 확인:
 - `/auth/me`와 게시글 변경은 Bearer JWT를 요구합니다.
 - OAuth `state`용 임시 session은 허용하되 보호 API session 인증으로 사용하지 않습니다.
 
-## 4. Step 2 - OAuth profile 검증
+## 4. Step 1 - OAuth profile 검증
 
 `CustomOAuthUserService.kt`에서 다음을 확인합니다.
 
@@ -73,7 +82,7 @@ Security 확인:
 
 필수 값이 없거나 verified가 아니면 OAuth 경계에서 거부하고 원본 오류·attributes를 외부에 노출하지 않습니다.
 
-## 5. Step 3 - 내부 계정 연결
+## 5. Step 2 - 내부 계정 연결
 
 `OAuthAccountService.kt`의 판단 순서:
 
@@ -87,7 +96,7 @@ Security 확인:
 
 기존 provider email을 내부 email에 자동 반영하면 JWT subject와 게시글 ownership이 흔들릴 수 있습니다. email 변경은 이번 로그인 흐름과 분리합니다.
 
-## 6. Step 4 - OAuth redirect와 URL secret 소비
+## 6. Step 3 - OAuth redirect와 URL secret 소비
 
 `OAuthLoginHandlers.kt`:
 
@@ -106,7 +115,7 @@ Security 확인:
 
 OAuth JWT는 학습 목적의 명시적인 token receipt에는 보일 수 있습니다. 따라서 URL 제거를 token 전체 비노출이나 운영 token 전달 설계로 표현하지 않습니다.
 
-## 7. Step 5 - 복구 요청과 token 발급
+## 7. Step 4-A - 복구 요청과 token 발급
 
 요청 endpoint: `POST /account-recovery/password-reset`
 
@@ -124,7 +133,7 @@ OAuth JWT는 학습 목적의 명시적인 token receipt에는 보일 수 있습
 
 유효한 DTO 요청은 계정 없음, OAuth 계정, SMTP 실패 여부와 무관하게 `Cache-Control: no-store`와 202입니다. 빈 값, 잘못된 형식, 254자 초과는 400입니다. 202는 mail delivery 성공을 뜻하지 않습니다.
 
-## 8. Step 6 - 비밀번호 재설정 확정
+## 8. Step 4-B - 비밀번호 재설정 확정
 
 확정 endpoint와 body:
 
@@ -145,9 +154,9 @@ Content-Type: application/json
 
 성공은 `Cache-Control: no-store`와 204입니다. 회전·만료·재사용·존재하지 않는 token은 모두 400 `INVALID_PASSWORD_RESET_TOKEN`으로 응답하며, 정확히 만료 시각인 token도 무효입니다.
 
-## 9. Step 7 - AFTER_COMMIT 비동기 SMTP
+## 9. Step 5 - SMTP adapter 구현
 
-`RecoveryMailDispatch.kt`:
+`RecoveryMailDispatch.kt`는 수정하지 않고 다음 제공 계약을 확인합니다.
 
 - `@TransactionalEventListener(AFTER_COMMIT)`으로 token 저장 commit 전에는 메일을 보내지 않습니다.
 - core 1, max 2, queue 100의 bounded executor를 사용합니다.
@@ -169,23 +178,60 @@ Service는 `JavaMailSender`를 직접 알지 않아야 합니다. 테스트는 s
 
 `05-implementation`은 TODO를 호출하는 테스트가 구현 전 실패하는 것이 정상입니다. 설정·컴파일 실패와 의도된 TODO 실패를 구분합니다.
 
+Step 1, 2, 3, 5를 끝낼 때마다 대응 gate만 실행합니다. Step 4는 4-A와 4-B를 모두 마친 뒤 service gate를 실행합니다.
+
 ```bash
+# Step 1
 ./gradlew test --tests '*CustomOAuthUserServiceTest'
+
+# Step 2
 ./gradlew test --tests '*OAuthAccountServiceTest'
-./gradlew test --tests '*OAuthLoginHandler*Test'
-./gradlew test --tests '*OAuth*IntegrationTest'
-./gradlew test --tests '*AccountRecoveryServiceTest'
+
+# Step 3
+./gradlew test \
+  --tests '*OAuthLoginHandlersTest' \
+  --tests '*OAuthSessionBoundaryIntegrationTest'
+
+# Step 4-A와 4-B를 모두 마친 뒤
+./gradlew test \
+  --tests '*AccountRecoveryServiceTest' \
+  --tests '*AccountRecoveryConcurrencyIntegrationTest' \
+  --tests '*AccountRecoveryControllerTest'
+
+# Step 5
+./gradlew test \
+  --tests '*SmtpRecoveryMailSenderTest' \
+  --tests '*RecoveryMailContractTest' \
+  --tests '*RecoveryMailDispatchTest' \
+  --tests '*RecoveryMailEventIntegrationTest'
+```
+
+제공된 scaffold를 수정하지 않아도 다음 테스트는 처음부터 통과해야 합니다.
+
+```bash
 ./gradlew test --tests '*PasswordResetTokenCodecTest'
 ./gradlew test --tests '*PasswordResetTokenRepositoryTest'
 ./gradlew test --tests '*RecoveryMailDispatchTest'
 ./gradlew test --tests '*RecoveryMailEventIntegrationTest'
-./gradlew test --tests '*SmtpRecoveryMailSenderTest'
 ./gradlew test --tests '*AccountRecoveryController*Test'
 ./gradlew test --tests '*AuthPracticePageIntegrationTest'
-./gradlew test
 ```
 
-실제 클래스 이름은 현재 `src/test/kotlin/com/andi/rest_crud` 트리에서 확인합니다. `05-answer`은 외부 credential 없이 전체 테스트가 통과해야 합니다.
+모든 TODO를 구현한 뒤 먼저 다음 검색 결과가 0건인지 확인합니다. `rg`는 결과가 없으면 종료 코드 1을 반환하지만, 이 경우가 정상입니다.
+
+```bash
+rg -n 'TODO\(' src/main/kotlin
+```
+
+검색 결과가 없으면 전체 gate를 실행합니다.
+
+```bash
+./gradlew test
+node --check src/main/resources/static/auth-practice/app.js
+git diff --check
+```
+
+`rg` 결과는 0건, 전체 테스트는 104개 모두 통과해야 합니다. `05-answer`도 외부 credential 없이 같은 전체 gate를 통과해야 합니다.
 
 자동 테스트는 OAuth 검증·계정 정책·redirect·session 경계, HTML 정적 진입점과 URL 처리 코드 연결, LOCAL recovery·202·cooldown, token hash·회전·만료·단일 사용, AFTER_COMMIT async dispatch, SMTP 실패·메시지 조립과 최신 04 회귀를 확인합니다. 실제 URL 제거 동작은 브라우저에서도 확인합니다.
 
