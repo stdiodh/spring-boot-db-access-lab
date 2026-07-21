@@ -7,6 +7,7 @@
 - [ ] README와 구현 문서의 경로가 실제 파일과 일치합니다.
 - [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개입니다.
 - [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.
+- [ ] `docker compose up -d --wait --wait-timeout 120`으로 MySQL과 Mailpit 준비 상태를 확인했습니다.
 
 ## 2. OAuth profile과 계정 정책
 
@@ -96,6 +97,7 @@
 
 ## 8. 외부 수동 검증
 
+- [ ] 기본 Mailpit(`http://localhost:8025`)에서 reset 메일과 fragment link를 확인했습니다.
 - [ ] Google callback URI를 `/login/oauth2/code/google`로 등록했습니다.
 - [ ] 실제 Google redirect 뒤 query·fragment가 즉시 지워지는지 확인했습니다.
 - [ ] `/auth/me`가 내부 신원을 표시하고 browser storage/cookie에 JWT가 없는지 확인했습니다.

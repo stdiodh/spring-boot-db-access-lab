@@ -20,14 +20,14 @@ spring:
     defer-datasource-initialization: true
     open-in-view: false
   mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
     username: "${SPRING_MAIL_USERNAME:}"
     password: "${SPRING_MAIL_PASSWORD:}"
     properties:
-      "[mail.smtp.auth]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
-      "[mail.smtp.starttls.enable]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
-      "[mail.smtp.starttls.required]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED:true}
+      "[mail.smtp.auth]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:false}
+      "[mail.smtp.starttls.enable]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:false}
+      "[mail.smtp.starttls.required]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED:false}
       "[mail.smtp.connectiontimeout]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT:5000}
       "[mail.smtp.timeout]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT:5000}
       "[mail.smtp.writetimeout]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT:5000}
@@ -62,4 +62,4 @@ app:
   password-reset-url: ${APP_PASSWORD_RESET_URL:http://localhost:8080/auth-practice/index.html}
   password-reset-token-ttl: ${APP_PASSWORD_RESET_TOKEN_TTL:PT15M}
   password-reset-resend-cooldown: ${APP_PASSWORD_RESET_RESEND_COOLDOWN:PT1M}
-  recovery-mail-from: ${APP_RECOVERY_MAIL_FROM:no-reply@example.com}
+  recovery-mail-from: ${APP_RECOVERY_MAIL_FROM:no-reply@aandi.test}

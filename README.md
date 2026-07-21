@@ -127,8 +127,10 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 ## 로컬 설정과 실행
 
 ```bash
-cp .env.example .env
-docker compose up -d
+test -f .env || cp .env.example .env
+docker compose config --quiet
+docker compose up -d --wait --wait-timeout 120
+docker compose ps
 ./gradlew bootRun
 ```
 
@@ -140,12 +142,13 @@ docker compose up -d
 - SMTP: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`
 - 기존 계약: `DB_*`, `JWT_*`
 
-`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 따라서 `.env.example`을 복사한 뒤 값을 채우면 `bootRun`에 별도 export가 필요하지 않습니다. `APP_PASSWORD_RESET_URL`은 실습 화면을 가리키며 server가 `#reset_token` fragment를 덧붙입니다. Google 로그인과 실제 Gmail 발송은 유효한 credential, callback URI, 발신 정책을 준비한 경우에만 성공합니다.
+`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. `APP_PASSWORD_RESET_URL`은 실습 화면을 가리키며 server가 `#reset_token` fragment를 덧붙입니다. 실제 Google 로그인과 Gmail 발송은 유효한 credential, callback URI, 발신 정책을 준비한 경우에만 별도로 확인합니다.
 
 확인 위치:
 
 - 인증 실습: `http://localhost:8080/auth-practice/`
 - Swagger: `http://localhost:8080/swagger`
+- 로컬 메일함: `http://localhost:8025`
 - OAuth 시작: `http://localhost:8080/oauth2/authorization/google`
 - Google callback: `http://localhost:8080/login/oauth2/code/google`
 
