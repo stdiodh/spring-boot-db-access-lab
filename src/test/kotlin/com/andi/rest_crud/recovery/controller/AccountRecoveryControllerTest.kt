@@ -85,6 +85,7 @@ class AccountRecoveryControllerTest @Autowired constructor(
 
         mockMvc.perform(confirmRequest("valid-looking-token", "new-password123"))
             .andExpect(status().isBadRequest)
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
             .andExpect(jsonPath("$.code").value("INVALID_PASSWORD_RESET_TOKEN"))
             .andExpect(jsonPath("$.message").value("비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다."))
             .andExpect(jsonPath("$.errors").isEmpty)
