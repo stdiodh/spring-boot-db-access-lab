@@ -199,20 +199,9 @@ if (SecurityContextHolder.getContext().authentication == null) {
 <a id="seq-05"></a>
 ## 7. Sequence 05: 외부 프로필을 내부 계정으로 받아들이는 경계
 
-05 starter에서 `OAuthAccountService.linkOrCreateUser`와 `AccountRecoveryService.createResetLink`는 구현되어 있습니다. 반면 `CustomOAuthUserService.loadUser`, `OAuthLoginSuccessHandler.onAuthenticationSuccess`, `OAuthAccountService.handleOAuthLogin`, `AccountRecoveryService.requestPasswordReset`, `SmtpRecoveryMailSender.sendPasswordResetMail`은 학습자가 연결해야 할 TODO입니다. 아래 종단 흐름은 현재 실행 완료 상태가 아니라 그 TODO들을 완성했을 때 도달할 구현 목표입니다.
-외부 프로필의 email은 `email_verified`가 확인된 경우만 내부 식별 후보가 됩니다. 같은 email의 `LOCAL` 계정이 있으면 자동 병합하지 않고 `link_required` 경로로 보내 계정 탈취 위험을 줄입니다.
-데모 JWT는 query가 아니라 URL fragment로 전달하지만, 운영 환경에서는 일회용 code 교환이나 HttpOnly cookie가 더 안전합니다.
+05 starter에서 학습자가 직접 구현하는 범위는 5개 파일의 TODO 6개입니다. `normalizePrincipal`, `handleOAuthLogin`, `onAuthenticationSuccess`, `requestPasswordReset`, `confirmPasswordReset`, `sendPasswordResetMail` 순서로 외부 profile부터 메일 adapter까지 연결합니다. token codec, repository, controller, 비동기 dispatcher와 정적 실습 화면은 제공된 scaffold입니다.
 
-```kotlin
-// 같은 email의 기존 계정은 소유 확인 없이 OAuth 계정과 합치지 않습니다.
-val existingEmailUser = userRepository.findByEmail(profile.email)
-    .orElse(null)
-if (existingEmailUser != null) {
-    throw OAuthAccountLinkRequiredException()
-}
-```
-
-충돌이 없던 계정 후보는 내부 사용자 생성으로 진행하지만, 기존 email이 발견되면 자동 연결 대신 명시적 확인이 필요한 중단 상태로 바뀝니다.
+외부 프로필의 email은 `email_verified=true`인 경우만 내부 식별 후보가 됩니다. 기존 외부 사용자는 `provider + providerId`로 찾고 DB에 저장된 내부 email을 유지합니다. 같은 email의 LOCAL 또는 다른 외부 계정이 있으면 소유 확인 없이 자동 연결하지 않고 `link_required`로 중단합니다. 성공한 경우에만 우리 API용 JWT를 발급해 URL fragment로 전달하며, 실습 화면은 token을 메모리로 옮긴 직후 URL을 지웁니다.
 
 ```mermaid
 sequenceDiagram
@@ -223,9 +212,9 @@ sequenceDiagram
     B->>P: OAuth 로그인과 동의
     P-->>O: callback과 profile
     O->>O: email_verified 확인
-    O->>R: email로 내부 계정 조회
-    R-->>O: 기존 계정 없음
-    O->>R: GOOGLE 사용자 저장
+    O->>R: provider identity 우선 조회
+    R-->>O: 기존 사용자 또는 신규 후보
+    O->>R: email 충돌 확인 뒤 필요할 때만 저장
     O-->>B: JWT fragment redirect
 ```
 
@@ -233,12 +222,20 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 1 | 사용자 동의 | provider가 인증 | callback profile |
 | 2 | 외부 profile | `email_verified`를 gate로 확인 | 신뢰 가능한 email 또는 로그인 중단 |
-| 3 | 검증된 email | 내부 계정 충돌 조회 | 없음, 같은 GOOGLE 계정, 또는 LOCAL 충돌 |
-| 4 | 충돌 없는 외부 사용자 | provider 정보로 내부 계정 저장 | 식별 가능한 GOOGLE 사용자 |
+| 3 | 검증된 profile | provider identity 우선 조회 | 기존 사용자 또는 신규 후보 |
+| 4 | 신규 후보 | email 충돌 확인 뒤 내부 계정 저장 | 내부 OAuth 사용자 또는 `link_required` |
 | 5 | 내부 사용자 | 데모 token을 fragment에 담아 redirect | browser가 읽을 로그인 결과 |
 
-계정 복구 요청은 존재하는 email일 때 mail sender에 위임하지만, SMTP adapter의 정상 반환은 “호출을 수락했다”는 근거이지 실제 수신함 배달을 증명하지는 않습니다.
-존재하지 않는 email도 같은 `202` 응답을 사용해 계정 존재 여부가 외부에 드러나지 않게 합니다.
+계정 복구는 단순한 link 생성이 아닙니다. LOCAL 사용자를 lock으로 읽고 32-byte 난수 raw token을 Base64URL로 만들지만, DB에는 SHA-256 hash만 저장합니다. 사용자당 한 행을 회전해 이전 token을 무효화하고 기본 15분 만료·1분 재요청 제한을 적용합니다. 확정 요청은 token hash와 사용자 상태를 다시 lock으로 확인한 뒤 BCrypt 비밀번호 변경과 `usedAt` 기록을 같은 transaction에서 commit합니다.
+
+```kotlin
+val rawToken = tokenCodec.generateRawToken()
+val tokenHash = tokenCodec.hash(rawToken)
+val expiresAt = now.plus(tokenTtl)
+existingToken.rotate(tokenHash, now, expiresAt)
+```
+
+메일 event는 token transaction이 commit된 뒤 bounded executor에서 비동기로 처리합니다. 존재하지 않는 계정, OAuth 계정, SMTP 실패도 유효한 요청이면 같은 `202`를 반환하고, 만료·회전·재사용 token은 같은 공개 `400`으로 처리합니다. 자동 테스트는 이 내부 계약을 외부 네트워크 없이 확인하지만 실제 Google callback과 Gmail 수신은 credential이 필요한 수동 E2E입니다. 공식 05 브랜치에서는 로컬 Mailpit으로 SMTP와 reset link를 먼저 재현할 수 있습니다.
 
 [Visual Lab에서 입력 조건을 보고 경로 예측하기](./visual-lab/sequences/05/)
 

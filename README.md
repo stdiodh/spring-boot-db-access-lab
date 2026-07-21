@@ -45,8 +45,9 @@ git checkout 03-implementation
 MySQL이 필요한 시퀀스에서는 먼저 의존 서비스를 실행합니다.
 
 ```bash
-cp .env.example .env
-docker compose up -d
+test -f .env || cp .env.example .env
+docker compose config --quiet
+docker compose up -d --wait --wait-timeout 120
 ./gradlew bootRun
 ```
 
@@ -86,13 +87,13 @@ http://localhost:8080/auth-practice
 | 02 | context 기동, Swagger와 MySQL을 통한 CRUD 수동 확인 |
 | 03 | context 기동, Swagger를 통한 400과 에러 응답 수동 확인 |
 | 04 | 로그인 성공/실패, 보호 API 401, 토큰 접근 성공, 작성자 인가 403 |
-| 05 | context 기동, OAuth/SMTP/reset link의 자동·수동 검증 범위 구분 |
+| 05 | OAuth 계정 정책, reset token 생명주기, AFTER_COMMIT SMTP와 외부 E2E 증거 구분 |
 | 06 | Service 단위 테스트, 테스트 실행 순서, 보장 범위 읽기 |
 
 실패하면 먼저 볼 것:
 
 - 실패한 테스트 이름과 expected/actual 값을 먼저 읽습니다.
-- 외부 OAuth2/SMTP가 필요한 흐름은 mock 또는 local profile로 대체되어 있는지 확인합니다.
+- 05 자동 테스트는 mock·fake로 외부 네트워크 없이 실행하고, 실제 Google·Gmail은 별도 수동 E2E로 확인합니다.
 - 401은 인증 실패, 403은 인가 실패로 구분해서 봅니다.
 
 완료 기준:
@@ -115,17 +116,19 @@ Sequence 04의 연관 코드는 책임별로 다음 파일에 모았습니다.
 
 ## 05 시퀀스 단계
 
-05는 하나의 브랜치 쌍을 사용하지만 내부 학습은 세 단계로 나눕니다.
+05는 하나의 브랜치 쌍을 사용하지만 내부 학습은 세 단계로 나눕니다. 학생이 직접 구현하는 범위는 5개 파일의 TODO 6개입니다.
 
 | 단계 | 주제 | 핵심 |
 | --- | --- | --- |
-| 05-A | OAuth2 로그인 흐름 | verified email, provider/providerId 식별, 동일 email 계정 충돌 처리 |
-| 05-B | SMTP 메일 발송 흐름 | `RecoveryMailSender` 인터페이스, SMTP 구현체, 환경변수 설정 |
-| 05-C | 계정 복구 유스케이스 | 복구 요청과 reset link 생성, 후속 토큰 저장·만료 설계 |
+| 05-A | OAuth2 로그인 | profile 정규화, verified email, provider identity, 자동 연결 금지, JWT fragment redirect |
+| 05-B | 계정 복구 | raw/hash 분리, 15분 만료, 1분 cooldown, 회전·단일 사용, BCrypt 비밀번호 변경 |
+| 05-C | SMTP 발송 | commit 이후 bounded async event, SMTP adapter, 공개 202와 실제 배달 증거 구분 |
 
 실제 Google client secret이나 SMTP password는 문서와 코드에 쓰지 않습니다.
-외부 계정 준비가 어렵다면 mock 또는 local profile로 service 흐름부터 확인합니다.
-같은 email의 로컬 계정은 자동 연결하지 않으며, OAuth 성공 JWT는 URL query가 아니라 fragment로 전달합니다.
+공식 05 브랜치의 기본 SMTP는 로컬 Mailpit이므로 Gmail credential 없이 메일과 reset link를 시연할 수 있습니다. OAuth 자동 테스트도 외부 네트워크를 사용하지 않지만 실제 Google callback은 유효한 client credential이 있어야 합니다.
+같은 email의 로컬 계정은 자동 연결하지 않으며, OAuth JWT와 reset token은 URL query가 아니라 fragment로 받은 뒤 실습 화면이 메모리로 옮기고 URL에서 제거합니다.
+
+[Visual Lab에서 OAuth와 복구 생명주기 비교하기](./docs/visual-lab/sequences/05/)
 
 ## 정답과 비교하는 방법
 
