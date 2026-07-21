@@ -69,7 +69,10 @@ class OAuthAccountService(
             !normalized.emailVerified ||
             normalized.provider.isBlank() ||
             normalized.providerId.isBlank() ||
-            normalized.email.isBlank()
+            normalized.email.isBlank() ||
+            normalized.provider.length > 32 ||
+            normalized.providerId.length > 255 ||
+            normalized.email.length > 254
         ) {
             throw OAuthProfileRejectedException()
         }
