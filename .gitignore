@@ -40,3 +40,8 @@ out/
 .kotlin
 .DS_Store
 data/
+
+### Local secrets ###
+.env
+.env.*
+!.env.example
