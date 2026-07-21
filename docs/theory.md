@@ -1,280 +1,195 @@
 # 이론 정리
 
-> 이번 시퀀스는 기존 JWT 인증 흐름 위에 Google OAuth2 로그인과 SMTP 기반 비밀번호 재설정 메일 요청을 붙여 보는 단계입니다.
-> 핵심은 외부에서 성공한 인증 결과와 메일 발송 요청을 우리 서비스의 사용자, 토큰, 보안 정책 안으로 안전하게 연결하는 것입니다.
+> 외부 인증 결과와 메일 발송 요청을 내부 사용자, JWT, 공개 응답 정책 안으로 안전하게 연결하는 기준을 다룹니다.
 
-## 1. Problem - 왜 외부 인증과 계정 복구가 필요한가
+## 1. Problem - 외부 성공을 그대로 사용할 수 없는 이유
 
-04 시퀀스에서는 우리 서비스가 직접 회원가입, 로그인, JWT 발급을 처리했습니다. 하지만 실제 서비스에서는 사용자가 Google 계정으로 로그인하거나, 비밀번호를 잊었을 때 복구 메일을 요청하는 흐름도 필요합니다.
+Google 인증이 성공해도 우리 서비스는 내부 사용자를 식별하고 자체 JWT를 발급해야 합니다. 복구 메일 요청도 내부 결과가 달라졌다는 이유로 계정 존재나 인증 방식을 외부에 드러내면 안 됩니다.
 
-OAuth2와 SMTP는 서로 다른 기술입니다. OAuth2는 외부 인증 결과를 받아오는 흐름이고, SMTP는 메일을 보내는 흐름입니다. 이번 시퀀스에서는 두 기술을 많이 확장하기보다, 외부에서 들어온 결과를 우리 서비스의 사용자와 계정 복구 정책에 맞게 연결하는 기준을 익힙니다.
+이번 시퀀스는 다음 경계를 분리합니다.
 
-이 흐름을 잘못 다루면 아래 문제가 생길 수 있습니다.
+- Google 사용자 정보 검증 / 내부 계정 연결
+- OAuth 외부 인증 / 우리 API JWT
+- OAuth `state` 임시 저장 / API session 인증
+- 계정 복구 정책 / SMTP 구현
+- 자동 정책 테스트 / 실제 외부 연결 검증
+- raw reset token 전달 / hash 저장과 실제 비밀번호 변경
 
-- Google 로그인은 성공했지만 우리 서비스 사용자를 찾지 못합니다.
-- 같은 email의 로컬 계정과 OAuth 계정이 따로 생깁니다.
-- OAuth2 성공 후에도 우리 API를 호출할 자체 JWT가 없습니다.
-- 비밀번호 재설정 요청이 계정 존재 여부를 외부에 드러냅니다.
-- reset link나 SMTP password 같은 민감한 값이 로그나 문서에 남습니다.
+## 2. OAuth 사용자 식별
 
-## 2. Analyze - 어떤 선택 기준이 필요한가
+| 값 | 역할 |
+|---|---|
+| `provider` | 외부 제공자를 구분합니다. |
+| `providerId` | 제공자 안의 고유 사용자 ID이며 Google `sub`를 사용합니다. |
+| `email` | 내부 계정 충돌을 확인합니다. |
+| `emailVerified` | `true`인 email만 내부 판단에 사용합니다. |
 
-### 2.1 OAuth2 로그인에서 봐야 할 기준
+판단 순서:
 
-Google이 사용자를 인증해도, 우리 서비스는 다음 기준을 다시 판단해야 합니다.
+1. profile의 필수 값, 길이, verified 여부를 검증하고 정규화합니다.
+2. `provider + providerId`로 기존 OAuth 사용자를 찾습니다.
+3. 기존 사용자는 DB의 내부 email을 유지합니다.
+4. 기존 identity가 없고 같은 email 계정이 있으면 자동 연결하지 않습니다.
+5. 충돌이 없을 때만 신규 사용자를 저장하고 DB unique 제약으로 저장 경쟁을 막습니다.
 
-| 기준 | 이유 | 이번 코드에서 보는 곳 |
-|---|---|---|
-| `provider` | 어떤 외부 제공자인지 구분합니다. | `OAuthUserProfile.provider`, `User.authProvider` |
-| `providerId` | 외부 제공자 안에서 같은 사용자를 다시 찾습니다. | Google 응답의 `sub`, `User.providerId` |
-| `email` | 기존 계정과 충돌하는지 확인하는 보조 기준입니다. | `OAuthUserProfile.email`, `User.email` |
-| `emailVerified` | 제공자가 검증한 email만 로그인에 사용합니다. | Google 응답의 `email_verified`, `OAuthUserProfile.emailVerified` |
-| 자체 JWT | OAuth2 이후 우리 API 요청을 구분합니다. | `OAuthLoginResponse.accessToken` |
+같은 email의 LOCAL 계정은 외부 인증 결과만으로 소유권과 연결 동의를 증명할 수 없으므로 `link_required`로 끝냅니다.
 
-`email`만으로 외부 사용자를 식별하면 provider 안의 고유 식별자를 놓칠 수 있습니다. 따라서 `provider + providerId`로 외부 사용자를 식별하고, 검증된 `email`은 기존 계정과의 충돌을 확인하는 데 사용합니다. 같은 email의 로컬 계정이 있더라도 소유 확인 없이 자동 연결하지 않고 별도의 계정 연결 절차가 필요하다고 응답합니다.
+기존 OAuth 사용자의 provider email도 자동 갱신하지 않습니다. 내부 email은 현재 JWT subject와 게시글 작성자 식별값이므로 변경하려면 별도 소유 확인, 충돌 검사, 데이터 migration이 필요합니다.
 
-### 2.2 SMTP 계정 복구에서 봐야 할 기준
-
-비밀번호 재설정 메일 요청은 단순 메일 발송이 아니라 보안 흐름입니다.
-
-| 기준 | 이유 | 이번 코드에서 보는 곳 |
-|---|---|---|
-| 계정 존재 여부 응답 | 존재하지 않는 email을 외부에 드러내지 않기 위해 필요합니다. | `AccountRecoveryService.requestPasswordReset(...)` |
-| 발송 책임 분리 | 계정 복구 로직이 SMTP 세부 구현에 묶이지 않게 합니다. | `RecoveryMailSender`, `SmtpRecoveryMailSender` |
-| reset link | 사용자를 비밀번호 재설정 화면으로 보낼 진입점입니다. | `AccountRecoveryService.createResetLink(...)` |
-| 민감정보 관리 | token, SMTP password가 노출되지 않아야 합니다. | `application.yaml`, 환경변수, 로그 |
-
-## 3. API / 실행 시퀀스 다이어그램
-
-### 3.1 Google OAuth2 로그인 흐름
+## 3. OAuth 흐름
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant Browser as Browser
-    participant Google as Google OAuth2
-    participant Security as Spring Security
-    participant OAuthUser as CustomOAuthUserService
-    participant Handler as OAuthLoginSuccessHandler
+    participant Browser
+    participant Google
+    participant Security
+    participant Profile as CustomOAuthUserService
     participant Account as OAuthAccountService
-    participant Repo as UserRepository
-    participant Jwt as JwtTokenProvider
+    participant Handler as OAuthLoginSuccessHandler
 
-    Browser->>Security: GET /oauth2/authorization/google
-    Security->>Google: 인증 요청
-    Google-->>Security: authorization result
-    Security->>OAuthUser: Google 사용자 정보 조회
-    OAuthUser-->>Security: provider, providerId, email, emailVerified
-    Security->>Handler: OAuth2 login success
-    Handler->>Account: handleOAuthLogin(profile)
-    Account->>Repo: provider/providerId 기준 사용자 조회
-    alt same email local account exists
-        Account-->>Handler: account link required
-        Handler-->>Browser: redirect with oauth=link_required
-    else existing OAuth or new user
-        Account->>Jwt: 자체 JWT 발급 요청
-        Handler-->>Browser: redirect with token fragment
+    Browser->>Security: /oauth2/authorization/google
+    Security->>Google: request + state
+    Google-->>Security: callback + state
+    Security->>Profile: load user
+    Profile-->>Security: verified provider identity
+    Security->>Account: connect internal user
+    alt existing identity
+        Account-->>Handler: internal user + JWT
+    else same email exists
+        Account-->>Handler: link_required
+    else new identity
+        Account-->>Handler: saved user + JWT
     end
+    Handler-->>Browser: minimal public redirect
 ```
 
-이 흐름에서 Google은 외부 인증을 맡고, 우리 서비스는 사용자 식별, 계정 충돌 판단, 자체 JWT 발급을 맡습니다. 두 책임이 섞이면 로그인 성공 이후 어떤 사용자로 처리해야 하는지 흐려집니다.
+실패와 연결 필요 redirect에는 provider 원본 오류, 내부 예외, email, token을 넣지 않습니다.
 
-### 3.2 비밀번호 재설정 메일 요청 흐름
+## 4. STATELESS API와 임시 OAuth session
+
+`SessionCreationPolicy.STATELESS`는 보호 API가 HTTP session Authentication을 사용하지 않는다는 뜻입니다. 신원은 매 요청의 Bearer JWT로 만듭니다.
+
+OAuth 시작과 callback은 같은 흐름인지 `state`로 확인해야 하므로 OAuth client의 authorization-request 저장소가 짧은 session을 사용할 수 있습니다. 이 임시 session은 보호 API 권한이 아닙니다. OAuth 과정의 session만으로 `/auth/me`에 접근할 수 없어야 합니다.
+
+## 5. fragment 소비와 브라우저 경계
+
+성공 Handler는 우리 API JWT를 query가 아니라 fragment에 둡니다.
+
+```text
+/auth-practice/index.html?oauth=success#access_token=<jwt>
+```
+
+fragment는 서버 request target에 포함되지 않아 일반적인 access log와 referrer 전달 범위를 줄이지만 브라우저 JavaScript는 읽을 수 있습니다. 인증 실습 화면은 가장 먼저 `access_token`을 메모리로 옮기고 `history.replaceState`로 query와 fragment를 제거합니다. 그 JWT를 Bearer token으로 `/auth/me`에 보내고, 서버가 돌려준 내부 사용자 정보만 신원 근거로 사용합니다.
+
+JWT는 local storage, session storage, cookie에 저장하지 않습니다. 다만 이 화면은 token 구조를 학습하는 실습이므로 명시적인 token receipt에 JWT가 보일 수 있습니다. URL을 지운 것과 화면·메모리에서 secret이 사라진 것은 같은 의미가 아닙니다.
+
+복구 link도 같은 원칙으로 `#reset_token=<raw-token>`을 사용합니다. 화면은 raw token을 메모리로 소비하고 URL을 먼저 지운 다음 확정 요청에만 사용하며, DOM이나 HTTP 교환 기록에 값을 출력하지 않습니다.
+
+운영에서는 일회용 code 교환 또는 HttpOnly cookie를 검토하고, cookie를 쓰면 CSRF 정책도 다시 설계합니다.
+
+## 6. 계정 복구 공개 정책
+
+형식이 유효한 `POST /account-recovery/password-reset`은 `Cache-Control: no-store`와 함께 다음 경우 모두 같은 202를 반환합니다.
+
+- 계정이 없음
+- LOCAL 계정이 있음
+- OAuth 계정이 있음
+- SMTP 발송이 실패함
+
+요청 형식이 잘못됐거나 email이 254자를 넘으면 400입니다.
+
+OAuth 계정에는 사용자가 입력한 로컬 비밀번호가 없으므로 `LOCAL` 계정에만 메일 발송 event를 만듭니다. 외부 응답은 계정 존재, provider 종류, SMTP 결과를 구분하지 않습니다. SMTP는 commit 이후 bounded executor에서 비동기로 실행되므로 HTTP 요청은 메일 서버 응답을 기다리지 않습니다.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant Client as Client
-    participant Controller as AccountRecoveryController
-    participant Service as AccountRecoveryService
-    participant Repo as UserRepository
-    participant Sender as RecoveryMailSender
-    participant SMTP as SMTP Server
-
-    Client->>Controller: POST /auth/password-reset-mail
-    Controller->>Service: requestPasswordReset(email)
-    Service->>Repo: findByEmail(email)
-    alt user exists
-        Service->>Service: createResetLink(email)
-        Service->>Sender: sendPasswordResetMail(email, resetLink)
-        Sender->>SMTP: send mail
-    else user missing
-        Service-->>Controller: same visible response policy
-    end
-    Controller-->>Client: request accepted
+flowchart LR
+    A["AccountRecoveryController"] --> B["AccountRecoveryService"]
+    B --> C["UserRepository"]
+    B --> D["PasswordResetTokenRepository"]
+    B --> E["AFTER_COMMIT event"]
+    E --> F["bounded async executor"]
+    F --> G["RecoveryMailSender"]
+    G --> H["SmtpRecoveryMailSender"]
+    H --> I["JavaMailSender"]
 ```
 
-계정이 없을 때도 외부 응답이 과하게 달라지면, 공격자가 email 가입 여부를 추측할 수 있습니다. 이번 시퀀스에서는 이 위험을 줄이는 방향으로 흐름을 설계합니다.
+Service는 email 정규화, LOCAL 판단, token 회전과 event 발행을 담당합니다. dispatcher는 commit 이후 실행과 발송 실패 비노출을 담당하고, SMTP adapter는 발신자·수신자·제목·본문과 외부 호출만 담당합니다.
 
-## 4. 계층 / DTO / 메시지 흐름
+## 7. reset token 수명 주기
 
-### 4.1 OAuth2 계층 흐름
+token 생성과 저장:
 
-```mermaid
-flowchart TD
-    A["Google OAuth2 user info"] --> B["CustomOAuthUserService"]
-    B --> C["OAuthUserProfile(provider, providerId, email, emailVerified)"]
-    C --> D["OAuthLoginSuccessHandler"]
-    D --> E["OAuthAccountService"]
-    E --> F["UserRepository"]
-    E --> G["JwtTokenProvider"]
-    G --> H["OAuthLoginResponse(email, accessToken, provider, isNewUser)"]
-    H --> I["frontend redirect"]
+1. `SecureRandom`의 32-byte 난수를 Base64URL without padding 문자열로 만듭니다.
+2. raw token은 email 없는 reset link의 fragment에만 넣습니다.
+3. DB에는 raw token이 아니라 64자리 SHA-256 hex hash를 저장합니다.
+4. LOCAL 사용자당 token 행은 하나이며 새 발급 시 같은 행을 회전합니다. 그러면 이전 raw token은 즉시 매칭되지 않습니다.
+5. 기본 TTL은 15분입니다. `expiresAt > now`일 때만 유효하므로 정확히 만료 시각이면 실패합니다.
+
+확정 endpoint는 다음 계약을 사용합니다.
+
+```http
+POST /account-recovery/password-reset/confirm
+Content-Type: application/json
+
+{"token":"<raw-token>","newPassword":"<8~64자>"}
 ```
 
-| 계층 | 책임 | 직접 확인할 파일 |
-|---|---|---|
-| Security | OAuth2 성공 이벤트와 사용자 정보 로딩을 다룹니다. | `CustomOAuthUserService.kt`, `OAuthLoginSuccessHandler.kt` |
-| Service | 외부 사용자를 식별하고 기존 계정 충돌 시 연결 필요 결과를 냅니다. | `OAuthAccountService.kt` |
-| Repository | 내부 사용자 조회와 저장을 담당합니다. | `UserRepository.kt` |
-| DTO | 인증 성공 결과를 응답 형태로 정리합니다. | `OAuthUserProfile.kt`, `OAuthLoginResponse.kt` |
+유효하면 새 password를 BCrypt로 바꾸고 token의 `usedAt`을 같은 트랜잭션에서 기록한 뒤 `Cache-Control: no-store`와 204를 반환합니다. 만료·재사용·회전된 token 등 수명 주기 실패는 같은 400 `INVALID_PASSWORD_RESET_TOKEN`으로 처리합니다.
 
-### 4.2 SMTP 계정 복구 흐름
+LOCAL 사용자별 기본 재요청 cooldown은 1분입니다. 활성 token을 발급한 뒤 1분 전까지는 새 token과 메일을 만들지 않으며 정확히 1분 경계에서는 다시 허용합니다.
 
-```mermaid
-flowchart TD
-    A["PasswordResetMailRequest(email)"] --> B["AccountRecoveryController"]
-    B --> C["AccountRecoveryService"]
-    C --> D["UserRepository.findByEmail"]
-    C --> E["createResetLink(email)"]
-    E --> F["RecoveryMailSender"]
-    F --> G["SmtpRecoveryMailSender"]
-    G --> H["SMTP mail"]
-```
+## 8. 남아 있는 보안 범위
 
-| 계층 | 책임 | 직접 확인할 파일 |
-|---|---|---|
-| Controller | 요청 DTO를 받고 Service로 전달합니다. | `AccountRecoveryController.kt` |
-| Service | 사용자 조회, reset link 생성, 발송 요청을 조합합니다. | `AccountRecoveryService.kt` |
-| Port | 메일 발송 책임을 추상화합니다. | `RecoveryMailSender.kt` |
-| Adapter | 실제 SMTP 발송을 처리합니다. | `SmtpRecoveryMailSender.kt` |
-| DTO | 외부 요청 값을 담습니다. | `PasswordResetMailRequest.kt` |
+- 비밀번호 변경은 이미 발급된 JWT를 폐기하지 않습니다. token version, 사용자별 revoke 시각 또는 denylist가 필요합니다.
+- 사용자별 cooldown은 IP·장치별 공격과 여러 instance를 아우르는 distributed rate limiter가 아닙니다.
+- 학습 환경의 JPA `ddl-auto=update`는 Flyway 같은 versioned migration을 대신하지 않습니다.
+- H2 기반 자동 테스트는 MySQL의 실제 lock·격리 동작을 완전히 증명하지 않습니다.
+- 실제 Google consent/callback과 Gmail SMTP 인증·수신은 credential을 넣은 수동 E2E가 필요합니다.
 
-## 5. Action - 이번 구현에서 연결할 지점
+reset token, 복구 대상 email, reset link, credential, SMTP 내부 오류는 로그나 공개 응답에 남기지 않습니다.
 
-### 5.1 OAuth2 사용자 정보 읽기
+## 9. 검증 경계
 
-`CustomOAuthUserService.kt`에서는 기본 OAuth2 사용자 정보를 읽은 뒤, 우리 서비스가 사용할 `provider`, `providerId`, `email`, `emailVerified`를 정리해야 합니다. 여기서 `providerId`는 Google 응답의 `sub`, `emailVerified`는 `email_verified` 값입니다.
+자동 테스트:
 
-확인 질문:
+- OAuth 필수 값과 verified email
+- provider identity, email 충돌, 내부 email 안정성
+- unique 저장 경쟁과 자체 JWT
+- redirect의 fragment/no-store와 HTML 정적 진입점의 URL 제거 코드 연결
+- 임시 OAuth session과 보호 API 경계
+- LOCAL-only recovery, 같은 202, 1분 cooldown
+- token 난수·hash·회전·만료 경계·단일 사용·BCrypt 변경
+- AFTER_COMMIT·bounded async dispatch와 SMTP 실패 비노출
+- sender 메시지와 최신 04 회귀
 
-- Google 응답에서 `email`이 없을 때 어떻게 다룰 것인가요?
-- `email_verified`가 `false`이면 왜 로그인을 중단해야 하나요?
-- `sub` 값을 왜 우리 서비스의 `providerId`로 다시 담아야 하나요?
-- 이후 Handler가 같은 속성 이름으로 읽을 수 있나요?
+외부 수동 검증:
 
-### 5.2 OAuth2 성공 후 내부 사용자 연결
+- 실제 Google consent와 callback URI
+- 실제 SMTP 인증, TLS, 발신자 정책과 수신함 도착
 
-`OAuthLoginSuccessHandler.kt`는 성공 이벤트를 받는 입구이고, `OAuthAccountService.kt`는 내부 사용자 연결 정책이 모이는 곳입니다. Handler가 정책을 직접 처리하면 redirect와 계정 연결 책임이 섞이므로 Service로 분리합니다.
+자동 테스트는 외부 서버에 접속하지 않습니다. 단위 테스트 통과와 실제 provider 연결 성공을 서로 대신하지 않습니다.
 
-확인 질문:
+## 10. 완료 후 설명할 수 있어야 하는 것
 
-- 이미 같은 `provider + providerId` 사용자가 있을 때 어떤 결과여야 하나요?
-- 같은 email의 로컬 사용자가 있을 때 자동 연결하지 않고 `link_required`로 처리하나요?
-- OAuth2 성공 후 우리 서비스 JWT를 발급하는 위치가 명확한가요?
-
-### 5.3 비밀번호 재설정 메일 요청
-
-`AccountRecoveryService.kt`는 email로 사용자를 찾고, reset link를 만든 뒤, `RecoveryMailSender`에 발송을 맡깁니다. 실제 SMTP 세부 구현은 `SmtpRecoveryMailSender.kt`가 담당합니다.
-
-확인 질문:
-
-- 존재하지 않는 email 요청이 외부에 과하게 드러나지 않나요?
-- reset link 안의 token을 로그나 응답에 남기고 있지 않나요?
-- 테스트에서는 실제 SMTP 서버 없이 흐름을 확인할 수 있나요?
-
-## 6. Result - 무엇을 확인하고 어떤 한계가 남는가
-
-이번 시퀀스를 마치면 아래를 설명할 수 있어야 합니다.
-
-- OAuth2 로그인 성공 후에도 우리 서비스 사용자 연결이 필요한 이유
-- `provider`, `providerId`, `email`이 각각 필요한 이유
-- OAuth2 성공 후 자체 JWT를 발급하는 이유
-- 계정 복구 요청에서 존재하지 않는 email을 조심해서 다뤄야 하는 이유
-- 메일 발송 책임을 `RecoveryMailSender`로 분리하는 이유
-
-남는 한계도 분명히 봅니다.
-
-- 실제 비밀번호 변경 완료, 토큰 저장소, 재사용 방지까지는 이번 시퀀스의 중심 범위가 아닙니다.
-- Google client secret과 SMTP password는 실제 값 없이 환경변수 자리만 확인합니다.
-- 외부 Google 서버나 SMTP 서버에 직접 의존하지 않고 service 흐름을 우선 확인합니다.
-
-## 7. 실무 포인트
-
-- OAuth2는 외부 인증이고, JWT는 우리 서비스 API 인증입니다. 둘은 이어지지만 같은 역할이 아닙니다.
-- `email`은 바뀔 수 있거나 제공자별 정책이 다를 수 있으므로 외부 사용자 식별에는 `providerId`를 함께 봅니다.
-- 같은 email이라는 이유만으로 로컬 계정을 자동 연결하면 계정 탈취로 이어질 수 있으므로, 별도의 소유 확인과 명시적 동의 절차가 필요합니다.
-- 계정 복구 API는 계정 존재 여부, token, reset link를 모두 민감하게 다뤄야 합니다.
-- SMTP password, Google client secret, JWT secret은 코드와 문서에 실제 값으로 남기지 않습니다.
-- 테스트는 외부 네트워크보다 내부 service 결정과 sender 호출 여부를 먼저 검증합니다.
-
-## 8. 용어 정리
-
-### OAuth2
-
-- 뜻
-  외부 제공자가 사용자 인증을 처리하고, 우리 서비스가 그 결과를 받아오는 인증 흐름입니다.
-- 왜 중요한가
-  자체 로그인만으로는 외부 계정 로그인을 처리할 수 없기 때문입니다.
-- 이번 코드에서는 어디에 보이는가
-  `SecurityConfig.kt`, `CustomOAuthUserService.kt`, `OAuthLoginSuccessHandler.kt`
-- 짧은 상황 예시
-  사용자가 Google 로그인 버튼을 누르면 Google이 인증을 처리하고, 우리 서버가 성공 결과를 받습니다.
-
-### provider / providerId
-
-- 뜻
-  `provider`는 Google 같은 외부 제공자 이름이고, `providerId`는 그 제공자 안에서 사용자를 구분하는 값입니다.
-- 왜 중요한가
-  같은 email이라도 외부 제공자 기준의 고유 사용자를 다시 찾기 위해 필요합니다.
-- 이번 코드에서는 어디에 보이는가
-  `OAuthUserProfile`, `User.authProvider`, `User.providerId`
-- 짧은 상황 예시
-  Google 사용자는 `provider=GOOGLE`, `providerId=<Google sub>` 조합으로 다시 찾을 수 있습니다.
-
-### SMTP
-
-- 뜻
-  메일을 보내기 위한 전송 프로토콜입니다.
-- 왜 중요한가
-  비밀번호 재설정 링크처럼 사용자에게 전달해야 하는 메시지를 보낼 때 필요합니다.
-- 이번 코드에서는 어디에 보이는가
-  `SmtpRecoveryMailSender.kt`, `spring.mail.*` 설정
-- 짧은 상황 예시
-  사용자가 비밀번호 재설정 메일을 요청하면 서버가 SMTP 설정으로 메일을 보냅니다.
-
-### reset link
-
-- 뜻
-  사용자를 비밀번호 재설정 화면으로 이동시키기 위한 링크입니다.
-- 왜 중요한가
-  링크 안의 token이 계정 복구 권한처럼 동작할 수 있어 민감하게 다뤄야 합니다.
-- 이번 코드에서는 어디에 보이는가
-  `AccountRecoveryService.createResetLink(...)`
-- 짧은 상황 예시
-  메일 본문에 reset link가 들어가고, 사용자는 그 링크로 다음 단계를 진행합니다.
-
-### RecoveryMailSender
-
-- 뜻
-  계정 복구 메일 발송 책임을 표현하는 인터페이스입니다.
-- 왜 중요한가
-  Service가 SMTP 구현에 직접 묶이지 않도록 도와줍니다.
-- 이번 코드에서는 어디에 보이는가
-  `RecoveryMailSender.kt`, `SmtpRecoveryMailSender.kt`
-- 짧은 상황 예시
-  테스트에서는 fake sender로 바꾸고, 운영에서는 SMTP sender로 바꿔 같은 service 흐름을 확인할 수 있습니다.
-
-## 9. 다음 구현으로 연결되는 지점
-
-`docs/implementation.md`에서는 위 흐름을 기준으로 TODO를 채웁니다. 구현할 때는 먼저 OAuth2 사용자 정보가 어떤 DTO로 정리되는지 보고, 그 다음 내부 사용자 연결과 자체 JWT 발급, 마지막으로 계정 복구 메일 요청 흐름을 확인하면 됩니다.
+- providerId와 verified email의 역할 차이
+- LOCAL 동일 email을 자동 연결하지 않는 이유
+- 내부 email을 안정적으로 유지하는 이유
+- OAuth state session과 STATELESS API의 차이
+- fragment를 즉시 지워도 메모리·화면 노출 경계를 별도로 봐야 하는 이유
+- 복구 요청이 같은 202를 반환하는 이유
+- LOCAL-only recovery와 `RecoveryMailSender` 분리
+- raw token과 DB hash를 분리하는 이유
+- 만료·회전·단일 사용과 BCrypt 변경의 트랜잭션 경계
+- AFTER_COMMIT 비동기 SMTP가 HTTP 결과와 분리되는 이유
+- 기존 JWT 폐기와 distributed rate limit이 별도 과제인 이유
 
 <details>
 <summary>멘토용 설명 포인트</summary>
 
-- 멘티가 Google 로그인 성공과 우리 서비스 로그인 성공을 같은 사건으로 보는지 확인합니다.
-- `providerId`와 `email`의 차이를 질문으로 먼저 끌어냅니다.
-- SMTP 파트에서는 메일 발송 성공보다 계정 존재 여부 노출과 token 민감도를 먼저 확인합니다.
-- 구현 방향을 먼저 제시하기보다 “같은 email의 로컬 사용자가 이미 있으면 어떤 일이 생기나요?”처럼 시나리오 질문으로 유도합니다.
+- email 동일성과 계정 소유권이 같은 개념인지 질문합니다.
+- 외부 email 자동 변경이 JWT subject와 ownership에 미칠 영향을 묻습니다.
+- STATELESS를 이유로 OAuth state 검증까지 제거하지 않게 합니다.
+- SMTP 성공보다 202 비노출과 LOCAL-only 정책을 먼저 설명하게 합니다.
+- URL 제거만으로 token 노출 위험이 모두 사라진다고 설명하지 않게 합니다.
+- 실제 MySQL·Google·Gmail 검증과 자동 테스트의 증거 범위를 구분하게 합니다.
 
 </details>

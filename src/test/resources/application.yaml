@@ -1,17 +1,28 @@
 spring:
   autoconfigure:
     exclude:
-      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
     driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
   mail:
     host: localhost
     port: 2525
-    username: test@example.com
+    username: test-user
     password: test-password
+    properties:
+      "[mail.smtp.auth]": true
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": true
+      "[mail.smtp.connectiontimeout]": 1000
+      "[mail.smtp.timeout]": 1000
+      "[mail.smtp.writetimeout]": 1000
   security:
     oauth2:
       client:
@@ -22,19 +33,20 @@ spring:
             scope:
               - profile
               - email
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    open-in-view: false
 
 springdoc:
   swagger-ui:
     enabled: false
 
 jwt:
-  secret: "change-this-secret-for-sequence-05-change-this-secret"
+  secret: "test-only-secret-key-for-hs256-at-least-32-bytes"
   expiration-ms: 3600000
+  issuer: spring-boot-db-access-lab-test
+  audience: spring-boot-db-access-lab-test-api
 
 app:
-  frontend-url: "http://localhost:8080/auth-demo.html"
-  password-reset-url: "http://localhost:8080/auth-demo.html"
+  frontend-url: http://localhost:8080/auth-practice/index.html
+  password-reset-url: http://localhost:8080/auth-practice/index.html
+  password-reset-token-ttl: PT15M
+  password-reset-resend-cooldown: PT1M
+  recovery-mail-from: no-reply@test.local

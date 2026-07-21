@@ -1,54 +1,65 @@
 spring:
   application:
     name: spring-boot-db-access-lab
+  config:
+    import: "optional:file:.env[.properties]"
   autoconfigure:
     exclude:
-      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/aandi_lab?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/aandi_lab?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:demo@example.com}
-    password: ${MAIL_PASSWORD:demo-password}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:update}
     properties:
       hibernate:
         format_sql: true
     defer-datasource-initialization: true
     open-in-view: false
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: "${SPRING_MAIL_USERNAME:}"
+    password: "${SPRING_MAIL_PASSWORD:}"
+    properties:
+      "[mail.smtp.auth]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
+      "[mail.smtp.starttls.required]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED:true}
+      "[mail.smtp.connectiontimeout]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT:5000}
+      "[mail.smtp.timeout]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT:5000}
+      "[mail.smtp.writetimeout]": ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT:5000}
   security:
     oauth2:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:demo-google-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:demo-google-client-secret}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - profile
               - email
 
 springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:true}
   swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:true}
     path: /swagger
     operations-sorter: method
   default-produces-media-type: application/json
 
 jwt:
-  secret: "change-this-secret-for-sequence-05-change-this-secret"
-  expiration-ms: 3600000
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+  issuer: ${JWT_ISSUER:spring-boot-db-access-lab}
+  audience: ${JWT_AUDIENCE:spring-boot-db-access-lab-api}
 
 app:
-  frontend-url: "http://localhost:8080/auth-demo.html"
-  password-reset-url: "http://localhost:8080/auth-demo.html"
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:8080/auth-practice/index.html}
+  password-reset-url: ${APP_PASSWORD_RESET_URL:http://localhost:8080/auth-practice/index.html}
+  password-reset-token-ttl: ${APP_PASSWORD_RESET_TOKEN_TTL:PT15M}
+  password-reset-resend-cooldown: ${APP_PASSWORD_RESET_RESEND_COOLDOWN:PT1M}
+  recovery-mail-from: ${APP_RECOVERY_MAIL_FROM:no-reply@example.com}
