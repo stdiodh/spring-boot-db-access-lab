@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" role="img" aria-labelledby="seq03-title seq03-desc">
+  <title id="seq03-title">03 요청 실패 게이트 지도</title>
+  <desc id="seq03-desc">시스템 밖 Request가 입구·출구 Validation, 서비스·정책 Service, 상태·데이터 Repository를 지나며 형식 오류는 400에서, 대상 없음은 404에서 멈추는 지도</desc>
+  <metadata>Source: A&amp;I Backend Visual Lab; License: project-local educational asset; redistribution follows repository terms.</metadata>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#2955E4"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;fill:#111B3F}
+      .frame{fill:#FFFFFF;stroke:#6F82B8;stroke-width:2}
+      .node{stroke-width:2.5}
+      .layer-outside{fill:#F1F5F9;stroke:#5B677A}
+      .layer-interface{fill:#E6F4F7;stroke:#0E7490}
+      .layer-application{fill:#F2EDFF;stroke:#6D43A8}
+      .layer-resource{fill:#EAF5EE;stroke:#2C7352}
+      .layer-integration{fill:#FFF4D6;stroke:#926000}
+      .layer-runtime{fill:#EEF2F7;stroke:#52627A}
+      [data-layer="outside"] .layer{fill:#5B677A}
+      [data-layer="resource"] .layer{fill:#2C7352}
+      .flow{fill:none;stroke:#2955E4;stroke-width:3;marker-end:url(#arrow)}
+      .stop{fill:none;stroke:#B4233C;stroke-width:2.5;stroke-dasharray:6 4}
+      .failure{fill:#FFF1F2;stroke:#B4233C;stroke-width:2.5}
+      .group{font-size:27px;font-weight:850;fill:#0C2691}
+      .layer{font-size:25px;font-weight:800;fill:#4B587C;text-anchor:middle}
+      .name{font-size:25px;font-weight:800;text-anchor:middle}
+      .failure-name{font-size:25px;font-weight:850;fill:#8F1830;text-anchor:middle}
+      .failure-body{font-size:25px;font-weight:700;fill:#8F1830;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="720" height="340" fill="#F8F9FB"/>
+  <rect x="16" y="16" width="688" height="312" rx="18" class="frame"/>
+  <text x="34" y="58" class="group">정상 흐름 · 통과할 때만 다음 위치로 이동</text>
+
+  <g data-layer="outside">
+    <rect x="32" y="82" width="128" height="110" rx="10" class="node layer-outside"/>
+    <text x="96" y="120" class="layer">시스템 밖</text>
+    <text x="96" y="162" class="name">Request</text>
+  </g>
+  <path d="M160 137h14" class="flow"/>
+  <g data-layer="interface">
+    <rect x="180" y="82" width="164" height="110" rx="10" class="node layer-interface"/>
+    <text x="262" y="120" class="layer">입구·출구</text>
+    <text x="262" y="162" class="name">Validation</text>
+  </g>
+  <path d="M344 137h14" class="flow"/>
+  <g data-layer="application">
+    <rect x="364" y="82" width="132" height="110" rx="10" class="node layer-application"/>
+    <text x="430" y="120" class="layer">서비스·정책</text>
+    <text x="430" y="162" class="name">Service</text>
+  </g>
+  <path d="M496 137h14" class="flow"/>
+  <g data-layer="resource">
+    <rect x="516" y="82" width="172" height="110" rx="10" class="node layer-resource"/>
+    <text x="602" y="120" class="layer">상태·데이터</text>
+    <text x="602" y="162" class="name">Repository</text>
+  </g>
+
+  <path d="M262 192v20" class="stop"/>
+  <g data-semantic="state">
+    <rect x="152" y="218" width="220" height="94" rx="10" class="failure"/>
+    <text x="262" y="255" class="failure-name">× 400 · 형식 오류</text>
+    <text x="262" y="290" class="failure-body">검증에서 중단</text>
+  </g>
+  <path d="M602 192v20" class="stop"/>
+  <g data-semantic="state">
+    <rect x="492" y="218" width="220" height="94" rx="10" class="failure"/>
+    <text x="602" y="255" class="failure-name">× 404 · 대상 없음</text>
+    <text x="602" y="290" class="failure-body">조회에서 중단</text>
+  </g>
+</svg>

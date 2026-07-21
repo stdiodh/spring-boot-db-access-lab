@@ -8,6 +8,7 @@
 - [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개입니다.
 - [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.
 - [ ] `docker compose up -d --wait --wait-timeout 120`으로 MySQL과 Mailpit 준비 상태를 확인했습니다.
+- [ ] Visual Lab의 verified·unverified·LOCAL 충돌·복구 생명주기 네 조건을 비교했습니다.
 
 ## 2. OAuth profile과 계정 정책
 
