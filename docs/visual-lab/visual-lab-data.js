@@ -37,10 +37,10 @@ window.visualLabData = {
     {
       "id": "seq-05",
       "label": "05 OAuth2 + SMTP",
-      "problem": "외부 인증 성공 뒤에도 verified email, providerId 식별, 기존 계정 충돌 처리가 필요합니다.",
-      "concept": "OAuth2 profile, account collision policy, mail sender",
-      "action": "검증된 profile로 사용자를 식별하고 동일 email 계정은 자동 연결하지 않으며 reset link 발송 책임을 분리합니다.",
-      "check": "계정 충돌 분기에 JWT가 발급되지 않고 외부 secret과 reset token이 노출되지 않는지 확인합니다."
+      "problem": "외부 인증 결과와 비밀번호 재설정 token을 그대로 신뢰하면 계정 연결과 복구 경계가 무너집니다.",
+      "concept": "OAuth2 trust, hashed reset token lifecycle, async mail boundary",
+      "action": "검증된 profile만 내부 계정으로 연결하고 raw reset token은 hash로 저장한 뒤 commit 이후 메일과 단일 사용 confirm을 분리합니다.",
+      "check": "계정 충돌에서는 JWT가 없고, 복구에서는 DB hash·15분 TTL·단일 사용·비동기 SMTP 경계가 유지되는지 확인합니다."
     },
     {
       "id": "seq-06",
@@ -82,7 +82,7 @@ window.visualLabData = {
       "title": "OAuth2 + SMTP",
       "topic": "External authentication and account recovery",
       "href": "./sequences/05/index.html",
-      "summary": "외부 인증 성공과 우리 서비스 로그인 성공은 왜 같은 사건이 아닐까?"
+      "summary": "외부 인증 결과와 reset token을 우리 서비스는 어느 경계에서 다시 검증할까?"
     },
     {
       "sequence": "06",
