@@ -107,7 +107,7 @@ window.visualLabData = {
         "boundary": "Service under test"
       },
       "passwordEncoder": {
-        "label": "PasswordEncoder",
+        "label": "Mock PasswordEncoder",
         "icon": "security",
         "kind": "security",
         "role": "비밀번호 비교 결과를 테스트가 통제하는 mock collaborator입니다.",
@@ -115,7 +115,7 @@ window.visualLabData = {
         "boundary": "테스트 대역"
       },
       "jwtTokenProvider": {
-        "label": "JwtTokenProvider",
+        "label": "Mock JwtTokenProvider",
         "icon": "token",
         "kind": "token",
         "role": "token 문자열과 만료 시간을 테스트가 통제하는 mock collaborator입니다.",
@@ -194,10 +194,10 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "PostServiceTest가 request·ownerEmail과 mock Repository 반환값을 준비했습니다.",
-        "observationTitle": "저장 결과의 네 필드 보존",
+        "observationTitle": "저장 입력과 응답 보존",
         "reflection": {
           "prompt": "fixture와 stub이 성공 테스트를 재현 가능하게 만드는 규칙을 설명해 보세요.",
-          "hint": "입력과 협력자 반환을 고정한 뒤 id, title, content, author를 비교합니다."
+          "hint": "입력과 협력자 반환을 고정한 뒤 save 인자와 응답의 id, title, content, author를 비교합니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
@@ -393,7 +393,7 @@ window.visualLabData = {
         "snapshot": [
           { "label": "Given", "value": "fixture + mock 저장 결과" },
           { "label": "When", "value": "PostService 호출" },
-          { "label": "Then", "value": "응답 필드 검증 PASS", "tone": "recovered" }
+          { "label": "Then", "value": "저장 인자 + 응답 검증 PASS", "tone": "recovered" }
         ],
         "evidence": "ArgumentCaptor로 save 입력의 title·content·author를 확인하고, 반환 응답의 id·title·content·author도 비교합니다. 실제 DB 연결은 범위 밖입니다.",
         "outcome": "Service가 principal과 request를 올바른 Entity로 저장하고 저장 결과를 응답으로 매핑하는 두 계약을 함께 고정합니다."
@@ -574,7 +574,7 @@ window.visualLabData = {
         "label": "저장된 비밀번호와 다른 password 로그인",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "`password123` hash를 저장한 사용자와 `wrong-password` 요청을 준비했습니다.",
+        "prompt": "`encoded-password`를 저장한 사용자와 `wrong-password` 요청, `matches=false`를 준비했습니다.",
         "observationTitle": "JWT 생성 전 비밀번호 실패",
         "reflection": {
           "prompt": "mock encoder의 반환값과 JWT 미호출이 실패 분기를 어떻게 증명하는지 설명해 보세요.",
@@ -910,7 +910,7 @@ window.visualLabData = {
                     "before": "HTTP Client: Authorization header 없음 전송 준비",
                     "after": "Security Filter: Authorization header 없음 수신"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "Authentication"
                 },
                 {
@@ -925,7 +925,7 @@ window.visualLabData = {
                     "before": "Security Filter: Authentication을 만들지 못한 요청",
                     "after": "Spring Security authorization: principal 없는 요청의 authorization 평가 시작"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "JwtAuthenticationFilter"
                 },
                 {
@@ -940,7 +940,7 @@ window.visualLabData = {
                     "before": "보호 endpoint: 인증된 principal 없이 접근 시도",
                     "after": "authorization 거절; Controller method는 실행되지 않음"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "check": "SecurityErrorHandlerTest와 인증 통합 테스트에서 401 status와 ErrorResponse를 확인합니다."
                 },
                 {
@@ -955,7 +955,7 @@ window.visualLabData = {
                     "before": "HTTP Client: HTTP status와 body 미확정",
                     "after": "HTTP Client: 401 Unauthorized + ErrorResponse"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 }
               ]
             },
@@ -976,7 +976,7 @@ window.visualLabData = {
                     "before": "HTTP Client: valid Bearer + invalid request body 전송 준비",
                     "after": "Security Filter: valid Bearer + invalid request body 수신"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "securityFilter",
@@ -990,7 +990,7 @@ window.visualLabData = {
                     "before": "Security Filter: 테스트 입력 request DTO 구성",
                     "after": "DTO Validation: request DTO 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "validation",
@@ -1004,7 +1004,7 @@ window.visualLabData = {
                     "before": "invalid request body: Controller 진입 후보",
                     "after": "Validation 실패; Service와 DB 호출 차단"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "Validation"
                 },
                 {
@@ -1019,7 +1019,7 @@ window.visualLabData = {
                     "before": "HTTP Client: HTTP status와 body 미확정",
                     "after": "HTTP Client: 400 Bad Request + ErrorResponse"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 }
               ]
             },
@@ -1040,7 +1040,7 @@ window.visualLabData = {
                     "before": "HTTP Client: valid Bearer + PUT /posts/{id} 전송 준비",
                     "after": "Security Filter: valid Bearer + PUT /posts/{id} 수신"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "securityFilter",
@@ -1054,7 +1054,7 @@ window.visualLabData = {
                     "before": "Security Filter: 테스트 입력 authenticated request 구성",
                     "after": "DTO Validation: authenticated request 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "validation",
@@ -1068,7 +1068,7 @@ window.visualLabData = {
                     "before": "DTO Validation: 테스트 입력 valid PostUpdateRequest 구성",
                     "after": "PostController: valid PostUpdateRequest 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "postController",
@@ -1082,7 +1082,7 @@ window.visualLabData = {
                     "before": "PostController: 테스트 입력 id + request + currentUserEmail 구성",
                     "after": "PostService: id + request + currentUserEmail 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "postService",
@@ -1096,7 +1096,7 @@ window.visualLabData = {
                     "before": "PostEntity: 다른 작성자의 기존 값 유지",
                     "after": "작성자 불일치 예외 발생; UPDATE와 save 호출 차단"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "Authorization"
                 },
                 {
@@ -1111,7 +1111,7 @@ window.visualLabData = {
                     "before": "HTTP Client: HTTP status와 body 미확정",
                     "after": "HTTP Client: 403 Forbidden + ErrorResponse"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 }
               ]
             }
