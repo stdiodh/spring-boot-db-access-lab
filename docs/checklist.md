@@ -1,129 +1,80 @@
-# 05 OAuth2와 SMTP 계정 복구 체크리스트
+# 06 테스트와 검증 체크리스트
 
-## 1. 기반과 구조
+## 1. 기준선과 범위
 
-- [ ] 최신 `04-answer`의 JWT·인가·오류·UI·Swagger 회귀를 보존했습니다.
-- [ ] package가 `common/user/auth/oauth/recovery/post`로 나뉩니다.
-- [ ] README와 구현 문서의 경로가 실제 파일과 일치합니다.
-- [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개입니다.
-- [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.
-- [ ] `docker compose up -d --wait --wait-timeout 120`으로 MySQL과 Mailpit 준비 상태를 확인했습니다.
-- [ ] Visual Lab의 verified·unverified·LOCAL 충돌·복구 생명주기 네 조건을 비교했습니다.
+- [ ] 최신 `05-answer`의 production, 설정, 정적 화면과 Visual Lab을 보존했습니다.
+- [ ] 기존 104개 `@Test` 선언과 test source를 삭제하지 않았습니다.
+- [ ] 신규 범위가 `PostService` 2개, `AuthService` 2개 test body로 제한됩니다.
+- [ ] `PostAuthorizationServiceTest`와 기존 signup 테스트 네 개를 유지했습니다.
+- [ ] production 코드를 테스트에 맞춰 수정하지 않았습니다.
+- [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개뿐입니다.
+- [ ] 과거 flat package 경로와 별도 answer/assets/branch guide가 없습니다.
 
-## 2. OAuth profile과 계정 정책
+## 2. starter 실패 계약
 
-- [ ] Google `sub`를 providerId로 사용합니다.
-- [ ] email이 없거나 `email_verified=true`가 아니면 거부합니다.
-- [ ] provider와 email을 `Locale.ROOT` 규칙으로 정규화하고 providerId를 포함한 길이를 확인합니다.
-- [ ] `provider + providerId`로 기존 사용자를 먼저 찾습니다.
-- [ ] 같은 email의 LOCAL·다른 외부 계정을 자동 연결하지 않습니다.
-- [ ] 연결 필요 상태에 token이나 내부 정보를 넣지 않습니다.
-- [ ] 기존 OAuth 사용자의 내부 email을 provider 변경값으로 자동 갱신하지 않습니다.
-- [ ] 신규 저장과 DB unique 경쟁을 안전하게 처리합니다.
-- [ ] 성공 뒤 우리 서비스 JWT를 발급합니다.
+- [ ] `./gradlew testClasses`가 통과합니다.
+- [ ] 미완성 상태에서는 신규 네 test만 명시적 `TODO()`로 실패합니다.
+- [ ] 네 TODO가 서로 어떤 테스트인지 알 수 있는 메시지를 가집니다.
+- [ ] 빈 body나 assertion 없는 거짓 green test가 없습니다.
+- [ ] 기존 회귀 test, context, dependency 실패가 없습니다.
 
-## 3. redirect와 session 경계
+## 3. fixture
 
-- [ ] 성공 JWT는 query가 아니라 fragment의 `access_token`에만 있습니다.
-- [ ] HTML은 초기 script에서 OAuth/reset fragment를 메모리로 소비합니다.
-- [ ] 소비 직후 `history.replaceState`로 query와 fragment를 제거합니다.
-- [ ] OAuth JWT로 `/auth/me`를 호출하고 서버 응답만 내부 신원 근거로 사용합니다.
-- [ ] OAuth JWT와 reset token을 local/session storage나 cookie에 저장하지 않습니다.
-- [ ] reset token을 DOM이나 HTTP 교환 기록에 표시하지 않습니다.
-- [ ] OAuth JWT는 학습용 token receipt에 명시적으로 보일 수 있다는 경계를 설명합니다.
-- [ ] redirect에 `Cache-Control: no-store`가 있습니다.
-- [ ] failed/link_required에 email, token, 원본 오류가 없습니다.
-- [ ] URL 제거가 운영 token 전달 설계나 token 전체 비노출을 뜻하지 않음을 설명합니다.
-- [ ] OAuth `state`용 임시 session과 API session 인증을 구분합니다.
-- [ ] OAuth session만으로 보호 API에 접근할 수 없습니다.
-- [ ] 보호 API는 계속 Bearer JWT를 요구합니다.
+- [ ] `TestFixtureFactory`가 현재 `auth/post/user` feature package를 import합니다.
+- [ ] `postCreateRequest`, `postEntity`, `loginRequest`, `user` 네 함수만 제공합니다.
+- [ ] 기본 email과 author가 `tester@example.com`으로 일치합니다.
+- [ ] mixed-case email, wrong password, 저장 id와 author 같은 판단값은 호출부에 드러납니다.
+- [ ] fixture를 production helper로 옮기지 않았습니다.
+- [ ] 기존 테스트를 fixture 사용으로 일괄 변경하지 않았습니다.
 
-## 4. 계정 복구
+## 4. PostService 테스트
 
-- [ ] endpoint를 `POST /account-recovery/password-reset`으로 통일했습니다.
-- [ ] email은 NotBlank, Email, 최대 254자를 검증하고 `Locale.ROOT`로 정규화합니다.
-- [ ] 존재하지 않는 계정은 sender를 호출하지 않습니다.
-- [ ] LOCAL 계정만 복구 메일을 보냅니다.
-- [ ] OAuth 계정은 sender를 호출하지 않습니다.
-- [ ] 계정 없음, OAuth 계정, SMTP 실패도 유효한 요청이면 `no-store`와 같은 202입니다.
-- [ ] 202를 mail delivery 성공으로 표현하지 않습니다.
-- [ ] LOCAL 사용자별 1분 cooldown 안에는 token과 mail event를 재발급하지 않습니다.
-- [ ] 정확히 1분 경계에서는 재발급을 허용합니다.
-- [ ] SMTP는 HTTP 응답과 분리되어 요청 thread가 발송 완료를 기다리지 않습니다.
-- [ ] reset token, 복구 대상 email, link, SMTP 오류를 로그·공개 응답에 넣지 않습니다.
+- [ ] 생성 성공에서 request title과 content를 명시합니다.
+- [ ] 작성자 email을 인증된 principal 값으로 별도 준비합니다.
+- [ ] Repository 저장 결과에 명시적인 id가 있습니다.
+- [ ] `ArgumentCaptor`로 save 입력의 title, content, author를 확인합니다.
+- [ ] response의 id, title, content, author를 확인합니다.
+- [ ] 없는 id 조회에서 `Optional.empty()`를 stub합니다.
+- [ ] `PostNotFoundException`을 확인합니다.
+- [ ] Repository가 같은 id로 조회됐는지 확인합니다.
 
-## 5. reset token과 비밀번호 변경
+## 5. AuthService 테스트
 
-- [ ] raw token은 `SecureRandom` 32-byte를 Base64URL without padding으로 인코딩합니다.
-- [ ] reset link에는 email 없이 `#reset_token=<raw-token>` fragment만 있습니다.
-- [ ] DB에는 raw token이 아니라 64자리 SHA-256 hex hash만 저장합니다.
-- [ ] 사용자당 token 행 하나를 회전하며 새 발급이 이전 token을 무효화합니다.
-- [ ] TTL 기본값은 15분이고 정확히 만료 시각이면 무효입니다.
-- [ ] 확정 endpoint는 `POST /account-recovery/password-reset/confirm`입니다.
-- [ ] 확정 body는 `{token,newPassword}`이고 password는 8~64자를 검증합니다.
-- [ ] 유효한 확정은 `no-store`와 204를 반환합니다.
-- [ ] 만료·재사용·회전·미존재 token은 같은 400 `INVALID_PASSWORD_RESET_TOKEN`입니다.
-- [ ] 새 password는 BCrypt로 encode합니다.
-- [ ] password 변경과 token 사용 처리를 같은 트랜잭션에서 수행합니다.
-- [ ] 한 번 성공한 token은 재사용할 수 없습니다.
+- [ ] 로그인 성공 요청의 mixed-case email이 소문자로 조회됩니다.
+- [ ] raw password와 저장 hash가 `PasswordEncoder.matches`에 전달됩니다.
+- [ ] `JwtTokenProvider.createToken`이 정규화된 내부 email로 호출됩니다.
+- [ ] `expirationSeconds`를 명시적으로 stub하고 읽힌 값을 검증합니다.
+- [ ] access token, `Bearer`, expiry를 확인합니다.
+- [ ] 비밀번호 불일치에서 `InvalidCredentialsException`을 확인합니다.
+- [ ] 실패 뒤 `JwtTokenProvider`가 전혀 호출되지 않았음을 확인합니다.
+- [ ] 실제 BCrypt나 실제 JWT를 Service 단위 테스트에서 생성하지 않습니다.
 
-## 6. mail 책임과 비동기 경계
+## 6. 증거 범위
 
-- [ ] `AccountRecoveryService`는 mail event를 발행하고 SMTP 구현을 직접 알지 않습니다.
-- [ ] `RecoveryMailEventDispatcher`가 `RecoveryMailSender`에 의존합니다.
-- [ ] `SmtpRecoveryMailSender`만 `JavaMailSender`를 사용합니다.
-- [ ] token 저장 transaction이 commit된 뒤에만 mail event를 처리합니다.
-- [ ] recovery 전용 executor의 thread/queue 크기가 bounded입니다.
-- [ ] event `toString`, async 실패 log, task 거부 log에 email·token·link·SMTP 원인이 없습니다.
-- [ ] 발신자는 `APP_RECOVERY_MAIL_FROM`으로 설정합니다.
-- [ ] SMTP 설정은 `SPRING_MAIL_*`과 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`을 사용합니다.
-- [ ] 연결·읽기·쓰기 timeout이 유한합니다.
-- [ ] 자동 테스트는 실제 SMTP에 연결하지 않습니다.
+- [ ] 신규 테스트가 Service 입력·협력·반환·예외를 보장한다고 설명합니다.
+- [ ] Service 단위 테스트가 HTTP 400·401·403을 직접 보장한다고 표현하지 않습니다.
+- [ ] 최신 05의 기존 HTTP·보안 integration test를 보존했습니다.
+- [ ] 실제 MySQL, Google callback과 SMTP 수신을 자동 테스트 결과로 과장하지 않습니다.
+- [ ] Google·SMTP credential 없이 자동 테스트가 끝납니다.
 
-## 7. 자동 테스트
+## 7. 최종 검증
 
-- [ ] OAuth 필수 값·verified email 테스트가 있습니다.
-- [ ] provider identity·email 충돌·내부 email 안정성 테스트가 있습니다.
-- [ ] unique 저장 경쟁과 redirect 비노출 테스트가 있습니다.
-- [ ] 임시 OAuth session과 보호 API 경계 테스트가 있습니다.
-- [ ] HTML 정적 진입점에 fragment 소비·URL 제거·memory-only 코드가 연결되어 있습니다.
-- [ ] LOCAL-only recovery, 같은 202와 cooldown 경계 테스트가 있습니다.
-- [ ] raw token 길이·Base64URL 형식·매번 새 값·SHA-256 hash 테스트가 있습니다.
-- [ ] token 회전·15분 만료 경계·단일 사용·BCrypt 변경 테스트가 있습니다.
-- [ ] AFTER_COMMIT·async dispatch·SMTP 실패 비노출 테스트가 있습니다.
-- [ ] reset link fragment와 SMTP 메시지 조립 테스트가 있습니다.
-- [ ] `05-implementation`의 초기 TODO 실패가 의도된 상태임을 확인했습니다.
-- [ ] `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
+- [ ] 대상 `AuthServiceTest`, `PostServiceTest`가 통과합니다.
+- [ ] 전체 `./gradlew test`가 통과합니다.
+- [ ] `./gradlew test --rerun-tasks`가 다시 통과합니다.
+- [ ] 최소 108개의 `@Test` 선언이 있습니다.
+- [ ] 완성된 두 test file에 `TODO()`가 없습니다.
 - [ ] `git diff --check`가 통과합니다.
-
-## 8. 외부 수동 검증
-
-- [ ] 기본 Mailpit(`http://localhost:8025`)에서 reset 메일과 fragment link를 확인했습니다.
-- [ ] Google callback URI를 `/login/oauth2/code/google`로 등록했습니다.
-- [ ] 실제 Google redirect 뒤 query·fragment가 즉시 지워지는지 확인했습니다.
-- [ ] `/auth/me`가 내부 신원을 표시하고 browser storage/cookie에 JWT가 없는지 확인했습니다.
-- [ ] 실제 SMTP credential은 로컬 secret으로만 주입했습니다.
-- [ ] LOCAL 계정 메일 수신, reset 성공과 token 재사용 거부를 확인했습니다.
-- [ ] 없는/OAuth 계정의 같은 202와 HTTP가 SMTP를 기다리지 않는지 확인했습니다.
-- [ ] 실제 MySQL에서 발급·확정 lock 경계를 별도로 점검했습니다.
-- [ ] 외부 검증을 자동 테스트 통과 조건으로 만들지 않았습니다.
-- [ ] 자동 테스트만으로 실제 Google·Gmail 성공까지 검증했다고 주장하지 않습니다.
-
-## 9. 남은 운영 보안 범위
-
-- [ ] password reset 뒤 기존 JWT가 자동 폐기되지 않음을 설명합니다.
-- [ ] token version, revoke 시각 또는 denylist를 후속 과제로 구분합니다.
-- [ ] 사용자별 cooldown이 IP·장치·distributed rate limiter를 대신하지 않음을 설명합니다.
-- [ ] JPA `ddl-auto=update`가 Flyway migration을 대신하지 않음을 설명합니다.
-- [ ] H2 테스트가 실제 MySQL lock·격리 동작의 완전한 증거가 아님을 설명합니다.
+- [ ] 구현·완성 브랜치의 문서와 fixture가 동일합니다.
+- [ ] 두 브랜치의 학습 diff가 두 test file의 body로 제한됩니다.
 
 <details>
 <summary>멘토용 리뷰 기준</summary>
 
-- providerId 식별, verified email 충돌, 자동 연결 금지 순서를 설명하는지 봅니다.
-- 내부 email 안정성과 JWT subject·ownership의 관계를 질문합니다.
-- STATELESS와 OAuth state session을 구분하는지 확인합니다.
-- 실제 메일보다 202 비노출, LOCAL-only, token commit과 async 경계를 먼저 설명하게 합니다.
-- 기존 JWT·rate limit·schema migration·실제 provider E2E를 남은 운영 범위로 구분하게 합니다.
+- fixture와 mock을 많이 쓰는 것이 목적이 아니라 실패 원인을 Service로 좁히는지 봅니다.
+- create에서 잘못된 save 입력을 response assertion이 가릴 수 있음을 설명하게 합니다.
+- login 성공의 정규화·matches·token·expiry 순서를 질문합니다.
+- login 실패 뒤 token 생성이 차단됐다는 협력 증거를 확인합니다.
+- 기존 400·401·403 회귀와 신규 Service test의 보장 범위를 구분하게 합니다.
 
 </details>
