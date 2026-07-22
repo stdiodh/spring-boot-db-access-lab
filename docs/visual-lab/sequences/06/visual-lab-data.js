@@ -3,7 +3,7 @@ window.visualLabData = {
   "sequence": "06",
   "title": "Testing",
   "subtitle": "Testing and verification",
-  "goal": "Service 단위 테스트, fixture, mock, assertion으로 정상/실패 흐름을 실행 가능한 검증으로 남깁니다.",
+  "goal": "기존 회귀 suite를 보존하고 Service 단위 테스트 네 개를 fixture, mock, assertion으로 완성합니다.",
   "problem": "기능이 늘어날수록 사람이 정상 케이스와 실패 케이스를 기억으로 확인하기 어렵습니다.",
   "repo": {
     "name": "spring-boot-db-access-lab",
@@ -107,20 +107,20 @@ window.visualLabData = {
         "boundary": "Service under test"
       },
       "passwordEncoder": {
-        "label": "PasswordEncoder",
+        "label": "Mock PasswordEncoder",
         "icon": "security",
         "kind": "security",
-        "role": "06 기준 단위 테스트에서 실제 구현으로 비밀번호 일치 여부를 계산합니다.",
+        "role": "비밀번호 비교 결과를 테스트가 통제하는 mock collaborator입니다.",
         "systemLayer": "application",
-        "boundary": "실제 협력 객체"
+        "boundary": "테스트 대역"
       },
       "jwtTokenProvider": {
-        "label": "JwtTokenProvider",
+        "label": "Mock JwtTokenProvider",
         "icon": "token",
         "kind": "token",
-        "role": "인증 성공 시 access token을 만드는 실제 협력 객체입니다.",
+        "role": "token 문자열과 만료 시간을 테스트가 통제하는 mock collaborator입니다.",
         "systemLayer": "application",
-        "boundary": "실제 협력 객체"
+        "boundary": "테스트 대역"
       },
       "assertionOracle": {
         "label": "Assertion oracle",
@@ -194,10 +194,10 @@ window.visualLabData = {
         "flowId": "service-unit-test",
         "tone": "recovered",
         "prompt": "PostServiceTest가 request·ownerEmail과 mock Repository 반환값을 준비했습니다.",
-        "observationTitle": "저장 결과의 네 필드 보존",
+        "observationTitle": "저장 입력과 응답 보존",
         "reflection": {
           "prompt": "fixture와 stub이 성공 테스트를 재현 가능하게 만드는 규칙을 설명해 보세요.",
-          "hint": "입력과 협력자 반환을 고정한 뒤 id, title, content, author를 비교합니다."
+          "hint": "입력과 협력자 반환을 고정한 뒤 save 인자와 응답의 id, title, content, author를 비교합니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
@@ -233,7 +233,7 @@ window.visualLabData = {
                     "kind": "transfer",
                     "subject": "PostCreateRequest + saved PostEntity",
                     "before": "JUnit Test method: 생성 request와 저장 결과 fixture 없음",
-                    "after": "TestFixtureFactory: request와 id=1인 saved PostEntity 생성"
+                    "after": "TestFixtureFactory: request와 id=42인 saved PostEntity 생성"
                   },
                   "evidenceScope": "test",
                   "concept": "Fixture",
@@ -341,23 +341,23 @@ window.visualLabData = {
             {
               "id": "assert",
               "label": "Then · Assert",
-              "description": "id·title·content·author만 비교합니다.",
+              "description": "Repository에 전달한 Entity와 반환된 응답을 각각 비교합니다.",
               "steps": [
                 {
                   "from": "testMethod",
                   "to": "assertionOracle",
-                  "verb": "응답 필드 비교",
-                  "payload": "id + title + content + author",
+                  "verb": "저장 인자와 응답 비교",
+                  "payload": "saved Entity + id + title + content + author",
                   "kind": "compare",
                   "effect": {
                     "kind": "verify",
-                    "subject": "id + title + content + author",
-                    "before": "PostResponse 네 필드 assertion: 미실행",
-                    "after": "id·title·content·author 각각 기대값과 비교됨"
+                    "subject": "saved Entity + PostResponse",
+                    "before": "Repository 입력과 응답 mapping: 비교 전",
+                    "after": "save 입력의 title·content·author와 응답 네 필드가 각각 비교됨"
                   },
                   "evidenceScope": "test",
                   "concept": "Assertion",
-                  "check": "create 테스트는 save 호출 횟수를 별도로 verify하지 않습니다."
+                  "check": "ArgumentCaptor로 save 입력을 확인하고 응답 mapping도 별도로 assertion합니다."
                 },
                 {
                   "from": "assertionOracle",
@@ -393,10 +393,10 @@ window.visualLabData = {
         "snapshot": [
           { "label": "Given", "value": "fixture + mock 저장 결과" },
           { "label": "When", "value": "PostService 호출" },
-          { "label": "Then", "value": "응답 필드 검증 PASS", "tone": "recovered" }
+          { "label": "Then", "value": "저장 인자 + 응답 검증 PASS", "tone": "recovered" }
         ],
-        "evidence": "create 결과의 id·title·content·author를 assertEquals로 확인합니다. save 호출 횟수와 실제 DB 연결은 이 테스트 범위가 아닙니다.",
-        "outcome": "stub으로 고정한 저장 결과가 네 응답 필드로 보존되면 Service 변환 계약이 성립합니다."
+        "evidence": "ArgumentCaptor로 save 입력의 title·content·author를 확인하고, 반환 응답의 id·title·content·author도 비교합니다. 실제 DB 연결은 범위 밖입니다.",
+        "outcome": "Service가 principal과 request를 올바른 Entity로 저장하고 저장 결과를 응답으로 매핑하는 두 계약을 함께 고정합니다."
       },
       {
         "id": "post-service-not-found",
@@ -574,15 +574,15 @@ window.visualLabData = {
         "label": "저장된 비밀번호와 다른 password 로그인",
         "flowId": "service-unit-test",
         "tone": "recovered",
-        "prompt": "`password123` hash를 저장한 사용자와 `wrong-password` 요청을 준비했습니다.",
+        "prompt": "`encoded-password`를 저장한 사용자와 `wrong-password` 요청, `matches=false`를 준비했습니다.",
         "observationTitle": "JWT 생성 전 비밀번호 실패",
         "reflection": {
-          "prompt": "실제 encoder를 쓰는 테스트에서 저장 hash와 요청 password가 실패 분기를 정하는 규칙은 무엇인가요?",
-          "hint": "`password123`의 hash와 `wrong-password`를 `matches`하면 false이며 token은 생성되지 않습니다."
+          "prompt": "mock encoder의 반환값과 JWT 미호출이 실패 분기를 어떻게 증명하는지 설명해 보세요.",
+          "hint": "`matches(raw, encoded) = false`로 고정하면 예외가 발생하고 JwtTokenProvider에는 도달하지 않습니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "실제 encoder 비교 뒤 어떤 결과를 assertion해야 할까요?",
+          "prompt": "password 비교가 false일 때 어떤 결과와 협력자 상태를 확인해야 할까요?",
           "options": [
             {
               "id": "continue-token",
@@ -594,15 +594,15 @@ window.visualLabData = {
             }
           ],
           "answer": "stop-at-password",
-          "explanation": "일치하는 password의 token 반환과 달리, `matches == false`이면 인증 예외가 기대 결과입니다."
+          "explanation": "`matches == false`이면 인증 예외가 기대 결과이며 JwtTokenProvider 미호출도 함께 확인합니다."
         },
         "diagram": {
-          "caption": "UserRepository가 사용자를 반환한 뒤 실제 BCrypt 비교가 실패해 AuthService가 JWT 생성 전에 중단됩니다.",
+          "caption": "UserRepository가 사용자를 반환한 뒤 mock PasswordEncoder가 false를 돌려줘 AuthService가 JWT 생성 전에 중단됩니다.",
           "lanes": [
             {
               "id": "auth-arrange",
               "label": "Given · Arrange",
-              "description": "wrong-password 요청과 저장된 hash를 준비합니다.",
+              "description": "wrong-password 요청, 저장된 hash와 mock 반환값을 준비합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -638,29 +638,29 @@ window.visualLabData = {
                 {
                   "from": "testMethod",
                   "to": "passwordEncoder",
-                  "verb": "fixture 비밀번호 encoding",
-                  "payload": "password123",
-                  "kind": "call",
+                  "verb": "비밀번호 불일치 stub",
+                  "payload": "matches(wrong-password, encoded-password) → false",
+                  "kind": "config",
                   "effect": {
-                    "kind": "transfer",
-                    "subject": "password123",
-                    "before": "JUnit Test method: 저장 사용자용 원문 password123만 존재",
-                    "after": "PasswordEncoder: password123의 BCrypt hash 생성"
+                    "kind": "preserve",
+                    "subject": "matches(wrong-password, encoded-password) → false",
+                    "before": "Mock PasswordEncoder: matches 결과 미설정",
+                    "after": "Mock PasswordEncoder: 지정한 raw와 hash에 false 반환"
                   },
                   "evidenceScope": "test",
-                  "concept": "Real collaborator"
+                  "concept": "Mock"
                 },
                 {
                   "from": "passwordEncoder",
                   "to": "testMethod",
-                  "verb": "encoded password 반환",
-                  "payload": "bcrypt hash",
+                  "verb": "stub 설정 완료",
+                  "payload": "false",
                   "kind": "response",
                   "effect": {
                     "kind": "return",
-                    "subject": "bcrypt hash",
-                    "before": "JUnit Test method: 저장 password hash 없음",
-                    "after": "JUnit Test method: password123의 bcrypt hash 확보"
+                    "subject": "false",
+                    "before": "JUnit Test method: 비교 결과 미고정",
+                    "after": "JUnit Test method: 비밀번호 불일치 조건 고정"
                   },
                   "evidenceScope": "test"
                 },
@@ -668,13 +668,13 @@ window.visualLabData = {
                   "from": "testMethod",
                   "to": "fixtureFactory",
                   "verb": "저장 사용자 생성",
-                  "payload": "User(email, bcrypt(password123))",
+                  "payload": "User(email, encoded-password)",
                   "kind": "call",
                   "effect": {
                     "kind": "transfer",
-                    "subject": "User(email, bcrypt(password123))",
-                    "before": "JUnit Test method: email과 encoded password는 있으나 User fixture 없음",
-                    "after": "TestFixtureFactory: tester email과 password123 hash를 가진 User 생성"
+                    "subject": "User(email, encoded-password)",
+                    "before": "JUnit Test method: 저장 사용자 fixture 없음",
+                    "after": "TestFixtureFactory: tester email과 encoded-password를 가진 User 생성"
                   },
                   "evidenceScope": "test"
                 },
@@ -688,7 +688,7 @@ window.visualLabData = {
                     "kind": "return",
                     "subject": "savedUser",
                     "before": "JUnit Test method: Repository가 돌려줄 User 없음",
-                    "after": "JUnit Test method: password123 hash를 가진 savedUser 확보"
+                    "after": "JUnit Test method: encoded-password를 가진 savedUser 확보"
                   },
                   "evidenceScope": "test"
                 },
@@ -712,7 +712,7 @@ window.visualLabData = {
             {
               "id": "auth-act",
               "label": "When · Act",
-              "description": "실제 BCrypt `matches`를 실행합니다.",
+              "description": "AuthService가 mock PasswordEncoder의 `matches=false` 분기를 실행합니다.",
               "steps": [
                 {
                   "from": "testMethod",
@@ -753,7 +753,7 @@ window.visualLabData = {
                     "kind": "return",
                     "subject": "savedUser",
                     "before": "AuthService: Repository가 돌려줄 User 없음",
-                    "after": "AuthService: password123 hash를 가진 savedUser 확보"
+                    "after": "AuthService: encoded-password를 가진 savedUser 확보"
                   },
                   "evidenceScope": "test"
                 },
@@ -761,16 +761,16 @@ window.visualLabData = {
                   "from": "authService",
                   "to": "passwordEncoder",
                   "verb": "비밀번호 비교",
-                  "payload": "matches(wrong-password, bcrypt(password123))",
+                  "payload": "matches(wrong-password, encoded-password)",
                   "kind": "compare",
                   "effect": {
                     "kind": "verify",
-                    "subject": "matches(wrong-password, bcrypt(password123))",
+                    "subject": "matches(wrong-password, encoded-password)",
                     "before": "raw password와 저장 hash: 일치 여부 미평가",
                     "after": "PasswordEncoder.matches: false"
                   },
                   "evidenceScope": "test",
-                  "concept": "Real collaborator"
+                  "concept": "Mock collaborator"
                 },
                 {
                   "from": "passwordEncoder",
@@ -843,55 +843,55 @@ window.visualLabData = {
           "notReached": [
             {
               "label": "JwtTokenProvider",
-              "reason": "password 불일치에서 예외가 발생해 token 생성 코드에 도달하지 않습니다. 현재 테스트는 token provider 미호출을 별도 verify하지 않습니다."
+              "reason": "password 불일치에서 예외가 발생하며 verifyNoInteractions로 token provider 미호출을 확인합니다."
             }
           ]
         },
         "route": [
           "Test method",
           "TestFixtureFactory",
-          "실제 BCryptPasswordEncoder",
+          "Mock PasswordEncoder",
           "Mock UserRepository",
           "AuthService",
           "Assertion"
         ],
         "snapshot": [
-          { "label": "Repository 반환", "value": "password123 hash를 가진 User" },
+          { "label": "Repository 반환", "value": "encoded-password를 가진 User" },
           { "label": "PasswordEncoder.matches", "value": "false" },
           { "label": "Assertion", "value": "InvalidCredentialsException", "tone": "recovered" }
         ],
-        "evidence": "UserRepository만 stub하고 실제 encoder로 만든 hash를 사용해 InvalidCredentialsException을 확인합니다. HTTP 401은 이 단위 테스트 범위가 아닙니다.",
-        "outcome": "비밀번호 비교 실패는 token 부재와 InvalidCredentialsException을 함께 고정합니다."
+        "evidence": "UserRepository와 PasswordEncoder를 stub해 InvalidCredentialsException을 확인하고 JwtTokenProvider 미호출도 검증합니다. HTTP 401은 기존 통합 테스트가 맡습니다.",
+        "outcome": "비밀번호 비교 실패는 InvalidCredentialsException과 JWT collaborator 미호출을 함께 고정합니다."
       },
       {
         "id": "http-policy-gap",
         "label": "token 없음 · body 제약 위반 · 작성자 불일치",
         "flowId": "status-code-view",
         "tone": "warning",
-        "prompt": "`token 없음`, `body 제약 위반`, `작성자 불일치`는 HTTP 경계가 서로 다릅니다.",
-        "observationTitle": "400·401·403의 HTTP 경계",
+        "prompt": "기존 회귀 suite는 `token 없음`, `body 제약 위반`, `작성자 불일치`를 서로 다른 HTTP 경계에서 확인합니다.",
+        "observationTitle": "기존 suite가 지키는 400·401·403",
         "reflection": {
-          "prompt": "현재 단위 테스트 증거와 앞으로 필요한 HTTP 통합 증거의 경계를 설명해 보세요.",
-          "hint": "Service 예외 assertion만으로 filter, handler, status serialization까지 실행됐다고 볼 수 없습니다."
+          "prompt": "신규 단위 테스트와 이미 제공된 HTTP 통합 테스트의 증거 범위를 설명해 보세요.",
+          "hint": "Service 예외 assertion은 filter와 handler를 실행하지 않지만 기존 통합 테스트는 실제 status와 ErrorResponse를 확인합니다."
         },
         "theoryRef": "../../../theory.md#seq-06",
         "prediction": {
-          "prompt": "Service 단위 테스트만으로 세 status를 증명할 수 있을까요?",
+          "prompt": "세 status를 보존하는 증거는 어디에서 확인해야 할까요?",
           "options": [
             {
               "id": "unit-enough",
-              "label": "Service가 통과했으므로 모든 HTTP 상태도 보장된다"
+              "label": "신규 Service 단위 테스트 네 개만 확인한다"
             },
             {
               "id": "integration-needed",
-              "label": "Validation과 Security를 포함한 작은 통합 검증이 별도로 필요하다"
+              "label": "기존 HTTP 통합 테스트의 status와 body assertion을 함께 확인한다"
             }
           ],
           "answer": "integration-needed",
-          "explanation": "Service 반환·예외만 보는 선택과 달리 status에는 Validation, Security, handler 실행이 필요합니다."
+          "explanation": "최신 05의 AuthIntegrationTest, PostAuthorizationIntegrationTest, SecurityErrorHandlerTest가 Validation, Security와 handler를 포함한 증거를 제공합니다."
         },
         "diagram": {
-          "caption": "세 lane은 Service 밖에서 401, 400, 403이 결정되는 HTTP 정책 경계를 비교합니다.",
+          "caption": "세 lane은 기존 통합 테스트가 Service 밖의 401, 400, 403 정책을 실행하는 경계를 비교합니다.",
           "lanes": [
             {
               "id": "http-401",
@@ -910,7 +910,7 @@ window.visualLabData = {
                     "before": "HTTP Client: Authorization header 없음 전송 준비",
                     "after": "Security Filter: Authorization header 없음 수신"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "Authentication"
                 },
                 {
@@ -925,7 +925,7 @@ window.visualLabData = {
                     "before": "Security Filter: Authentication을 만들지 못한 요청",
                     "after": "Spring Security authorization: principal 없는 요청의 authorization 평가 시작"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "JwtAuthenticationFilter"
                 },
                 {
@@ -940,8 +940,8 @@ window.visualLabData = {
                     "before": "보호 endpoint: 인증된 principal 없이 접근 시도",
                     "after": "authorization 거절; Controller method는 실행되지 않음"
                   },
-                  "evidenceScope": "concept",
-                  "check": "06 Service 단위 테스트만으로는 이 status를 보장하지 않습니다."
+                  "evidenceScope": "test",
+                  "check": "SecurityErrorHandlerTest와 인증 통합 테스트에서 401 status와 ErrorResponse를 확인합니다."
                 },
                 {
                   "from": "authenticationEntryPoint",
@@ -955,7 +955,7 @@ window.visualLabData = {
                     "before": "HTTP Client: HTTP status와 body 미확정",
                     "after": "HTTP Client: 401 Unauthorized + ErrorResponse"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 }
               ]
             },
@@ -976,7 +976,7 @@ window.visualLabData = {
                     "before": "HTTP Client: valid Bearer + invalid request body 전송 준비",
                     "after": "Security Filter: valid Bearer + invalid request body 수신"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "securityFilter",
@@ -990,7 +990,7 @@ window.visualLabData = {
                     "before": "Security Filter: 테스트 입력 request DTO 구성",
                     "after": "DTO Validation: request DTO 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "validation",
@@ -1004,7 +1004,7 @@ window.visualLabData = {
                     "before": "invalid request body: Controller 진입 후보",
                     "after": "Validation 실패; Service와 DB 호출 차단"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "Validation"
                 },
                 {
@@ -1019,7 +1019,7 @@ window.visualLabData = {
                     "before": "HTTP Client: HTTP status와 body 미확정",
                     "after": "HTTP Client: 400 Bad Request + ErrorResponse"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 }
               ]
             },
@@ -1040,7 +1040,7 @@ window.visualLabData = {
                     "before": "HTTP Client: valid Bearer + PUT /posts/{id} 전송 준비",
                     "after": "Security Filter: valid Bearer + PUT /posts/{id} 수신"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "securityFilter",
@@ -1054,7 +1054,7 @@ window.visualLabData = {
                     "before": "Security Filter: 테스트 입력 authenticated request 구성",
                     "after": "DTO Validation: authenticated request 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "validation",
@@ -1068,7 +1068,7 @@ window.visualLabData = {
                     "before": "DTO Validation: 테스트 입력 valid PostUpdateRequest 구성",
                     "after": "PostController: valid PostUpdateRequest 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "postController",
@@ -1082,7 +1082,7 @@ window.visualLabData = {
                     "before": "PostController: 테스트 입력 id + request + currentUserEmail 구성",
                     "after": "PostService: id + request + currentUserEmail 실행"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 },
                 {
                   "from": "postService",
@@ -1096,7 +1096,7 @@ window.visualLabData = {
                     "before": "PostEntity: 다른 작성자의 기존 값 유지",
                     "after": "작성자 불일치 예외 발생; UPDATE와 save 호출 차단"
                   },
-                  "evidenceScope": "concept",
+                  "evidenceScope": "test",
                   "concept": "Authorization"
                 },
                 {
@@ -1111,15 +1111,15 @@ window.visualLabData = {
                     "before": "HTTP Client: HTTP status와 body 미확정",
                     "after": "HTTP Client: 403 Forbidden + ErrorResponse"
                   },
-                  "evidenceScope": "concept"
+                  "evidenceScope": "test"
                 }
               ]
             }
           ],
           "notReached": [
             {
-              "label": "06 Service unit-test guarantee",
-              "reason": "이 diagram은 필요한 HTTP 경계를 구분하지만 06 필수 단위 테스트 자체의 실행 증거는 아닙니다."
+              "label": "신규 Service unit-test 범위",
+              "reason": "이 HTTP 흐름은 기존 통합 테스트의 증거이며 신규 네 Service 단위 테스트가 직접 실행하는 경로는 아닙니다."
             }
           ]
         },
@@ -1131,12 +1131,12 @@ window.visualLabData = {
           "401 · 400 · 403 response"
         ],
         "snapshot": [
-          { "label": "현재 보장", "value": "Service 비즈니스 판단" },
-          { "label": "미검증 경계", "value": "HTTP · Validation · Security", "tone": "warning" },
-          { "label": "후속 후보", "value": "400 · 401 · 403 통합 테스트" }
+          { "label": "신규 단위 테스트", "value": "Service 비즈니스 판단" },
+          { "label": "기존 통합 테스트", "value": "HTTP · Validation · Security", "tone": "recovered" },
+          { "label": "보존할 응답", "value": "400 · 401 · 403" }
         ],
-        "evidence": "현재 06 Service 테스트에는 filter·Validation·handler를 통과한 HTTP 응답 증거가 없습니다.",
-        "outcome": "Service 테스트 결과만으로 HTTP status 계약을 보장할 수 없습니다."
+        "evidence": "AuthIntegrationTest, PostAuthorizationIntegrationTest, SecurityErrorHandlerTest의 status와 ErrorResponse assertion을 보존합니다.",
+        "outcome": "신규 Service 테스트와 기존 HTTP 통합 테스트를 함께 실행해야 두 증거 범위를 모두 유지할 수 있습니다."
       }
     ]
   },
@@ -1264,7 +1264,7 @@ window.visualLabData = {
     {
       "id": "status-code-view",
       "title": "API 상태 코드 검증 관점",
-      "summary": "이번 직접 구현은 Service 테스트지만, 400, 401, 403은 이후 통합 테스트에서 구분해야 할 실패 관점입니다.",
+      "summary": "신규 Service 테스트와 별개로 기존 통합 테스트가 400, 401, 403 HTTP 정책을 지킵니다.",
       "steps": [
         {
           "order": 1,
@@ -1404,12 +1404,12 @@ window.visualLabData = {
   "codePoints": [
     {
       "id": "service-unit-test",
-      "title": "Service 단위 테스트는 성공 흐름을 고정합니다",
-      "file": "src/test/kotlin/com/andi/rest_crud/service/PostServiceTest.kt",
+      "title": "게시글 생성은 저장 인자와 응답을 함께 고정합니다",
+      "file": "src/test/kotlin/com/andi/rest_crud/post/service/PostServiceTest.kt",
       "language": "kotlin",
-      "snippet": "// stub한 저장 결과가 응답의 네 필드로 보존되는지 비교합니다.\n`when`(postRepository.save(any(PostEntity::class.java))).thenReturn(savedPost)\nval result = postService.create(request, \"owner@example.com\")\nassertEquals(1L, result.id)\nassertEquals(request.title, result.title)\nassertEquals(request.content, result.content)\nassertEquals(\"owner@example.com\", result.author)",
-      "explanation": "고정한 savedPost는 Service 실행 뒤 id·title·content·author가 보존된 PostResponse로 관찰됩니다.",
-      "check": "테스트가 DB 연결이 아니라 Service 판단을 검증하는지 확인합니다."
+      "snippet": "// 완성 뒤에는 Repository에 전달한 Entity도 확인합니다.\nval captor = ArgumentCaptor.forClass(PostEntity::class.java)\nverify(postRepository).save(captor.capture())\nassertEquals(request.title, captor.value.title)\nassertEquals(request.content, captor.value.content)\nassertEquals(authorEmail, captor.value.author)\nassertEquals(42L, result.id)\nassertEquals(authorEmail, result.author)",
+      "explanation": "Repository 입력을 관찰해야 잘못된 title·content·author가 미리 만든 반환값에 가려지지 않습니다.",
+      "check": "save 입력 세 필드와 응답 네 필드를 각각 확인합니다."
     },
     {
       "id": "fixture-factory",
@@ -1421,13 +1421,22 @@ window.visualLabData = {
       "check": "fixture 기본값과 테스트별 override 값을 구분합니다."
     },
     {
-      "id": "auth-wrong-password-test",
-      "title": "password 불일치 Service test는 예외를 검증합니다",
-      "file": "src/test/kotlin/com/andi/rest_crud/service/AuthServiceTest.kt",
+      "id": "auth-login-success-test",
+      "title": "로그인 성공은 정규화와 collaborator 호출을 검증합니다",
+      "file": "src/test/kotlin/com/andi/rest_crud/auth/service/AuthServiceTest.kt",
       "language": "kotlin",
-      "snippet": "// 저장 hash와 다른 요청 password가 인증 실패 예외가 되는지 확인합니다.\nval savedUser = TestFixtureFactory.user(\n    email = \"tester@example.com\",\n    password = requireNotNull(passwordEncoder.encode(\"password123\"))\n)\nval request = TestFixtureFactory.loginRequest(password = \"wrong-password\")\n`when`(userRepository.findByEmail(request.email)).thenReturn(Optional.of(savedUser))\nassertThrows(InvalidCredentialsException::class.java) {\n    authService.login(request)\n}",
-      "explanation": "Repository만 mock하고 실제 BCryptPasswordEncoder로 불일치 분기를 실행합니다.",
-      "check": "AuthProvider 분기가 아니라 `matches=false`가 예외를 만드는지 확인합니다."
+      "snippet": "// 완성 뒤에는 Service가 조립한 token 응답과 호출 인자를 확인합니다.\n`when`(passwordEncoder.matches(rawPassword, encodedPassword)).thenReturn(true)\n`when`(jwtTokenProvider.createToken(normalizedEmail)).thenReturn(\"access-token\")\n`when`(jwtTokenProvider.expirationSeconds).thenReturn(3600L)\nval result = authService.login(request)\nassertEquals(\"access-token\", result.accessToken)\nassertEquals(\"Bearer\", result.tokenType)\nassertEquals(3600L, result.expiresIn)",
+      "explanation": "Service 테스트는 실제 암호화·서명 대신 정규화된 email, password 비교, token과 expiry 조립을 확인합니다.",
+      "check": "Repository, PasswordEncoder와 JwtTokenProvider가 기대 인자로 호출됐는지 확인합니다."
+    },
+    {
+      "id": "auth-wrong-password-test",
+      "title": "password 불일치는 예외와 JWT 미호출을 검증합니다",
+      "file": "src/test/kotlin/com/andi/rest_crud/auth/service/AuthServiceTest.kt",
+      "language": "kotlin",
+      "snippet": "// 완성 뒤에는 비밀번호 실패가 token 생성 전에 멈추는지 확인합니다.\n`when`(userRepository.findByEmail(normalizedEmail)).thenReturn(Optional.of(savedUser))\n`when`(passwordEncoder.matches(\"wrong-password\", \"encoded-password\")).thenReturn(false)\nassertThrows(InvalidCredentialsException::class.java) {\n    authService.login(request)\n}\nverifyNoInteractions(jwtTokenProvider)",
+      "explanation": "Repository와 PasswordEncoder를 mock해 실패 분기를 고정하고 token collaborator가 호출되지 않았음을 확인합니다.",
+      "check": "`matches=false`, 기대 예외와 JwtTokenProvider 미호출을 함께 확인합니다."
     }
   ],
   "concepts": [
@@ -1568,10 +1577,10 @@ window.visualLabData = {
     }
   ],
   "checks": [
-    "지금 작성한 테스트가 어떤 Service 동작을 검증하는지 말할 수 있나요?",
-    "fixture를 쓰지 않으면 테스트 본문이 어떻게 복잡해지는지 설명할 수 있나요?",
-    "mock을 쓰는 이유를 Service 판단 분리 관점으로 설명할 수 있나요?",
-    "400, 401, 403 실패 관점을 구분할 수 있나요?"
+    "게시글 생성 테스트가 save 입력과 반환 응답을 각각 확인하는 이유를 말할 수 있나요?",
+    "로그인 성공 테스트가 email 정규화, password 비교와 token 응답을 어떻게 고정하는지 설명할 수 있나요?",
+    "비밀번호 불일치 뒤 JwtTokenProvider 미호출을 확인하는 이유를 말할 수 있나요?",
+    "신규 Service 단위 테스트와 기존 400·401·403 통합 테스트의 증거 범위를 구분할 수 있나요?"
   ],
   "next": {
     "id": "07",
