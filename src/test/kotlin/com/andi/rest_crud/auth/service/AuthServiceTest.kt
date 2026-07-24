@@ -1,6 +1,8 @@
 package com.andi.rest_crud.auth.service
 
+import com.andi.rest_crud.auth.dto.LoginRequest
 import com.andi.rest_crud.auth.dto.UserSignUpRequest
+import com.andi.rest_crud.auth.exception.InvalidCredentialsException
 import com.andi.rest_crud.auth.exception.UserAlreadyExistsException
 import com.andi.rest_crud.auth.security.JwtTokenProvider
 import com.andi.rest_crud.user.domain.User
@@ -11,13 +13,17 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.hibernate.exception.ConstraintViolationException
 import org.springframework.dao.DataIntegrityViolationException
 import java.sql.SQLException
+import java.util.Optional
 
 class AuthServiceTest {
     private val userRepository = mock(UserRepository::class.java)
@@ -53,6 +59,47 @@ class AuthServiceTest {
         order.verify(userRepository).saveAndFlush(userCaptor.capture())
         assertEquals("student@example.com", userCaptor.value.email)
         assertEquals("encoded-password", userCaptor.value.password)
+        assertEquals(true, userCaptor.value.localPasswordEnabled)
+    }
+
+    @Test
+    fun `LOCAL 비밀번호 미등록 OAuth 계정은 placeholder hash를 비교하지 않고 로그인에 실패한다`() {
+        val user = User(
+            email = "oauth@example.com",
+            password = "encoded-random-password",
+            authProvider = "GOOGLE",
+            providerId = "google-subject",
+            localPasswordEnabled = false
+        )
+        `when`(userRepository.findByEmail(user.email)).thenReturn(Optional.of(user))
+
+        assertThrows(InvalidCredentialsException::class.java) {
+            authService.login(LoginRequest(user.email, "unknown-password"))
+        }
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString())
+        verifyNoInteractions(jwtTokenProvider)
+    }
+
+    @Test
+    fun `LOCAL 비밀번호를 등록한 OAuth 계정은 자체 로그인하고 두 로그인 수단을 확인한다`() {
+        val user = User(
+            email = "oauth@example.com",
+            password = "encoded-local-password",
+            authProvider = "GOOGLE",
+            providerId = "google-subject",
+            localPasswordEnabled = true
+        )
+        `when`(userRepository.findByEmail(user.email)).thenReturn(Optional.of(user))
+        `when`(passwordEncoder.matches("local-password123", user.password)).thenReturn(true)
+        `when`(jwtTokenProvider.createToken(user.email)).thenReturn("issued-token")
+
+        val token = authService.login(LoginRequest(user.email, "local-password123"))
+        val currentUser = authService.getCurrentUser(user.email)
+
+        assertEquals("issued-token", token.accessToken)
+        assertEquals(listOf("GOOGLE", "LOCAL"), currentUser.loginMethods)
+        verify(passwordEncoder).matches("local-password123", user.password)
     }
 
     @Test

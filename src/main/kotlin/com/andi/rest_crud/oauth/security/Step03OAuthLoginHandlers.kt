@@ -2,7 +2,7 @@
  * 실습 순서 03 — OAuth 성공 redirect
  * 선행 단계: Step01/02에서 외부 profile 검증과 내부 계정 연결을 완료합니다.
  * 이 단계의 판단: JWT는 fragment로, 공개 상태만 query로 전달하고 응답을 저장하지 않게 합니다.
- * 다음 연결: Step04에서 LOCAL 계정의 비밀번호 복구 수명 주기를 구현합니다.
+ * 다음 연결: Step04가 OAuth JWT로 확인한 Google 계정에 선택적 LOCAL 비밀번호를 등록합니다.
  */
 package com.andi.rest_crud.oauth.security
 

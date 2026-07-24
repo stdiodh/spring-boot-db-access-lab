@@ -1,8 +1,11 @@
 package com.andi.rest_crud.auth.controller
 
 import com.andi.rest_crud.auth.security.JwtTokenProvider
+import com.andi.rest_crud.user.domain.User
 import com.andi.rest_crud.user.repository.UserRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -10,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -27,7 +31,9 @@ import java.time.ZoneOffset
 class AuthIntegrationTest @Autowired constructor(
     private val mockMvc: MockMvc,
     private val objectMapper: ObjectMapper,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val passwordEncoder: PasswordEncoder,
+    private val jwtTokenProvider: JwtTokenProvider
 ) {
 
     @BeforeEach
@@ -172,6 +178,90 @@ class AuthIntegrationTest @Autowired constructor(
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.email").value("student@example.com"))
+            .andExpect(jsonPath("$.loginMethods[0]").value("LOCAL"))
+    }
+
+    @Test
+    fun `OAuth 계정은 JWT로 LOCAL 비밀번호를 한 번 등록하고 두 로그인 수단을 사용한다`() {
+        val oauthUser = saveOAuthUser("oauth@example.com")
+        val oauthToken = jwtTokenProvider.createToken(oauthUser.email)
+
+        mockMvc.perform(
+            post("/auth/local-password")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $oauthToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(localPasswordJson("local-password123"))
+        )
+            .andExpect(status().isNoContent)
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+
+        val enrolledUser = userRepository.findByEmail(oauthUser.email).orElseThrow()
+        assertTrue(enrolledUser.localPasswordEnabled)
+        assertTrue(passwordEncoder.matches("local-password123", enrolledUser.password))
+        assertEquals("GOOGLE", enrolledUser.authProvider)
+        assertEquals("google-subject", enrolledUser.providerId)
+
+        val localToken = login(oauthUser.email, "local-password123")
+        mockMvc.perform(
+            get("/auth/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $localToken")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.loginMethods[0]").value("GOOGLE"))
+            .andExpect(jsonPath("$.loginMethods[1]").value("LOCAL"))
+
+        mockMvc.perform(
+            post("/auth/local-password")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $oauthToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(localPasswordJson("other-password123"))
+        )
+            .andExpect(status().isConflict)
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(jsonPath("$.code").value("LOCAL_PASSWORD_ENROLLMENT_CONFLICT"))
+
+        val unchangedUser = userRepository.findByEmail(oauthUser.email).orElseThrow()
+        assertTrue(passwordEncoder.matches("local-password123", unchangedUser.password))
+        assertFalse(passwordEncoder.matches("other-password123", unchangedUser.password))
+    }
+
+    @Test
+    fun `LOCAL 비밀번호 등록은 인증과 신규 비밀번호 검증을 요구한다`() {
+        mockMvc.perform(
+            post("/auth/local-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(localPasswordJson("local-password123"))
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"))
+
+        val oauthUser = saveOAuthUser("oauth@example.com")
+        val oauthToken = jwtTokenProvider.createToken(oauthUser.email)
+
+        mockMvc.perform(
+            post("/auth/local-password")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $oauthToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(localPasswordJson("1234567"))
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.errors.newPassword")
+                .value("newPassword는 8자 이상 64자 이하여야 합니다."))
+    }
+
+    @Test
+    fun `기존 LOCAL 계정은 OAuth 전용 최초 비밀번호 등록 API를 사용할 수 없다`() {
+        signUp("local@example.com", "password123")
+        val localToken = login("local@example.com", "password123")
+
+        mockMvc.perform(
+            post("/auth/local-password")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $localToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(localPasswordJson("other-password123"))
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("LOCAL_PASSWORD_ENROLLMENT_CONFLICT"))
     }
 
     @Test
@@ -255,6 +345,22 @@ class AuthIntegrationTest @Autowired constructor(
 
     private fun authJson(email: String, password: String): String {
         return objectMapper.writeValueAsString(mapOf("email" to email, "password" to password))
+    }
+
+    private fun localPasswordJson(newPassword: String): String {
+        return objectMapper.writeValueAsString(mapOf("newPassword" to newPassword))
+    }
+
+    private fun saveOAuthUser(email: String): User {
+        return userRepository.saveAndFlush(
+            User(
+                email = email,
+                password = requireNotNull(passwordEncoder.encode("server-generated-placeholder")),
+                authProvider = "GOOGLE",
+                providerId = "google-subject",
+                localPasswordEnabled = false
+            )
+        )
     }
 
     private fun expectUnauthorized(token: String) {

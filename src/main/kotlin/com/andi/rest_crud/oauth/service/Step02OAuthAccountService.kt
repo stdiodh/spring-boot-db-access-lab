@@ -52,7 +52,8 @@ class OAuthAccountService(
             email = normalizedProfile.email,
             password = encodedPassword,
             authProvider = normalizedProfile.provider,
-            providerId = normalizedProfile.providerId
+            providerId = normalizedProfile.providerId,
+            localPasswordEnabled = false
         )
 
         val savedUser = try {

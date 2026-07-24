@@ -30,9 +30,17 @@ data class LoginRequest(
     val password: String
 )
 
+data class LocalPasswordEnrollmentRequest(
+    // OAuth 가입 뒤 사용자가 고른 LOCAL 비밀번호도 자체 가입과 같은 길이 계약을 사용합니다.
+    @field:NotBlank(message = "newPassword는 비어 있을 수 없습니다.")
+    @field:Size(min = 8, max = 64, message = "newPassword는 8자 이상 64자 이하여야 합니다.")
+    val newPassword: String
+)
+
 // 보호 API는 검증된 최소 신원만 반환해 JWT 내부 구조가 응답 계약으로 새지 않게 합니다.
 data class CurrentUserResponse(
-    val email: String
+    val email: String,
+    val loginMethods: List<String>
 )
 
 // 클라이언트가 JWT payload를 직접 해석하지 않도록 전달 방식과 남은 만료 시간을 함께 제공합니다.

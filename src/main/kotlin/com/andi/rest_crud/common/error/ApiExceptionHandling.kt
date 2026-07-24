@@ -1,6 +1,7 @@
 package com.andi.rest_crud.common.error
 
 import com.andi.rest_crud.auth.exception.InvalidCredentialsException
+import com.andi.rest_crud.auth.exception.LocalPasswordEnrollmentConflictException
 import com.andi.rest_crud.auth.exception.UserAlreadyExistsException
 import com.andi.rest_crud.post.exception.ForbiddenPostAccessException
 import com.andi.rest_crud.post.exception.PostNotFoundException
@@ -107,6 +108,20 @@ class GlobalExceptionHandler {
                 ErrorResponse(
                     code = "INVALID_CREDENTIALS",
                     message = exception.message ?: "인증에 실패했습니다."
+                )
+            )
+    }
+
+    @ExceptionHandler(LocalPasswordEnrollmentConflictException::class)
+    fun handleLocalPasswordEnrollmentConflictException(
+        exception: LocalPasswordEnrollmentConflictException
+    ): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .cacheControl(CacheControl.noStore())
+            .body(
+                ErrorResponse(
+                    code = "LOCAL_PASSWORD_ENROLLMENT_CONFLICT",
+                    message = exception.message ?: "LOCAL 비밀번호를 등록할 수 없습니다."
                 )
             )
     }
