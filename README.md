@@ -108,6 +108,7 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 - email을 검증·정규화하고 `LOCAL` 계정에만 메일을 보냅니다.
 - 계정 조회 전에 SMTP 연결·인증 사전검사를 실행합니다. 전역 설정이 없거나 올바르지 않으면 모든 유효한 email에 `Cache-Control: no-store`와 같은 503을 반환합니다.
 - 사전검사를 통과한 뒤에는 계정 없음, OAuth 계정, LOCAL 계정과 commit 이후 비동기 발송 결과를 구분하지 않고 같은 202를 반환합니다. HTTP 요청은 실제 메일 발송 완료를 기다리지 않습니다.
+- OAuth 컬럼 추가 전에 생성된 계정은 `data.sql`이 `auth_provider = ''`이고 `provider_id`가 없을 때만 시작 시 `LOCAL`로 보정합니다. 외부 식별자가 있는 계정은 자동 변경하지 않습니다.
 - raw token은 32-byte 난수를 Base64URL(no padding)로 인코딩해 메일의 `#reset_token` fragment에만 넣고, DB에는 SHA-256 hash만 저장합니다.
 - token은 15분 뒤 만료되며 정확히 만료 시각부터 무효입니다. 사용자당 한 행을 회전하므로 재발급하면 이전 token이 무효가 되고, 성공한 token은 한 번만 사용할 수 있습니다.
 - 확정 요청 `{ "token": "...", "newPassword": "..." }`은 BCrypt password 변경과 사용 처리를 같은 트랜잭션에서 수행하고 성공 시 204를 반환합니다.
