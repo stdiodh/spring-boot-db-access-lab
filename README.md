@@ -38,9 +38,9 @@ src/main/kotlin/com/andi/rest_crud/
 │   ├── dto/OAuthLoginResponse.kt
 │   ├── exception/OAuthExceptions.kt
 │   ├── model/OAuthUserProfile.kt
-│   ├── security/CustomOAuthUserService.kt
-│   ├── security/OAuthLoginHandlers.kt
-│   └── service/OAuthAccountService.kt
+│   ├── security/Step01CustomOAuthUserService.kt
+│   ├── security/Step03OAuthLoginHandlers.kt
+│   └── service/Step02OAuthAccountService.kt
 ├── recovery/
 │   ├── controller/AccountRecoveryController.kt
 │   ├── domain/PasswordResetToken.kt
@@ -51,8 +51,8 @@ src/main/kotlin/com/andi/rest_crud/
 │   ├── security/PasswordResetTokenCodec.kt
 │   ├── mail/RecoveryMailSender.kt
 │   ├── mail/RecoveryMailDispatch.kt
-│   ├── mail/SmtpRecoveryMailSender.kt
-│   └── service/AccountRecoveryService.kt
+│   ├── mail/Step05SmtpRecoveryMailSender.kt
+│   └── service/Step04AccountRecoveryService.kt
 └── post/
     ├── controller/PostController.kt
     ├── domain/PostEntity.kt
@@ -69,14 +69,16 @@ src/main/kotlin/com/andi/rest_crud/
 `05-implementation`에서 직접 수정할 범위는 **5개 파일의 TODO 6개**입니다.
 각 단계에서는 테스트를 먼저 읽고, 지정된 TODO만 구현한 뒤 대상 테스트가 통과하면 다음 파일로 이동합니다.
 
+직접 구현하는 production 파일 5개만 `Step01`부터 `Step05`까지 표시합니다. 파일명의 Step은 탐색 순서이며 Kotlin class 이름과 package는 그대로 유지합니다.
+
 | Step | 직접 수정할 파일 | TODO |
 |---:|---|---|
-| 1 | `oauth/security/CustomOAuthUserService.kt` | 외부 profile 검증·정규화 |
-| 2 | `oauth/service/OAuthAccountService.kt` | 내부 계정 연결과 JWT 발급 |
-| 3 | `oauth/security/OAuthLoginHandlers.kt` | OAuth 성공 redirect |
-| 4-A | `recovery/service/AccountRecoveryService.kt` | reset token 발급·cooldown |
-| 4-B | `recovery/service/AccountRecoveryService.kt` | token 확정·비밀번호 변경 |
-| 5 | `recovery/mail/SmtpRecoveryMailSender.kt` | SMTP 메시지 조립·발송 |
+| 01 | `oauth/security/Step01CustomOAuthUserService.kt` | 외부 profile 검증·정규화 |
+| 02 | `oauth/service/Step02OAuthAccountService.kt` | 내부 계정 연결과 JWT 발급 |
+| 03 | `oauth/security/Step03OAuthLoginHandlers.kt` | OAuth 성공 redirect |
+| 04-A | `recovery/service/Step04AccountRecoveryService.kt` | reset token 발급·cooldown |
+| 04-B | `recovery/service/Step04AccountRecoveryService.kt` | token 확정·비밀번호 변경 |
+| 05 | `recovery/mail/Step05SmtpRecoveryMailSender.kt` | SMTP 메시지 조립·발송 |
 
 `PasswordResetTokenCodec`, `PasswordResetToken`, repository, controller, `RecoveryMailDispatch`, Security 설정과 정적 화면은 제공된 연결 계약입니다. 처음부터 고치지 말고, 위 TODO를 구현할 때 호출 순서와 기대 결과를 확인하는 용도로 읽습니다.
 

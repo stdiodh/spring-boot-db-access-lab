@@ -4,6 +4,7 @@
 
 - [ ] 최신 `04-answer`의 JWT·인가·오류·UI·Swagger 회귀를 보존했습니다.
 - [ ] package가 `common/user/auth/oauth/recovery/post`로 나뉩니다.
+- [ ] 직접 구현하는 production 파일 5개만 `Step01`부터 `Step05`까지 표시되고 class·package 이름은 유지됩니다.
 - [ ] README와 구현 문서의 경로가 실제 파일과 일치합니다.
 - [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개입니다.
 - [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.

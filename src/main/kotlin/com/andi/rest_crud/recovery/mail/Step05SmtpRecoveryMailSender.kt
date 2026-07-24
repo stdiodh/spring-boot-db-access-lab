@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 05 — SMTP 복구 메일 발송
+ * 선행 단계: Step04가 token 저장 transaction을 commit하고 mail event를 발행합니다.
+ * 이 단계의 판단: 발신자·수신자·reset link를 조립하고 SMTP 실패를 도메인 오류로 변환합니다.
+ * 완료 상태: 외부 로그인과 LOCAL 계정 복구 흐름이 각각 검증 가능한 경계로 닫힙니다.
+ */
 package com.andi.rest_crud.recovery.mail
 
 import org.springframework.beans.factory.annotation.Value

@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 01 — OAuth profile 검증
+ * 선행 단계: Step 0에서 OAuth 설정과 Security callback 경계를 확인합니다.
+ * 이 단계의 판단: provider, providerId, email과 verified 상태를 내부 식별 속성으로 정규화합니다.
+ * 다음 연결: Step02가 검증된 OAuthUserProfile을 내부 사용자와 자체 JWT로 연결합니다.
+ */
 package com.andi.rest_crud.oauth.security
 
 import com.andi.rest_crud.oauth.model.OAuthUserProfile

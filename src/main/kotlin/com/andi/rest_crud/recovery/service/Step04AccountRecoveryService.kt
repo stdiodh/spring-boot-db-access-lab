@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 04 — reset token 발급과 확정
+ * 선행 단계: Step03까지 OAuth 로그인과 내부 JWT 전달 경계를 완성합니다.
+ * 이 단계의 판단: LOCAL 계정만 hash token을 회전하고 비밀번호 변경과 단일 사용 처리를 함께 확정합니다.
+ * 다음 연결: Step05가 commit 이후 전달된 mail event를 SMTP 메시지로 조립합니다.
+ */
 package com.andi.rest_crud.recovery.service
 
 import com.andi.rest_crud.recovery.domain.PasswordResetToken

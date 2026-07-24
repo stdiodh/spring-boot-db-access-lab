@@ -24,12 +24,21 @@ Reset confirm -> hash lookup + lock -> BCrypt update + single-use mark
 
 | Step | 테스트에서 먼저 읽을 계약 | 직접 수정할 파일과 메서드 | 완료 gate |
 |---:|---|---|---|
-| 1 | `CustomOAuthUserServiceTest` | `oauth/security/CustomOAuthUserService.kt`의 `normalizePrincipal` | profile 테스트 통과 |
-| 2 | `OAuthAccountServiceTest` | `oauth/service/OAuthAccountService.kt`의 `handleOAuthLogin` | account 테스트 통과 |
-| 3 | `OAuthLoginHandlersTest` | `oauth/security/OAuthLoginHandlers.kt`의 `onAuthenticationSuccess` | handler 테스트 통과 |
-| 4-A | `AccountRecoveryServiceTest`의 요청 관련 테스트 | `recovery/service/AccountRecoveryService.kt`의 `requestPasswordReset` | 요청·cooldown 계약 충족 |
-| 4-B | `AccountRecoveryServiceTest`의 확정 관련 테스트 | 같은 파일의 `confirmPasswordReset` | service·동시성 테스트 통과 |
-| 5 | `SmtpRecoveryMailSenderTest` | `recovery/mail/SmtpRecoveryMailSender.kt`의 `sendPasswordResetMail` | mail 테스트 통과 |
+| 01 | `CustomOAuthUserServiceTest` | `oauth/security/Step01CustomOAuthUserService.kt`의 `normalizePrincipal` | profile 테스트 통과 |
+| 02 | `OAuthAccountServiceTest` | `oauth/service/Step02OAuthAccountService.kt`의 `handleOAuthLogin` | account 테스트 통과 |
+| 03 | `OAuthLoginHandlersTest` | `oauth/security/Step03OAuthLoginHandlers.kt`의 `onAuthenticationSuccess` | handler 테스트 통과 |
+| 04-A | `AccountRecoveryServiceTest`의 요청 관련 테스트 | `recovery/service/Step04AccountRecoveryService.kt`의 `requestPasswordReset` | 요청·cooldown 계약 충족 |
+| 04-B | `AccountRecoveryServiceTest`의 확정 관련 테스트 | 같은 파일의 `confirmPasswordReset` | service·동시성 테스트 통과 |
+| 05 | `SmtpRecoveryMailSenderTest` | `recovery/mail/Step05SmtpRecoveryMailSender.kt`의 `sendPasswordResetMail` | mail 테스트 통과 |
+
+### Step 파일명 규칙
+
+직접 구현하는 production 파일 5개만 `Step` + 2자리 번호 + 기존 PascalCase 파일명으로 표시합니다.
+
+- 파일명의 Step은 학생이 수정할 순서를 안내하며 Kotlin class 이름, package, import와 Spring bean 이름은 바꾸지 않습니다.
+- Step 4-A와 4-B는 같은 `AccountRecoveryService`의 두 메서드이므로 `Step04` 파일 하나에서 진행합니다.
+- Step 0은 환경과 Security 경계를 확인하는 읽기 단계이므로 파일명 접두사 대상이 아닙니다.
+- Controller, Repository, DTO, domain, exception, 설정, 정적 화면과 테스트 파일은 제공된 연결 계약이므로 번호를 붙이지 않습니다.
 
 Step 4-A만 끝낸 시점에는 같은 테스트 클래스의 confirm 관련 3개가 아직 실패합니다. IDE에서 요청 관련 5개 테스트만 먼저 확인하거나, 4-B까지 같은 파일을 완성한 뒤 아래 service gate를 실행합니다.
 
@@ -95,7 +104,7 @@ Security 확인:
 
 ## 4. Step 1 - OAuth profile 검증
 
-`CustomOAuthUserService.kt`에서 다음을 확인합니다.
+`Step01CustomOAuthUserService.kt`에서 다음을 확인합니다.
 
 1. registration ID를 provider로 정규화합니다.
 2. Google `sub`를 providerId로 읽습니다.
@@ -108,7 +117,7 @@ Security 확인:
 
 ## 5. Step 2 - 내부 계정 연결
 
-`OAuthAccountService.kt`의 판단 순서:
+`Step02OAuthAccountService.kt`의 판단 순서:
 
 1. profile을 다시 검증·정규화합니다.
 2. `provider + providerId`로 기존 사용자를 찾습니다.
@@ -122,7 +131,7 @@ Security 확인:
 
 ## 6. Step 3 - OAuth redirect와 URL secret 소비
 
-`OAuthLoginHandlers.kt`:
+`Step03OAuthLoginHandlers.kt`:
 
 - 성공 query에는 최소 공개 상태만 넣습니다.
 - JWT는 query가 아니라 fragment의 `access_token`에만 둡니다.
@@ -143,7 +152,7 @@ OAuth JWT는 학습 목적의 명시적인 token receipt에는 보일 수 있습
 
 요청 endpoint: `POST /account-recovery/password-reset`
 
-`AccountRecoveryService.kt`:
+`Step04AccountRecoveryService.kt`:
 
 1. email을 `Locale.ROOT` 규칙으로 소문자화합니다.
 2. 계정이 없으면 조용히 종료합니다.
@@ -168,7 +177,7 @@ Content-Type: application/json
 {"token":"<raw-token>","newPassword":"<8~64자>"}
 ```
 
-`AccountRecoveryService.kt`는 다음 순서를 지킵니다.
+`Step04AccountRecoveryService.kt`는 다음 순서를 지킵니다.
 
 1. raw token을 SHA-256 hash로 바꿔 초기 token과 사용자 ID를 찾습니다.
 2. 사용자와 token을 write lock으로 다시 읽습니다.
@@ -188,7 +197,7 @@ Content-Type: application/json
 - event의 `toString`과 실패 log는 recipient, token, link, SMTP 원인을 노출하지 않습니다.
 - SMTP 또는 task 거부가 발생해도 이미 정해진 공개 202 계약을 바꾸지 않습니다.
 
-`SmtpRecoveryMailSender.kt`:
+`Step05SmtpRecoveryMailSender.kt`:
 
 - `RecoveryMailSender`를 구현합니다.
 - `APP_RECOVERY_MAIL_FROM`을 발신자로 사용합니다.
