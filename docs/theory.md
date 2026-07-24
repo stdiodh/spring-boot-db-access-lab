@@ -199,7 +199,7 @@ if (SecurityContextHolder.getContext().authentication == null) {
 <a id="seq-05"></a>
 ## 7. Sequence 05: 외부 프로필을 내부 계정으로 받아들이는 경계
 
-현재 `05-implementation`과 `05-answer`는 같은 완성 코드와 설명 주석을 사용합니다. `normalizePrincipal`, `handleOAuthLogin`, `onAuthenticationSuccess`, `requestPasswordReset`, `confirmPasswordReset`, `sendPasswordResetMail` 순서로 외부 profile부터 메일 adapter까지 실행 경계를 읽고 검증합니다.
+현재 `05-implementation`과 `05-answer`는 같은 완성 코드와 설명 주석을 사용합니다. `normalizePrincipal`, `handleOAuthLogin`, `onAuthenticationSuccess`, `enroll`, `requestPasswordReset`, `confirmPasswordReset`, `sendPasswordResetMail` 순서로 외부 profile부터 LOCAL 자격과 메일 adapter까지 실행 경계를 읽고 검증합니다.
 
 외부 프로필의 email은 `email_verified=true`인 경우만 내부 식별 후보가 됩니다. 기존 외부 사용자는 `provider + providerId`로 찾고 DB에 저장된 내부 email을 유지합니다. 같은 email의 LOCAL 또는 다른 외부 계정이 있으면 소유 확인 없이 자동 연결하지 않고 `link_required`로 중단합니다. 성공한 경우에만 우리 API용 JWT를 발급해 URL fragment로 전달하며, 실습 화면은 token을 메모리로 옮긴 직후 URL을 지웁니다.
 
@@ -226,7 +226,9 @@ sequenceDiagram
 | 4 | 신규 후보 | email 충돌 확인 뒤 내부 계정 저장 | 내부 OAuth 사용자 또는 `link_required` |
 | 5 | 내부 사용자 | 데모 token을 fragment에 담아 redirect | browser가 읽을 로그인 결과 |
 
-계정 복구는 단순한 link 생성이 아닙니다. LOCAL 사용자를 lock으로 읽고 32-byte 난수 raw token을 Base64URL로 만들지만, DB에는 SHA-256 hash만 저장합니다. 사용자당 한 행을 회전해 이전 token을 무효화하고 기본 15분 만료·1분 재요청 제한을 적용합니다. 확정 요청은 token hash와 사용자 상태를 다시 lock으로 확인한 뒤 BCrypt 비밀번호 변경과 `usedAt` 기록을 같은 transaction에서 commit합니다.
+Google 비밀번호는 우리 서버로 전달되지 않습니다. OAuth 계정의 `authProvider=GOOGLE`과 `providerId`는 그대로 유지하고, 사용자가 `POST /auth/local-password`로 직접 고른 비밀번호를 최초 한 번 등록하면 BCrypt hash와 `localPasswordEnabled=true`를 저장합니다. `/auth/me.loginMethods`는 GOOGLE, LOCAL, GOOGLE+LOCAL 상태를 권한 있는 응답으로 보여 주며, 미등록 OAuth 계정의 placeholder hash는 자체 로그인에 사용할 수 없습니다.
+
+계정 복구는 단순한 link 생성이 아닙니다. `localPasswordEnabled=true`인 사용자를 lock으로 읽으므로 LOCAL 가입자와 LOCAL 비밀번호를 추가한 Google 계정이 같은 복구 정책을 사용합니다. 32-byte 난수 raw token을 Base64URL로 만들지만 DB에는 SHA-256 hash만 저장합니다. 사용자당 한 행을 회전해 이전 token을 무효화하고 기본 15분 만료·1분 재요청 제한을 적용합니다. 확정 요청은 token hash와 사용자 상태를 다시 lock으로 확인한 뒤 BCrypt 비밀번호 변경과 `usedAt` 기록을 같은 transaction에서 commit합니다.
 
 ```kotlin
 val rawToken = tokenCodec.generateRawToken()
@@ -237,7 +239,7 @@ existingToken.rotate(tokenHash, now, expiresAt)
 
 복구 요청은 token transaction을 먼저 commit하고 같은 HTTP request thread에서 실제 SMTP 호출을 기다립니다. SMTP 서버가 요청을 수락하면 no-store `200 RECOVERY_MAIL_SENT`, reset 가능한 LOCAL 계정이 없으면 `422`, cooldown이면 `Retry-After`가 있는 `429`, 인증 또는 전송 실패면 `424`를 반환합니다. SMTP 실패 시 별도 transaction이 `id + tokenHash + usedAt is null` 조건으로 이번 요청의 token만 정리합니다.
 
-`200`은 SMTP 서버의 요청 수락 범위이며 받은 편지함 도착이나 반송 없음까지 증명하지 않습니다. `422/429` 구분은 계정 상태를 추측하게 만들 수 있으므로 실패 경계를 관찰하는 실습용 계약이며 공개 운영 API에 그대로 적용하지 않습니다. 자동 테스트는 이 내부 계약을 외부 네트워크 없이 확인하지만 실제 Google callback과 Gmail 수신은 credential이 필요한 수동 E2E입니다.
+Gmail SMTP를 사용할 때는 From인 `APP_RECOVERY_MAIL_FROM`과 인증 계정인 `SPRING_MAIL_USERNAME`을 같게 둡니다. `200`은 SMTP 서버의 요청 수락 범위이며 받은 편지함 도착이나 반송 없음까지 증명하지 않습니다. 수신자는 받은편지함·프로모션·스팸함과 원본 보기의 SPF·DKIM·DMARC, From·Return-Path·mailed-by·signed-by를 별도 증거로 확인합니다. `422/429` 구분은 계정 상태를 추측하게 만들 수 있으므로 실패 경계를 관찰하는 실습용 계약이며 공개 운영 API에 그대로 적용하지 않습니다. 자동 테스트는 이 내부 계약을 외부 네트워크 없이 확인하지만 실제 Google callback과 Gmail 수신은 credential이 필요한 수동 E2E입니다.
 
 [Visual Lab에서 입력 조건을 보고 경로 예측하기](./visual-lab/sequences/05/)
 

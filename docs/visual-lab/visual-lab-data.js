@@ -37,10 +37,10 @@ window.visualLabData = {
     {
       "id": "seq-05",
       "label": "05 OAuth2 + SMTP",
-      "problem": "외부 인증 결과와 비밀번호 재설정 token을 그대로 신뢰하면 계정 연결과 복구 경계가 무너집니다.",
-      "concept": "OAuth2 trust, hashed reset token lifecycle, synchronous SMTP result",
-      "action": "검증된 profile만 내부 계정으로 연결하고 raw reset token은 hash로 commit한 뒤 실제 SMTP 결과와 단일 사용 confirm을 분리합니다.",
-      "check": "계정 충돌에서는 JWT가 없고, 복구에서는 DB hash·15분 TTL·단일 사용·200/4xx SMTP 경계가 유지되는지 확인합니다."
+      "problem": "외부 인증 결과, LOCAL 자격, 메일 수신 결과를 한 상태로 보면 계정 연결과 복구 경계가 무너집니다.",
+      "concept": "OAuth2 trust, optional LOCAL credential, hashed reset token, SMTP receiver evidence",
+      "action": "검증된 profile과 provider identity를 보존하고 선택적 LOCAL 자격, token commit, SMTP 수락과 수신자 증거를 분리합니다.",
+      "check": "계정 충돌에서는 JWT가 없고, LOCAL 등록 뒤에도 Google identity가 유지되며, 200과 받은편지함·원본 헤더 증거가 구분되는지 확인합니다."
     },
     {
       "id": "seq-06",
@@ -82,7 +82,7 @@ window.visualLabData = {
       "title": "OAuth2 + SMTP",
       "topic": "External authentication and account recovery",
       "href": "./sequences/05/index.html",
-      "summary": "외부 인증 결과와 reset token을 우리 서비스는 어느 경계에서 다시 검증할까?"
+      "summary": "외부 identity, 선택적 LOCAL 자격, reset token과 메일 수신 증거는 어디서 갈라질까?"
     },
     {
       "sequence": "06",
