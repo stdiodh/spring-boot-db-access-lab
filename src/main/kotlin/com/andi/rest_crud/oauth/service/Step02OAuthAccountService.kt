@@ -1,3 +1,9 @@
+/*
+ * 실습 순서 02 — 내부 계정 연결
+ * 선행 단계: Step01에서 외부 profile을 검증된 OAuthUserProfile로 정규화합니다.
+ * 이 단계의 판단: provider identity를 우선 조회하고 email 충돌을 차단한 뒤 자체 JWT를 발급합니다.
+ * 다음 연결: Step03이 내부 로그인 결과를 브라우저 redirect로 안전하게 전달합니다.
+ */
 package com.andi.rest_crud.oauth.service
 
 import com.andi.rest_crud.auth.security.JwtTokenProvider

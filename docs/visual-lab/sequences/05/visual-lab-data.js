@@ -1261,7 +1261,7 @@ window.visualLabData = {
     {
       "id": "oauth-profile-scaffold",
       "title": "제공된 profile 연결에서 실습 목표로 진입",
-      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/CustomOAuthUserService.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/Step01CustomOAuthUserService.kt",
       "language": "kotlin",
       "snippet": "override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {\n    return normalizePrincipal(\n        userRequest.clientRegistration.registrationId,\n        delegate.loadUser(userRequest)\n    )\n}",
       "explanation": "외부 user-info 호출은 제공되어 있고, `normalizePrincipal`에서 필수 값과 verified 상태를 검사하는 부분이 실습 완료 목표입니다.",
@@ -1270,7 +1270,7 @@ window.visualLabData = {
     {
       "id": "oauth-account-target",
       "title": "내부 계정 판단은 실습 완료 목표",
-      "file": "src/main/kotlin/com/andi/rest_crud/oauth/service/OAuthAccountService.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/oauth/service/Step02OAuthAccountService.kt",
       "language": "kotlin",
       "snippet": "@Transactional\nfun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {\n    // TODO: 검증된 profile로 기존 identity 조회, LOCAL 충돌 거부, 신규 계정 저장과 JWT 발급을 구현하세요.\n    TODO(\"OAuth 계정 처리를 완성하세요.\")\n}",
       "explanation": "provider identity 조회, LOCAL 충돌 차단, 신규 저장과 자체 JWT 발급을 이 메서드에 연결합니다.",
@@ -1279,7 +1279,7 @@ window.visualLabData = {
     {
       "id": "oauth-redirect-scaffold",
       "title": "제공된 helper는 token을 fragment에만 둡니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/OAuthLoginHandlers.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/Step03OAuthLoginHandlers.kt",
       "language": "kotlin",
       "snippet": "return UriComponentsBuilder.fromUriString(frontendUrl)\n    .queryParam(\"oauth\", \"success\")\n    .queryParam(\"provider\", result.provider)\n    .queryParam(\"isNewUser\", result.isNewUser)\n    .fragment(\"access_token=${result.accessToken}\")\n    .build()\n    .encode()\n    .toUriString()",
       "explanation": "redirect helper는 제공되어 있으며 success handler에서 검증된 profile과 내부 로그인 결과를 이 helper에 연결하는 것이 실습 목표입니다.",
@@ -1315,7 +1315,7 @@ window.visualLabData = {
     {
       "id": "recovery-service-target",
       "title": "발급과 확정 orchestration은 실습 완료 목표",
-      "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/AccountRecoveryService.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/Step04AccountRecoveryService.kt",
       "language": "kotlin",
       "snippet": "@Transactional\nfun requestPasswordReset(email: String) {\n    // TODO: LOCAL 사용자 lock, cooldown, hash 저장과 AFTER_COMMIT mail event 발행을 구현하세요.\n    TODO(\"비밀번호 재설정 token 발급을 완성하세요.\")\n}\n\n@Transactional\nfun confirmPasswordReset(request: PasswordResetConfirmRequest) {\n    // TODO: token hash와 사용자 lock으로 만료·단일 사용을 확인하고 password 변경을 같은 transaction에 묶으세요.\n    TODO(\"비밀번호 재설정 확정을 완성하세요.\")\n}",
       "explanation": "제공된 codec, row, repository와 event 계약을 사용해 발급·cooldown과 hash/lock 기반 확정을 두 메서드에 연결합니다.",
@@ -1333,7 +1333,7 @@ window.visualLabData = {
     {
       "id": "smtp-adapter-target",
       "title": "SMTP message 조립은 adapter의 실습 완료 목표",
-      "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/SmtpRecoveryMailSender.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/Step05SmtpRecoveryMailSender.kt",
       "language": "kotlin",
       "snippet": "override fun sendPasswordResetMail(recipientEmail: String, resetLink: String) {\n    // TODO: 발신자·수신자·일회용 link를 담은 message를 만들고 MailException을 도메인 예외로 변환하세요.\n    TODO(\"SMTP 복구 메일 발송을 완성하세요.\")\n}",
       "explanation": "발신자·수신자·제목·본문을 구성하고 MailException을 복구 도메인 실패로 변환합니다.",
