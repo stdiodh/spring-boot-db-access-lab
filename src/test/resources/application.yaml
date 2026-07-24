@@ -45,7 +45,7 @@ jwt:
   audience: spring-boot-db-access-lab-test-api
 
 app:
-  frontend-url: http://localhost:8080/auth-practice/oauth.html
+  frontend-url: ${APP_OAUTH_RESULT_URL:${APP_FRONTEND_URL:http://localhost:8080/auth-practice/oauth.html}}
   password-reset-url: http://localhost:8080/auth-practice/recovery.html
   password-reset-token-ttl: PT15M
   password-reset-resend-cooldown: PT1M

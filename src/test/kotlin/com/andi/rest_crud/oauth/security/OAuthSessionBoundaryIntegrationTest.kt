@@ -21,7 +21,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirec
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.Collections
 
-@SpringBootTest
+@SpringBootTest(
+    properties = [
+        "APP_FRONTEND_URL=http://localhost:8080/auth-practice/index.html",
+        "APP_OAUTH_RESULT_URL=http://localhost:8080/auth-practice/oauth.html"
+    ]
+)
 @AutoConfigureMockMvc
 class OAuthSessionBoundaryIntegrationTest @Autowired constructor(
     private val mockMvc: MockMvc
