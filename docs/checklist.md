@@ -52,11 +52,14 @@
 - [ ] 존재하지 않는 계정은 sender를 호출하지 않습니다.
 - [ ] LOCAL 계정만 복구 메일을 보냅니다.
 - [ ] OAuth 계정은 sender를 호출하지 않습니다.
-- [ ] 계정 없음, OAuth 계정, SMTP 실패도 유효한 요청이면 `no-store`와 같은 202입니다.
+- [ ] SMTP 연결·인증 사전검사는 계정 조회 전에 모든 유효한 email에 같은 순서로 실행합니다.
+- [ ] Gmail 앱 비밀번호 누락·오류는 `RECOVERY_MAIL_AUTHENTICATION_FAILED`의 no-store 503입니다.
+- [ ] SMTP 연결 실패는 원문을 숨긴 `RECOVERY_MAIL_UNAVAILABLE`의 no-store 503입니다.
+- [ ] 사전검사 통과 뒤 계정 없음, OAuth 계정과 commit 이후 비동기 발송 실패는 같은 no-store 202입니다.
 - [ ] 202를 mail delivery 성공으로 표현하지 않습니다.
 - [ ] LOCAL 사용자별 1분 cooldown 안에는 token과 mail event를 재발급하지 않습니다.
 - [ ] 정확히 1분 경계에서는 재발급을 허용합니다.
-- [ ] SMTP는 HTTP 응답과 분리되어 요청 thread가 발송 완료를 기다리지 않습니다.
+- [ ] HTTP 요청은 SMTP 사전검사만 기다리고 실제 메시지 발송 완료는 기다리지 않습니다.
 - [ ] reset token, 복구 대상 email, link, SMTP 오류를 로그·공개 응답에 넣지 않습니다.
 
 ## 5. reset token과 비밀번호 변경
@@ -76,6 +79,8 @@
 
 ## 6. mail 책임과 비동기 경계
 
+- [ ] `RecoveryMailReadiness`는 recipient·reset token 없이 `testConnection`만 호출합니다.
+- [ ] 전역 SMTP 사전검사가 실패하면 `AccountRecoveryService`를 호출하지 않습니다.
 - [ ] `AccountRecoveryService`는 mail event를 발행하고 SMTP 구현을 직접 알지 않습니다.
 - [ ] `RecoveryMailEventDispatcher`가 `RecoveryMailSender`에 의존합니다.
 - [ ] `SmtpRecoveryMailSender`만 `JavaMailSender`를 사용합니다.
@@ -94,10 +99,11 @@
 - [ ] unique 저장 경쟁과 redirect 비노출 테스트가 있습니다.
 - [ ] 임시 OAuth session과 보호 API 경계 테스트가 있습니다.
 - [ ] HTML 정적 진입점에 fragment 소비·URL 제거·memory-only 코드가 연결되어 있습니다.
-- [ ] LOCAL-only recovery, 같은 202와 cooldown 경계 테스트가 있습니다.
+- [ ] 계정 조회 전 SMTP 인증·연결 503과 service 미호출 테스트가 있습니다.
+- [ ] 사전검사 통과 뒤 LOCAL-only recovery, 같은 202와 cooldown 경계 테스트가 있습니다.
 - [ ] raw token 길이·Base64URL 형식·매번 새 값·SHA-256 hash 테스트가 있습니다.
 - [ ] token 회전·15분 만료 경계·단일 사용·BCrypt 변경 테스트가 있습니다.
-- [ ] AFTER_COMMIT·async dispatch·SMTP 실패 비노출 테스트가 있습니다.
+- [ ] AFTER_COMMIT·async dispatch·개별 SMTP 전송 실패 비노출 테스트가 있습니다.
 - [ ] reset link fragment와 SMTP 메시지 조립 테스트가 있습니다.
 - [ ] `05-implementation`의 초기 TODO 실패가 의도된 상태임을 확인했습니다.
 - [ ] `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
@@ -112,8 +118,9 @@
 - [ ] 실제 Google redirect 뒤 query·fragment가 즉시 지워지는지 확인했습니다.
 - [ ] `/auth/me`가 내부 신원을 표시하고 browser storage/cookie에 JWT가 없는지 확인했습니다.
 - [ ] 실제 SMTP credential은 로컬 secret으로만 주입했습니다.
+- [ ] 앱 비밀번호 누락·오류와 SMTP 연결 실패가 email과 무관한 같은 전역 503인지 확인했습니다.
 - [ ] LOCAL 계정 메일 수신, reset 성공과 token 재사용 거부를 확인했습니다.
-- [ ] 없는/OAuth 계정의 같은 202와 HTTP가 SMTP를 기다리지 않는지 확인했습니다.
+- [ ] 사전검사 통과 뒤 없는/OAuth 계정의 같은 202와 HTTP가 실제 메시지 전송 완료를 기다리지 않는지 확인했습니다.
 - [ ] 실제 MySQL에서 발급·확정 lock 경계를 별도로 점검했습니다.
 - [ ] 외부 검증을 자동 테스트 통과 조건으로 만들지 않았습니다.
 - [ ] 자동 테스트만으로 실제 Google·Gmail 성공까지 검증했다고 주장하지 않습니다.

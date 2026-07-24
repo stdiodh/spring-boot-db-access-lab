@@ -5,6 +5,8 @@ import com.andi.rest_crud.auth.exception.UserAlreadyExistsException
 import com.andi.rest_crud.post.exception.ForbiddenPostAccessException
 import com.andi.rest_crud.post.exception.PostNotFoundException
 import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
+import com.andi.rest_crud.recovery.exception.RecoveryMailAuthenticationException
+import com.andi.rest_crud.recovery.exception.RecoveryMailUnavailableException
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -117,6 +119,34 @@ class GlobalExceptionHandler {
                 ErrorResponse(
                     code = "INVALID_PASSWORD_RESET_TOKEN",
                     message = exception.message ?: "비밀번호 재설정 링크가 유효하지 않습니다."
+                )
+            )
+    }
+
+    @ExceptionHandler(RecoveryMailAuthenticationException::class)
+    fun handleRecoveryMailAuthenticationException(
+        exception: RecoveryMailAuthenticationException
+    ): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .cacheControl(CacheControl.noStore())
+            .body(
+                ErrorResponse(
+                    code = "RECOVERY_MAIL_AUTHENTICATION_FAILED",
+                    message = exception.message ?: "Gmail 앱 비밀번호를 확인해 주세요."
+                )
+            )
+    }
+
+    @ExceptionHandler(RecoveryMailUnavailableException::class)
+    fun handleRecoveryMailUnavailableException(
+        exception: RecoveryMailUnavailableException
+    ): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .cacheControl(CacheControl.noStore())
+            .body(
+                ErrorResponse(
+                    code = "RECOVERY_MAIL_UNAVAILABLE",
+                    message = exception.message ?: "메일 서버에 연결할 수 없습니다."
                 )
             )
     }
