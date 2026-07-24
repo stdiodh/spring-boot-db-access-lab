@@ -37,8 +37,8 @@ window.visualLabData = {
         "meaning": "token은 기본 15분만 유효하고, LOCAL 사용자별 재요청은 기본 1분 동안 제한합니다."
       },
       {
-        "term": "AFTER_COMMIT",
-        "meaning": "token row가 commit된 뒤에만 비동기 메일 작업을 시작하는 transaction event 단계입니다."
+        "term": "SMTP acceptance",
+        "meaning": "token row commit 뒤 동기 send가 정상 반환된 상태이며 받은 편지함 도착까지 뜻하지는 않습니다."
       }
     ],
     "comparison": {
@@ -132,9 +132,17 @@ window.visualLabData = {
         "label": "Recovery Controller",
         "icon": "api",
         "kind": "recovery API",
-        "role": "복구 요청에는 중립 202, 유효한 확정에는 204를 반환합니다.",
+        "role": "복구 요청에는 200·422·429·424, 유효한 확정에는 204를 반환합니다.",
         "systemLayer": "interface",
         "boundary": "HTTP API"
+      },
+      "globalExceptionHandler": {
+        "label": "Exception Handler",
+        "icon": "response",
+        "kind": "public error mapper",
+        "role": "Controller가 다시 던진 복구 메일 예외를 no-store 424 공개 응답으로 바꿉니다.",
+        "systemLayer": "interface",
+        "boundary": "HTTP 오류 계약"
       },
       "accountRecoveryService": {
         "label": "Recovery Service",
@@ -163,21 +171,13 @@ window.visualLabData = {
         "boundary": "Reset token persistence",
         "codePointIds": ["reset-token-row-scaffold", "reset-token-used-scaffold"]
       },
-      "springTransactionEvents": {
-        "label": "Tx Events",
-        "icon": "event",
-        "kind": "transaction event",
-        "role": "메일 event를 transaction commit 뒤 listener에 전달합니다.",
-        "systemLayer": "application",
-        "boundary": "Transaction commit"
-      },
-      "recoveryMailEventDispatcher": {
+      "recoveryMailDispatcher": {
         "label": "Mail Dispatcher",
-        "icon": "queue",
-        "kind": "async dispatcher",
-        "role": "AFTER_COMMIT event를 bounded executor의 별도 작업으로 보냅니다.",
+        "icon": "mail",
+        "kind": "synchronous dispatcher",
+        "role": "commit된 mail command를 request thread에서 sender로 전달하고 예외를 그대로 돌려줍니다.",
         "systemLayer": "integration",
-        "boundary": "비동기 작업 경계",
+        "boundary": "동기 SMTP 경계",
         "codePointIds": ["mail-dispatch-scaffold"]
       },
       "recoveryMailSender": {
@@ -735,8 +735,8 @@ window.visualLabData = {
         "theoryRef": "../../../theory.md#seq-05",
         "visual": {
           "src": "../../assets/diagrams/05-password-reset-lifecycle.svg",
-          "alt": "raw reset token 발급, SHA-256 hash 저장, commit 이후 비동기 SMTP, hash 재조회와 BCrypt password 변경의 세 단계",
-          "caption": "raw token은 사용자에게만 전달하고 DB에는 hash를 남깁니다. 메일과 confirm은 token row commit을 기준으로 분리됩니다."
+          "alt": "raw reset token 발급, SHA-256 hash commit, 동기 SMTP 결과, hash 재조회와 BCrypt password 변경의 세 단계",
+          "caption": "raw token은 사용자에게만 전달하고 DB에는 hash를 남깁니다. commit 뒤 SMTP 결과와 confirm transaction은 서로 다른 증거입니다."
         },
         "prediction": {
           "prompt": "복구 메일에 넣은 raw token을 DB에도 그대로 저장해야 할까요?",
@@ -755,10 +755,10 @@ window.visualLabData = {
         },
         "reflection": {
           "prompt": "발급, mail, confirm 세 경계에서 각각 남는 상태를 한 줄씩 적어 보세요.",
-          "hint": "DB hash row, commit 후 async task, BCrypt password와 usedAt을 봅니다."
+          "hint": "DB hash row, SMTP 수락 또는 4xx, BCrypt password와 usedAt을 봅니다."
         },
         "diagram": {
-          "caption": "LOCAL 복구 요청은 raw/hash 분리와 token row commit 뒤 비동기 메일로 이어지고, confirm은 hash·lock·만료·usedAt을 확인해 password와 사용 상태를 한 transaction에서 바꿉니다.",
+          "caption": "LOCAL 복구 요청은 raw/hash 분리와 token row commit 뒤 동기 SMTP로 이어지고, confirm은 hash·lock·만료·usedAt을 확인해 password와 사용 상태를 한 transaction에서 바꿉니다.",
           "participants": [
             "recoveryClient",
             "accountRecoveryController",
@@ -766,10 +766,10 @@ window.visualLabData = {
             "userRepository",
             "passwordResetTokenCodec",
             "passwordResetTokenRepository",
-            "springTransactionEvents",
-            "recoveryMailEventDispatcher",
+            "recoveryMailDispatcher",
             "recoveryMailSender",
             "smtpAdapter",
+            "globalExceptionHandler",
             "passwordEncoder",
             "recoveryTransaction"
           ],
@@ -779,7 +779,7 @@ window.visualLabData = {
               "label": "1. 요청 · token 발급",
               "description": "LOCAL 사용자와 cooldown을 확인한 뒤 raw token과 저장용 hash를 분리합니다.",
               "participants": ["recoveryClient", "accountRecoveryController", "accountRecoveryService", "userRepository", "passwordResetTokenRepository", "passwordResetTokenCodec"],
-              "nextLaneIds": ["after-commit-mail"],
+              "nextLaneIds": ["after-commit-mail-success", "after-commit-mail-failure"],
               "steps": [
                 {
                   "from": "recoveryClient",
@@ -890,98 +890,52 @@ window.visualLabData = {
               ]
             },
             {
-              "id": "after-commit-mail",
-              "label": "2. commit 후 비동기 mail",
-              "description": "token row commit과 HTTP 202를 SMTP 완료 여부에서 분리합니다.",
-              "participants": ["accountRecoveryService", "passwordResetTokenRepository", "springTransactionEvents", "recoveryMailEventDispatcher", "accountRecoveryController", "recoveryClient", "recoveryMailSender", "smtpAdapter"],
+              "id": "after-commit-mail-success",
+              "label": "2-A. 동기 SMTP 성공 · 200",
+              "description": "token transaction이 commit된 뒤 SMTP 호출이 정상 반환한 경우에만 200을 만듭니다.",
+              "participants": ["accountRecoveryService", "accountRecoveryController", "recoveryMailDispatcher", "recoveryMailSender", "smtpAdapter", "recoveryClient"],
               "nextLaneIds": ["confirm-reset"],
               "steps": [
                 {
                   "from": "accountRecoveryService",
-                  "to": "springTransactionEvents",
-                  "verb": "메일 event 등록",
-                  "payload": "PasswordResetMailRequestedEvent([REDACTED])",
-                  "kind": "event",
-                  "effect": {
-                    "kind": "fanout",
-                    "subject": "복구 메일 event",
-                    "before": "transaction 안에 token row 변경만 존재",
-                    "after": "commit 성공 때만 전달할 event가 등록됨"
-                  },
-                  "evidenceScope": "test",
-                  "codePointIds": ["recovery-service-target"]
-                },
-                {
-                  "from": "passwordResetTokenRepository",
-                  "to": "springTransactionEvents",
-                  "verb": "transaction commit",
-                  "payload": "hashed token row",
-                  "kind": "persist",
+                  "to": "accountRecoveryController",
+                  "verb": "commit 뒤 mail command 반환",
+                  "payload": "id + tokenHash + expiresAt",
+                  "kind": "response",
                   "effect": {
                     "kind": "persist",
                     "subject": "Reset token row",
-                    "before": "hash row가 transaction 안에서만 변경됨",
-                    "after": "hash row가 commit되어 mail event 전달 가능"
+                    "before": "새 hash가 발급 transaction 안에만 있음",
+                    "after": "proxy가 transaction을 commit하고 Controller가 command를 받음"
                   },
                   "evidenceScope": "test",
-                  "codePointIds": ["reset-token-row-scaffold", "mail-dispatch-scaffold"]
-                },
-                {
-                  "from": "springTransactionEvents",
-                  "to": "recoveryMailEventDispatcher",
-                  "verb": "AFTER_COMMIT 전달",
-                  "payload": "redacted recipient + reset link",
-                  "kind": "event",
-                  "effect": {
-                    "kind": "fanout",
-                    "subject": "Mail dispatch 조건",
-                    "before": "commit 전에는 dispatcher가 실행되지 않음",
-                    "after": "commit 성공 뒤 dispatcher 호출 가능"
-                  },
-                  "evidenceScope": "code",
-                  "codePointIds": ["mail-dispatch-scaffold"]
-                },
-                {
-                  "from": "recoveryMailEventDispatcher",
-                  "to": "recoveryMailEventDispatcher",
-                  "verb": "bounded executor 제출",
-                  "payload": "core 1 · max 2 · queue 100",
-                  "kind": "event",
-                  "effect": {
-                    "kind": "transfer",
-                    "subject": "SMTP 작업",
-                    "before": "HTTP 요청 thread에서 SMTP를 실행하지 않음",
-                    "after": "recovery-mail executor의 별도 작업으로 분리"
-                  },
-                  "evidenceScope": "code",
-                  "codePointIds": ["mail-dispatch-scaffold"]
+                  "codePointIds": ["reset-token-row-scaffold", "recovery-service-target"]
                 },
                 {
                   "from": "accountRecoveryController",
-                  "to": "recoveryClient",
-                  "verb": "중립 응답",
-                  "payload": "202 Accepted + Cache-Control: no-store",
-                  "kind": "response",
+                  "to": "recoveryMailDispatcher",
+                  "verb": "동기 발송 요청",
+                  "payload": "PasswordResetMailCommand([REDACTED])",
+                  "kind": "call",
                   "effect": {
-                    "kind": "return",
-                    "subject": "HTTP 결과",
-                    "before": "계정 존재와 SMTP 결과를 client가 추측할 수 있음",
-                    "after": "계정 없음·OAuth 계정·SMTP 실패도 같은 공개 202"
+                    "kind": "transfer",
+                    "subject": "HTTP request thread",
+                    "before": "SMTP 결과를 아직 모름",
+                    "after": "dispatcher 반환 또는 예외까지 같은 요청이 대기"
                   },
-                  "evidenceScope": "test",
-                  "codePointIds": ["mail-dispatch-scaffold"],
-                  "check": "202는 mail delivery 성공을 뜻하지 않습니다."
+                  "evidenceScope": "code",
+                  "codePointIds": ["mail-dispatch-scaffold"]
                 },
                 {
-                  "from": "recoveryMailEventDispatcher",
+                  "from": "recoveryMailDispatcher",
                   "to": "recoveryMailSender",
-                  "verb": "비동기 발송 위임",
+                  "verb": "메일 포트 호출",
                   "payload": "recipient + #reset_token link",
                   "kind": "call",
                   "effect": {
                     "kind": "transfer",
                     "subject": "Mail command",
-                    "before": "bounded executor task에 redacted event가 있음",
+                    "before": "dispatcher에 redacted command가 있음",
                     "after": "메일 포트가 recipient와 reset link를 받음"
                   },
                   "evidenceScope": "test",
@@ -996,12 +950,172 @@ window.visualLabData = {
                   "effect": {
                     "kind": "transfer",
                     "subject": "SMTP 요청",
-                    "before": "메일 포트 입력만 존재",
-                    "after": "JavaMailSender 호출 · 실제 수신함 도착은 아직 미확인"
+                    "before": "조립된 message가 application 안에 있음",
+                    "after": "JavaMailSender.send 호출 · 수신함 도착은 아직 미확인"
                   },
                   "evidenceScope": "manual",
-                  "codePointIds": ["smtp-adapter-target"],
-                  "check": "자동 테스트는 message 조립과 호출·실패 비노출까지만 확인하고 실제 delivery는 수동 E2E로 확인합니다."
+                  "codePointIds": ["smtp-adapter-target"]
+                },
+                {
+                  "from": "smtpAdapter",
+                  "to": "recoveryMailSender",
+                  "verb": "정상 반환",
+                  "payload": "JavaMailSender.send() normal return",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "SMTP 요청 수락",
+                    "before": "외부 호출 결과 미확정",
+                    "after": "SMTP 서버가 요청을 수락했다는 200 근거 확보"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["smtp-adapter-target"]
+                },
+                {
+                  "from": "recoveryMailDispatcher",
+                  "to": "accountRecoveryController",
+                  "verb": "sender 정상 반환 전달",
+                  "payload": "Mail Port return → Dispatcher return",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "Controller 발송 판단",
+                    "before": "adapter 정상 반환이 sender에 도착",
+                    "after": "sender와 dispatcher를 거쳐 Controller가 200을 만들 수 있음"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["mail-dispatch-scaffold"]
+                },
+                {
+                  "from": "accountRecoveryController",
+                  "to": "recoveryClient",
+                  "verb": "발송 결과 응답",
+                  "payload": "200 RECOVERY_MAIL_SENT",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "HTTP 결과",
+                    "before": "client가 SMTP 호출 결과를 모름",
+                    "after": "200은 SMTP 요청 수락 · token row 유지"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["mail-dispatch-scaffold"],
+                  "check": "받은 편지함 도착과 최종 배달은 200만으로 증명하지 않습니다."
+                }
+              ]
+            },
+            {
+              "id": "after-commit-mail-failure",
+              "label": "2-B. 동기 SMTP 실패 · 424",
+              "description": "SMTP 예외를 Controller까지 전달하고 이번 요청의 미사용 token만 새 transaction에서 정리합니다.",
+              "participants": ["accountRecoveryService", "passwordResetTokenRepository", "accountRecoveryController", "recoveryMailDispatcher", "recoveryMailSender", "smtpAdapter", "globalExceptionHandler", "recoveryClient"],
+              "nextLaneIds": [],
+              "steps": [
+                {
+                  "from": "accountRecoveryService",
+                  "to": "accountRecoveryController",
+                  "verb": "commit 뒤 mail command 반환",
+                  "payload": "token id/hash + redacted recipient/link",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "Reset token row",
+                    "before": "새 hash가 발급 transaction 안에만 있음",
+                    "after": "proxy가 transaction을 commit하고 Controller가 command를 받음"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["reset-token-row-scaffold", "recovery-service-target"]
+                },
+                {
+                  "from": "accountRecoveryController",
+                  "to": "recoveryMailDispatcher",
+                  "verb": "동기 발송 요청",
+                  "payload": "PasswordResetMailCommand([REDACTED])",
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "HTTP request thread",
+                    "before": "SMTP 결과를 아직 모름",
+                    "after": "dispatcher 반환 또는 예외까지 같은 요청이 대기"
+                  },
+                  "evidenceScope": "code",
+                  "codePointIds": ["mail-dispatch-scaffold"]
+                },
+                {
+                  "from": "recoveryMailDispatcher",
+                  "to": "smtpAdapter",
+                  "verb": "메일 포트로 SMTP 호출",
+                  "payload": "RecoveryMailSender → JavaMailSender.send(message)",
+                  "kind": "call",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "SMTP 요청",
+                    "before": "dispatcher에 redacted command가 있음",
+                    "after": "sender가 message를 조립해 SMTP adapter를 호출"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["mail-dispatch-scaffold", "smtp-adapter-target"]
+                },
+                {
+                  "from": "smtpAdapter",
+                  "to": "recoveryMailDispatcher",
+                  "verb": "sender가 분류한 예외 전달",
+                  "payload": "authentication | delivery MailException",
+                  "kind": "failure",
+                  "effect": {
+                    "kind": "fanout",
+                    "subject": "SMTP 호출",
+                    "before": "외부 호출 결과 미확정",
+                    "after": "sender가 typed exception으로 바꾸고 dispatcher가 그대로 받음"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["smtp-adapter-target", "mail-dispatch-scaffold"]
+                },
+                {
+                  "from": "recoveryMailDispatcher",
+                  "to": "accountRecoveryController",
+                  "verb": "예외 다시 전달",
+                  "payload": "typed recovery mail exception",
+                  "kind": "failure",
+                  "effect": {
+                    "kind": "fanout",
+                    "subject": "동기 dispatcher",
+                    "before": "sender 예외를 받음",
+                    "after": "예외를 삼키지 않고 Controller가 보상 처리"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["mail-dispatch-scaffold"]
+                },
+                {
+                  "from": "accountRecoveryController",
+                  "to": "accountRecoveryService",
+                  "verb": "별도 transaction 정리",
+                  "payload": "discardUndeliveredToken(id, tokenHash)",
+                  "kind": "failure",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "SMTP 실패 보상 T2",
+                    "before": "실패한 발급 건의 token이 commit되어 있음",
+                    "after": "Service가 REQUIRES_NEW에서 id·hash·미사용 조건으로 삭제하고 원래 예외를 다시 던짐"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["reset-token-row-scaffold", "recovery-service-target"]
+                },
+                {
+                  "from": "globalExceptionHandler",
+                  "to": "recoveryClient",
+                  "verb": "공개 424로 매핑",
+                  "payload": "424 RECOVERY_MAIL_AUTHENTICATION_FAILED | RECOVERY_MAIL_DELIVERY_FAILED",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "HTTP 결과",
+                    "before": "Controller가 typed exception을 다시 던짐",
+                    "after": "Handler가 원문을 숨긴 no-store 424 응답으로 변환"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["mail-dispatch-scaffold"],
+                  "check": "계정 없음·OAuth는 422, cooldown은 Retry-After가 있는 429로 SMTP 전에 끝납니다."
                 }
               ]
             },
@@ -1128,19 +1242,20 @@ window.visualLabData = {
           "AccountRecoveryService",
           "PasswordResetTokenCodec",
           "PasswordResetTokenRepository",
-          "RecoveryMailEventDispatcher",
+          "RecoveryMailDispatcher",
           "RecoveryMailSender",
           "SmtpRecoveryMailSender",
+          "GlobalExceptionHandler",
           "User + reset token transaction"
         ],
         "snapshot": [
           { "label": "DB 저장", "value": "SHA-256 hash만 저장" },
           { "label": "정책", "value": "TTL 15분 · cooldown 1분 · 단일 사용" },
-          { "label": "메일", "value": "AFTER_COMMIT · bounded async" },
+          { "label": "메일", "value": "commit 뒤 동기 send · 200/424" },
           { "label": "확정", "value": "204 또는 generic 400", "tone": "recovered" }
         ],
-        "evidence": "제공된 token codec·row·AFTER_COMMIT dispatcher scaffold와 실습 완료 후 recovery 테스트가 hash·회전·만료·단일 사용·BCrypt·비동기 경계를 확인합니다. 실제 Gmail 수신은 별도 수동 증거입니다.",
-        "outcome": "202는 복구 요청 접수, SMTP 반환은 외부 호출, 204는 password와 usedAt transaction commit을 각각 뜻합니다."
+        "evidence": "token codec·row·동기 dispatcher와 recovery 테스트가 hash·회전·만료·단일 사용·BCrypt·200/4xx 경계를 확인합니다. 실제 Gmail 수신은 별도 수동 증거입니다.",
+        "outcome": "200은 SMTP 요청 수락, 424는 발송 완료 확인 실패, 204는 password와 usedAt transaction commit을 각각 뜻합니다."
       }
     ]
   },
@@ -1150,7 +1265,7 @@ window.visualLabData = {
     { "id": "account", "label": "OAuthAccountService", "kind": "service" },
     { "id": "recovery", "label": "AccountRecoveryService", "kind": "service" },
     { "id": "token-store", "label": "PasswordResetTokenRepository", "kind": "repository" },
-    { "id": "mail", "label": "RecoveryMailEventDispatcher", "kind": "event" }
+    { "id": "mail", "label": "RecoveryMailDispatcher", "kind": "service" }
   ],
   "flows": [
     {
@@ -1202,16 +1317,16 @@ window.visualLabData = {
     {
       "id": "account-recovery",
       "title": "Reset token 발급·메일·확정",
-      "summary": "raw/hash 분리, commit 후 비동기 SMTP, hash와 lock 기반 단일 사용 confirm을 연결합니다.",
+      "summary": "raw/hash 분리, commit 후 동기 SMTP 결과, hash와 lock 기반 단일 사용 confirm을 연결합니다.",
       "steps": [
         {
           "id": "recovery-request",
           "from": "AccountRecoveryController",
           "to": "AccountRecoveryService",
-          "problem": "계정 존재와 provider 종류를 공개 응답으로 드러내면 안 됩니다.",
-          "concept": "LOCAL-only neutral response",
-          "action": "LOCAL 사용자와 1분 cooldown을 확인하되 유효한 요청은 같은 202를 유지합니다.",
-          "check": "계정 없음·OAuth 계정·SMTP 실패도 no-store 202인지 확인합니다.",
+          "problem": "발송 결과를 한 상태로만 반환하면 SMTP가 어디에서 실패했는지 알 수 없습니다.",
+          "concept": "Observable lab contract",
+          "action": "LOCAL 성공은 200, 계정 부적합은 422, cooldown은 429, SMTP 실패는 424로 구분합니다.",
+          "check": "모든 결과가 no-store이고 429에는 Retry-After가 있는지 확인합니다.",
           "codePointIds": ["recovery-service-target"]
         },
         {
@@ -1226,12 +1341,12 @@ window.visualLabData = {
         },
         {
           "id": "recovery-mail",
-          "from": "Spring Transaction Events",
-          "to": "RecoveryMailEventDispatcher",
-          "problem": "commit 전 mail이나 요청 thread의 SMTP 대기는 token 상태와 HTTP 결과를 결합합니다.",
-          "concept": "AFTER_COMMIT bounded async",
-          "action": "commit 뒤 event를 bounded executor에서 mail port로 전달합니다.",
-          "check": "HTTP 202가 SMTP completion을 기다리지 않고 실패 세부를 노출하지 않는지 확인합니다.",
+          "from": "AccountRecoveryController",
+          "to": "RecoveryMailDispatcher",
+          "problem": "commit 전 mail을 보내면 DB rollback 뒤 무효 link가 전달될 수 있습니다.",
+          "concept": "Commit before synchronous SMTP",
+          "action": "service transaction이 끝난 command를 request thread에서 mail port로 전달합니다.",
+          "check": "send 정상 반환 뒤에만 200이고 실패 token은 정확한 id와 hash로 정리되는지 확인합니다.",
           "codePointIds": ["mail-dispatch-scaffold"]
         },
         {
@@ -1261,7 +1376,7 @@ window.visualLabData = {
     {
       "id": "oauth-profile-scaffold",
       "title": "제공된 profile 연결에서 실습 목표로 진입",
-      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/CustomOAuthUserService.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/Step01CustomOAuthUserService.kt",
       "language": "kotlin",
       "snippet": "override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {\n    return normalizePrincipal(\n        userRequest.clientRegistration.registrationId,\n        delegate.loadUser(userRequest)\n    )\n}",
       "explanation": "외부 user-info 호출은 제공되어 있고, `normalizePrincipal`에서 필수 값과 verified 상태를 검사하는 부분이 실습 완료 목표입니다.",
@@ -1269,17 +1384,17 @@ window.visualLabData = {
     },
     {
       "id": "oauth-account-target",
-      "title": "내부 계정 판단은 실습 완료 목표",
-      "file": "src/main/kotlin/com/andi/rest_crud/oauth/service/OAuthAccountService.kt",
+      "title": "provider identity를 먼저 확인합니다",
+      "file": "src/main/kotlin/com/andi/rest_crud/oauth/service/Step02OAuthAccountService.kt",
       "language": "kotlin",
-      "snippet": "@Transactional\nfun handleOAuthLogin(profile: OAuthUserProfile): OAuthLoginResponse {\n    // TODO: 검증된 profile로 기존 identity 조회, LOCAL 충돌 거부, 신규 계정 저장과 JWT 발급을 구현하세요.\n    TODO(\"OAuth 계정 처리를 완성하세요.\")\n}",
-      "explanation": "provider identity 조회, LOCAL 충돌 차단, 신규 저장과 자체 JWT 발급을 이 메서드에 연결합니다.",
+      "snippet": "val existingOAuthUser = userRepository.findByAuthProviderAndProviderId(\n    normalizedProfile.provider,\n    normalizedProfile.providerId\n).orElse(null)\n\nif (existingOAuthUser != null) {\n    return createSuccessResponse(existingOAuthUser, isNewUser = false)\n}\nif (userRepository.existsByEmail(normalizedProfile.email)) {\n    throw OAuthAccountLinkRequiredException()\n}",
+      "explanation": "기존 외부 identity를 먼저 재사용하고 같은 email의 다른 계정은 명시적인 연결 확인 없이 합치지 않습니다.",
       "check": "계정 정책 테스트의 existing, collision, new user 분기가 모두 통과하는지 확인합니다."
     },
     {
       "id": "oauth-redirect-scaffold",
       "title": "제공된 helper는 token을 fragment에만 둡니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/OAuthLoginHandlers.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/oauth/security/Step03OAuthLoginHandlers.kt",
       "language": "kotlin",
       "snippet": "return UriComponentsBuilder.fromUriString(frontendUrl)\n    .queryParam(\"oauth\", \"success\")\n    .queryParam(\"provider\", result.provider)\n    .queryParam(\"isNewUser\", result.isNewUser)\n    .fragment(\"access_token=${result.accessToken}\")\n    .build()\n    .encode()\n    .toUriString()",
       "explanation": "redirect helper는 제공되어 있으며 success handler에서 검증된 profile과 내부 로그인 결과를 이 helper에 연결하는 것이 실습 목표입니다.",
@@ -1314,29 +1429,29 @@ window.visualLabData = {
     },
     {
       "id": "recovery-service-target",
-      "title": "발급과 확정 orchestration은 실습 완료 목표",
-      "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/AccountRecoveryService.kt",
+      "title": "token commit 뒤 mail command를 반환합니다",
+      "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/Step04AccountRecoveryService.kt",
       "language": "kotlin",
-      "snippet": "@Transactional\nfun requestPasswordReset(email: String) {\n    // TODO: LOCAL 사용자 lock, cooldown, hash 저장과 AFTER_COMMIT mail event 발행을 구현하세요.\n    TODO(\"비밀번호 재설정 token 발급을 완성하세요.\")\n}\n\n@Transactional\nfun confirmPasswordReset(request: PasswordResetConfirmRequest) {\n    // TODO: token hash와 사용자 lock으로 만료·단일 사용을 확인하고 password 변경을 같은 transaction에 묶으세요.\n    TODO(\"비밀번호 재설정 확정을 완성하세요.\")\n}",
-      "explanation": "제공된 codec, row, repository와 event 계약을 사용해 발급·cooldown과 hash/lock 기반 확정을 두 메서드에 연결합니다.",
+      "snippet": "val savedToken = passwordResetTokenRepository.saveAndFlush(token)\n// service 반환 뒤 transaction이 commit되면 Controller가 SMTP를 호출합니다.\nreturn PasswordResetMailCommand(\n    tokenId = savedToken.id,\n    tokenHash = savedToken.tokenHash,\n    recipientEmail = user.email,\n    resetLink = createResetLink(rawToken)\n)",
+      "explanation": "DB에는 hash를 commit하고 raw token이 든 link는 transaction 밖의 동기 SMTP 호출에 넘깁니다.",
       "check": "recovery service·controller·concurrency 테스트를 함께 실행해 transaction 경계를 확인합니다."
     },
     {
       "id": "mail-dispatch-scaffold",
-      "title": "제공된 dispatcher는 commit 뒤 별도 executor에서 동작합니다",
+      "title": "dispatcher는 SMTP 결과를 호출자에게 돌려줍니다",
       "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/RecoveryMailDispatch.kt",
       "language": "kotlin",
-      "snippet": "@Async(RECOVERY_MAIL_EXECUTOR)\n@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)\nfun dispatch(event: PasswordResetMailRequestedEvent) {\n    try {\n        recoveryMailSender.sendPasswordResetMail(event.recipientEmail, event.resetLink)\n    } catch (_: RuntimeException) {\n        log.warn(\"Password reset mail delivery failed.\")\n    }\n}",
-      "explanation": "실제 구현은 발송 예외를 비식별 warning으로 처리하며 executor의 core, max와 queue 크기도 제한합니다.",
-      "check": "rollback에서는 발송하지 않고 commit 이후 요청 thread와 다른 thread에서 sender가 호출되는지 확인합니다."
+      "snippet": "fun dispatch(command: PasswordResetMailCommand) {\n    recoveryMailSender.sendPasswordResetMail(\n        command.recipientEmail,\n        command.resetLink\n    )\n}",
+      "explanation": "예외를 삼키지 않으므로 Controller가 200과 424를 실제 send 결과로 구분할 수 있습니다.",
+      "check": "SMTP 호출 시 token row가 이미 commit되어 있고 실패 예외가 Controller까지 전달되는지 확인합니다."
     },
     {
       "id": "smtp-adapter-target",
-      "title": "SMTP message 조립은 adapter의 실습 완료 목표",
-      "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/SmtpRecoveryMailSender.kt",
+      "title": "SMTP 인증 실패와 일반 전송 실패를 구분합니다",
+      "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/Step05SmtpRecoveryMailSender.kt",
       "language": "kotlin",
-      "snippet": "override fun sendPasswordResetMail(recipientEmail: String, resetLink: String) {\n    // TODO: 발신자·수신자·일회용 link를 담은 message를 만들고 MailException을 도메인 예외로 변환하세요.\n    TODO(\"SMTP 복구 메일 발송을 완성하세요.\")\n}",
-      "explanation": "발신자·수신자·제목·본문을 구성하고 MailException을 복구 도메인 실패로 변환합니다.",
+      "snippet": "try {\n    // 정상 반환까지만 HTTP 200의 근거로 사용합니다.\n    javaMailSender.send(message)\n} catch (exception: MailAuthenticationException) {\n    throw RecoveryMailAuthenticationException(exception)\n} catch (exception: MailException) {\n    throw RecoveryMailDeliveryException(exception)\n}",
+      "explanation": "발신자·수신자·제목·본문을 구성하고 앱 비밀번호 실패와 그 밖의 mail 실패를 구분합니다.",
       "check": "mock JavaMailSender로 message와 예외 변환을 확인하며 실제 SMTP delivery와 구분합니다."
     }
   ],
@@ -1351,7 +1466,7 @@ window.visualLabData = {
     },
     {
       "title": "메일과 비밀번호 변경은 별도 증거입니다",
-      "body": "202와 SMTP 호출은 password 변경을 뜻하지 않으며 confirm transaction의 204가 별도 완료 신호입니다."
+      "body": "200은 SMTP 요청 수락일 뿐 password 변경을 뜻하지 않으며 confirm transaction의 204가 별도 완료 신호입니다."
     }
   ],
   "responsibilities": [
@@ -1366,9 +1481,9 @@ window.visualLabData = {
       "caution": "raw token을 DB나 로그에 남기지 않습니다."
     },
     {
-      "name": "RecoveryMailEventDispatcher",
-      "role": "commit 이후 bounded executor에서 mail port를 호출합니다.",
-      "caution": "비동기 호출 반환을 실제 수신함 delivery로 표현하지 않습니다."
+      "name": "RecoveryMailDispatcher",
+      "role": "commit 이후 request thread에서 mail port를 호출하고 결과를 돌려줍니다.",
+      "caution": "동기 호출 정상 반환을 실제 수신함 delivery로 표현하지 않습니다."
     }
   ],
   "glossary": [
@@ -1391,14 +1506,14 @@ window.visualLabData = {
   "practice": [
     "Provider 인증 성공과 내부 계정 연결 성공의 차이를 설명할 수 있나요?",
     "raw token과 DB hash가 각각 어디에 존재하는지 설명할 수 있나요?",
-    "202, SMTP 호출, confirm 204가 증명하는 범위를 구분할 수 있나요?",
+    "200, SMTP 수락, confirm 204가 증명하는 범위를 구분할 수 있나요?",
     "만료·회전·재사용 token이 왜 같은 400으로 끝나는지 설명할 수 있나요?"
   ],
   "checks": [
     "verified email과 providerId의 역할을 구분할 수 있나요?",
     "LOCAL email 충돌에서 JWT가 발급되지 않는 이유를 설명할 수 있나요?",
     "32-byte raw token, SHA-256 hash, 15분 TTL, 1분 cooldown을 연결할 수 있나요?",
-    "AFTER_COMMIT bounded async와 실제 SMTP delivery 증거를 구분할 수 있나요?",
+    "commit 뒤 동기 SMTP 수락과 실제 수신함 delivery 증거를 구분할 수 있나요?",
     "BCrypt password와 usedAt이 같은 transaction에서 바뀌는 이유를 설명할 수 있나요?"
   ],
   "relatedDocs": [

@@ -22,10 +22,10 @@
 - [ ] `04`: 화면에 5xx 안내가 나오면 네 핵심 파일 중 현재 단계의 TODO와 서버 로그를 확인했습니다.
 - [ ] `04`: Refresh Token과 Redis 기반 token 저장·회수가 범위 밖임을 확인했습니다.
 - [ ] `05`: verified email만 사용하고, 동일 email 로컬 계정을 자동 연결하지 않으며, JWT를 redirect fragment로 전달합니다.
-- [ ] `05`: 5개 파일의 TODO 6개와 제공된 scaffold 경계를 구분했습니다.
+- [ ] `05`: 두 브랜치의 같은 완성 코드와 설명 주석을 Step01~Step05 순서로 읽었습니다.
 - [ ] `05`: reset token의 raw/hash 분리, 15분 만료, 1분 cooldown, 회전·단일 사용을 설명할 수 있습니다.
 - [ ] `05`: 비밀번호 변경과 `usedAt` 기록이 같은 transaction에서 처리됨을 확인했습니다.
-- [ ] `05`: AFTER_COMMIT 비동기 SMTP와 공개 202가 실제 메일 배달 성공을 뜻하지 않음을 구분했습니다.
+- [ ] `05`: token commit 뒤 동기 SMTP의 `200/422/429/424`와 실제 받은 편지함 배달 증거를 구분했습니다.
 - [ ] `05`: 자동 mock/fake 테스트, 로컬 Mailpit, 실제 Google·Gmail 수동 E2E의 증거 범위를 구분했습니다.
 - [ ] `06`: fixture와 mock으로 정상/실패 케이스를 분리했습니다.
 

@@ -199,7 +199,7 @@ if (SecurityContextHolder.getContext().authentication == null) {
 <a id="seq-05"></a>
 ## 7. Sequence 05: 외부 프로필을 내부 계정으로 받아들이는 경계
 
-05 starter에서 학습자가 직접 구현하는 범위는 5개 파일의 TODO 6개입니다. `normalizePrincipal`, `handleOAuthLogin`, `onAuthenticationSuccess`, `requestPasswordReset`, `confirmPasswordReset`, `sendPasswordResetMail` 순서로 외부 profile부터 메일 adapter까지 연결합니다. token codec, repository, controller, 비동기 dispatcher와 정적 실습 화면은 제공된 scaffold입니다.
+현재 `05-implementation`과 `05-answer`는 같은 완성 코드와 설명 주석을 사용합니다. `normalizePrincipal`, `handleOAuthLogin`, `onAuthenticationSuccess`, `requestPasswordReset`, `confirmPasswordReset`, `sendPasswordResetMail` 순서로 외부 profile부터 메일 adapter까지 실행 경계를 읽고 검증합니다.
 
 외부 프로필의 email은 `email_verified=true`인 경우만 내부 식별 후보가 됩니다. 기존 외부 사용자는 `provider + providerId`로 찾고 DB에 저장된 내부 email을 유지합니다. 같은 email의 LOCAL 또는 다른 외부 계정이 있으면 소유 확인 없이 자동 연결하지 않고 `link_required`로 중단합니다. 성공한 경우에만 우리 API용 JWT를 발급해 URL fragment로 전달하며, 실습 화면은 token을 메모리로 옮긴 직후 URL을 지웁니다.
 
@@ -235,7 +235,9 @@ val expiresAt = now.plus(tokenTtl)
 existingToken.rotate(tokenHash, now, expiresAt)
 ```
 
-메일 event는 token transaction이 commit된 뒤 bounded executor에서 비동기로 처리합니다. 존재하지 않는 계정, OAuth 계정, SMTP 실패도 유효한 요청이면 같은 `202`를 반환하고, 만료·회전·재사용 token은 같은 공개 `400`으로 처리합니다. 자동 테스트는 이 내부 계약을 외부 네트워크 없이 확인하지만 실제 Google callback과 Gmail 수신은 credential이 필요한 수동 E2E입니다. 공식 05 브랜치에서는 로컬 Mailpit으로 SMTP와 reset link를 먼저 재현할 수 있습니다.
+복구 요청은 token transaction을 먼저 commit하고 같은 HTTP request thread에서 실제 SMTP 호출을 기다립니다. SMTP 서버가 요청을 수락하면 no-store `200 RECOVERY_MAIL_SENT`, reset 가능한 LOCAL 계정이 없으면 `422`, cooldown이면 `Retry-After`가 있는 `429`, 인증 또는 전송 실패면 `424`를 반환합니다. SMTP 실패 시 별도 transaction이 `id + tokenHash + usedAt is null` 조건으로 이번 요청의 token만 정리합니다.
+
+`200`은 SMTP 서버의 요청 수락 범위이며 받은 편지함 도착이나 반송 없음까지 증명하지 않습니다. `422/429` 구분은 계정 상태를 추측하게 만들 수 있으므로 실패 경계를 관찰하는 실습용 계약이며 공개 운영 API에 그대로 적용하지 않습니다. 자동 테스트는 이 내부 계약을 외부 네트워크 없이 확인하지만 실제 Google callback과 Gmail 수신은 credential이 필요한 수동 E2E입니다.
 
 [Visual Lab에서 입력 조건을 보고 경로 예측하기](./visual-lab/sequences/05/)
 
