@@ -58,8 +58,8 @@ jwt:
   audience: ${JWT_AUDIENCE:spring-boot-db-access-lab-api}
 
 app:
-  frontend-url: ${APP_FRONTEND_URL:http://localhost:8080/auth-practice/index.html}
-  password-reset-url: ${APP_PASSWORD_RESET_URL:http://localhost:8080/auth-practice/index.html}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:8080/auth-practice/oauth.html}
+  password-reset-url: ${APP_PASSWORD_RESET_URL:http://localhost:8080/auth-practice/recovery.html}
   password-reset-token-ttl: ${APP_PASSWORD_RESET_TOKEN_TTL:PT15M}
   password-reset-resend-cooldown: ${APP_PASSWORD_RESET_RESEND_COOLDOWN:PT1M}
   recovery-mail-from: ${APP_RECOVERY_MAIL_FROM:no-reply@aandi.test}

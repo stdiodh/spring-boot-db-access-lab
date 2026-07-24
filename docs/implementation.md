@@ -138,15 +138,15 @@ Security 확인:
 - 응답에 `Cache-Control: no-store`를 설정합니다.
 - link_required와 failed에는 token, fragment, email, 내부 오류를 넣지 않습니다.
 
-`static/auth-practice/app.js`는 다른 초기화보다 먼저 보안 redirect 값을 처리합니다.
+정적 실습 화면은 `index.html`(LOCAL), `oauth.html`(Google OAuth), `recovery.html`(SMTP 복구)로 나뉩니다. 동기 `redirect-bootstrap.js`가 HTML 본문 파싱 전에 URL 값을 회수·제거하고, `practice-common.js`는 HTTP 증거 마스킹 helper만 공유합니다. `app.js`, `oauth.js`, `recovery.js`는 각 화면의 endpoint만 다루며 OAuth/reset payload는 bootstrap이 만든 메모리 값만 넘겨받습니다.
 
-1. OAuth `#access_token` 또는 복구 `#reset_token`을 JavaScript 메모리로 옮깁니다.
+1. 동기 bootstrap은 OAuth 페이지에서 `#access_token`, 복구 페이지에서 `#reset_token`을 JavaScript 메모리로 옮깁니다.
 2. `history.replaceState`로 query와 fragment를 즉시 제거합니다.
 3. OAuth JWT는 `/auth/me`에 Bearer로 보내고 서버 응답으로 내부 신원을 확인합니다.
 4. reset token은 확정 요청에만 사용하고 DOM·교환 기록에 출력하지 않습니다.
 5. 둘 다 local storage, session storage, cookie에 저장하지 않습니다.
 
-OAuth JWT는 학습 목적의 명시적인 token receipt에는 보일 수 있습니다. 따라서 URL 제거를 token 전체 비노출이나 운영 token 전달 설계로 표현하지 않습니다.
+OAuth query의 provider·신규 여부는 화면 설명용 metadata이며 내부 로그인 ID의 근거는 `/auth/me` 응답입니다. Google 비밀번호는 전달되지 않습니다. OAuth JWT는 학습 목적의 명시적인 token receipt에는 보일 수 있으므로 URL 제거를 token 전체 비노출이나 운영 token 전달 설계로 표현하지 않습니다.
 
 ## 7. Step 4-A - 복구 요청과 token 발급
 
@@ -260,11 +260,15 @@ rg -n 'TODO\(' src/main/kotlin
 
 ```bash
 ./gradlew test
+node --check src/main/resources/static/auth-practice/redirect-bootstrap.js
+node --check src/main/resources/static/auth-practice/practice-common.js
 node --check src/main/resources/static/auth-practice/app.js
+node --check src/main/resources/static/auth-practice/oauth.js
+node --check src/main/resources/static/auth-practice/recovery.js
 git diff --check
 ```
 
-`rg` 결과는 0건, 전체 테스트는 104개 모두 통과해야 합니다. `05-answer`도 외부 credential 없이 같은 전체 gate를 통과해야 합니다.
+`rg` 결과는 0건이고 전체 테스트가 모두 통과해야 합니다. `05-answer`도 외부 credential 없이 같은 전체 gate를 통과해야 합니다.
 
 자동 테스트는 OAuth 검증·계정 정책·redirect·session 경계, HTML 정적 진입점과 URL 처리 코드 연결, LOCAL recovery·202·cooldown, token hash·회전·만료·단일 사용, AFTER_COMMIT async dispatch, SMTP 실패·메시지 조립과 최신 04 회귀를 확인합니다. 실제 URL 제거 동작은 브라우저에서도 확인합니다.
 
@@ -273,15 +277,16 @@ git diff --check
 Google:
 
 1. `/login/oauth2/code/google`을 callback URI로 등록합니다.
-2. `/oauth2/authorization/google`에서 로그인합니다.
+2. `http://localhost:8080/auth-practice/oauth.html`에서 공식 Google 버튼으로 로그인합니다.
 3. redirect 직후 URL의 query·fragment가 즉시 제거되는지 확인합니다.
-4. 화면이 JWT로 `/auth/me`를 호출해 내부 신원을 표시하는지 확인합니다.
-5. browser storage와 cookie에 JWT가 저장되지 않았는지 확인합니다.
-6. OAuth session만으로 보호 API가 열리지 않는지 확인합니다.
+4. 가입 영수증에서 Google 비밀번호가 전달되지 않았고, 신규 내부 OAuth 계정 생성 또는 기존 계정 재사용 여부가 표시되는지 확인합니다.
+5. 화면이 우리 JWT로 `/auth/me`를 호출해 내부 로그인 ID를 표시하는지 확인합니다.
+6. browser storage와 cookie에 JWT가 저장되지 않았는지 확인합니다.
+7. OAuth session만으로 보호 API가 열리지 않는지 확인합니다.
 
 SMTP:
 
-1. LOCAL 테스트 계정을 준비합니다.
+1. `http://localhost:8080/auth-practice/recovery.html`을 열고 LOCAL 테스트 계정을 준비합니다.
 2. `SPRING_MAIL_*`과 `APP_RECOVERY_MAIL_FROM`을 로컬 secret으로 주입합니다.
 3. 복구 endpoint가 즉시 202를 반환하고 메일이 비동기로 도착하는지 확인합니다.
 4. reset link를 열자마자 fragment가 URL에서 제거되고 실제 password가 변경되는지 확인합니다.

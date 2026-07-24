@@ -64,6 +64,6 @@ class OAuthSessionBoundaryIntegrationTest @Autowired constructor(
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-            .andExpect(redirectedUrl("http://localhost:8080/auth-practice/index.html?oauth=failed"))
+            .andExpect(redirectedUrl("http://localhost:8080/auth-practice/oauth.html?oauth=failed"))
     }
 }
