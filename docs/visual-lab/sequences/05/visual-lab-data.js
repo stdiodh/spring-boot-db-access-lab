@@ -1640,7 +1640,7 @@ window.visualLabData = {
       "title": "Gmail 발신자 정렬 뒤 SMTP 실패를 구분합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/Step06SmtpRecoveryMailSender.kt",
       "language": "kotlin",
-      "snippet": "if (smtpHost.equals(GMAIL_SMTP_HOST, ignoreCase = true)) {\n    check(smtpUsername.isNotBlank() && recoveryMailFrom == smtpUsername) {\n        \"Gmail SMTP 설정 오류: 발신자와 인증 계정이 일치해야 합니다.\"\n    }\n}\n\ntry {\n    javaMailSender.send(message)\n} catch (exception: MailAuthenticationException) {\n    throw RecoveryMailAuthenticationException(exception)\n} catch (exception: MailException) {\n    throw RecoveryMailDeliveryException(exception)\n}",
+      "snippet": "if (smtpHost.equals(GMAIL_SMTP_HOST, ignoreCase = true)) {\n    check(smtpUsername.isNotBlank() && recoveryMailFrom == smtpUsername) {\n        \"Gmail SMTP 설정 오류: 발신자와 인증 계정이 일치해야 합니다.\"\n    }\n}\ntry {\n    javaMailSender.send(message)\n} catch (exception: MailAuthenticationException) {\n    throw RecoveryMailAuthenticationException(exception)\n} catch (exception: MailException) {\n    throw RecoveryMailDeliveryException(exception)\n}",
       "explanation": "Gmail에서는 From과 인증 계정을 시작 시점에 정렬하고, 앱 비밀번호 실패와 그 밖의 mail 실패를 구분합니다. 실제 주소와 secret은 오류에 넣지 않습니다.",
       "check": "mock sender로 정렬 fail-fast·message·예외 변환을 확인하고, 받은편지함 배치는 원본 헤더로 수동 확인합니다."
     }
