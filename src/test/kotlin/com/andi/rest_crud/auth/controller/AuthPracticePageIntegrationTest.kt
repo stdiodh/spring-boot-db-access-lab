@@ -79,7 +79,7 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(content().string(containsString("id=\"recoveryEmail\"")))
             .andExpect(content().string(containsString("id=\"resetForm\"")))
             .andExpect(content().string(containsString("id=\"newPassword\"")))
-            .andExpect(content().string(containsString("http://localhost:8025")))
+            .andExpect(content().string(containsString("support.google.com/mail/answer/185833")))
             .andExpect(content().string(containsString("<script src=\"./redirect-bootstrap.js\"></script>")))
             .andExpect(content().string(containsString("href=\"./recovery.html\" aria-current=\"page\"")))
             .andExpect(content().string(not(containsString("id=\"authForm\""))))
@@ -130,5 +130,7 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(content().contentTypeCompatibleWith("text/javascript"))
             .andExpect(content().string(containsString("__authPracticeRedirect")))
             .andExpect(content().string(containsString("/account-recovery/password-reset/confirm")))
+            .andExpect(content().string(containsString("RECOVERY_MAIL_AUTHENTICATION_FAILED")))
+            .andExpect(content().string(containsString("evidence.setState(\"notice\"")))
     }
 }

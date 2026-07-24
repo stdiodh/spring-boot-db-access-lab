@@ -280,8 +280,8 @@ h3 {
   height: 10px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: var(--verified);
-  box-shadow: 0 0 0 5px var(--verified-soft);
+  background: var(--credential);
+  box-shadow: 0 0 0 5px var(--credential-soft);
 }
 
 .runtime-note strong,
@@ -1049,6 +1049,12 @@ h3 {
   color: #7a4305;
 }
 
+.form-notice[data-tone="error"] {
+  border-color: var(--fault);
+  background: var(--fault-soft);
+  color: #8f1b13;
+}
+
 .form-error {
   border-color: var(--fault);
   background: var(--fault-soft);
@@ -1081,6 +1087,11 @@ h3 {
 .request-state[data-state="success"] {
   border-color: #5bd09e;
   color: #8ae4bd;
+}
+
+.request-state[data-state="notice"] {
+  border-color: #f6bd60;
+  color: #ffd38a;
 }
 
 .request-state[data-state="error"] {

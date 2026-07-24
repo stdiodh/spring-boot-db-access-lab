@@ -11,7 +11,7 @@
 - 기존 OAuth 사용자의 내부 email을 외부 변경값으로 자동 갱신하지 않습니다.
 - OAuth 성공 뒤 우리 API용 JWT를 별도로 발급합니다.
 - OAuth `state`용 임시 session과 STATELESS API 인증을 구분합니다.
-- LOCAL 계정만 복구 메일을 보내고, 유효한 요청은 내부 결과와 무관하게 202를 반환합니다.
+- 계정 조회 전 SMTP 상태는 안전한 전역 503으로, 사전검사 통과 뒤 계정별 결과는 같은 202로 분리합니다.
 - `RecoveryMailSender`와 SMTP adapter의 책임을 나눕니다.
 - reset token을 hash로 저장하고 만료·단일 사용·재발급 정책을 적용해 실제 비밀번호 변경까지 연결합니다.
 - 트랜잭션 commit 이후의 비동기 SMTP 발송과 HTTP 응답 경계를 구분합니다.
@@ -50,6 +50,7 @@ src/main/kotlin/com/andi/rest_crud/
 │   ├── repository/PasswordResetTokenRepository.kt
 │   ├── security/PasswordResetTokenCodec.kt
 │   ├── mail/RecoveryMailSender.kt
+│   ├── mail/RecoveryMailReadiness.kt
 │   ├── mail/RecoveryMailDispatch.kt
 │   ├── mail/Step05SmtpRecoveryMailSender.kt
 │   └── service/Step04AccountRecoveryService.kt
@@ -105,7 +106,8 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 
 - 요청 endpoint는 `POST /account-recovery/password-reset`, 확정 endpoint는 `POST /account-recovery/password-reset/confirm`입니다.
 - email을 검증·정규화하고 `LOCAL` 계정에만 메일을 보냅니다.
-- 계정 없음, OAuth 계정, SMTP 실패도 유효한 요청이면 `Cache-Control: no-store`와 같은 202를 반환합니다. HTTP 요청은 SMTP 완료를 기다리지 않습니다.
+- 계정 조회 전에 SMTP 연결·인증 사전검사를 실행합니다. 전역 설정이 없거나 올바르지 않으면 모든 유효한 email에 `Cache-Control: no-store`와 같은 503을 반환합니다.
+- 사전검사를 통과한 뒤에는 계정 없음, OAuth 계정, LOCAL 계정과 commit 이후 비동기 발송 결과를 구분하지 않고 같은 202를 반환합니다. HTTP 요청은 실제 메일 발송 완료를 기다리지 않습니다.
 - raw token은 32-byte 난수를 Base64URL(no padding)로 인코딩해 메일의 `#reset_token` fragment에만 넣고, DB에는 SHA-256 hash만 저장합니다.
 - token은 15분 뒤 만료되며 정확히 만료 시각부터 무효입니다. 사용자당 한 행을 회전하므로 재발급하면 이전 token이 무효가 되고, 성공한 token은 한 번만 사용할 수 있습니다.
 - 확정 요청 `{ "token": "...", "newPassword": "..." }`은 BCrypt password 변경과 사용 처리를 같은 트랜잭션에서 수행하고 성공 시 204를 반환합니다.
@@ -144,7 +146,7 @@ docker compose ps
 - SMTP: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`
 - 기존 계약: `DB_*`, `JWT_*`
 
-`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. OAuth 성공·실패는 `APP_OAUTH_RESULT_URL`의 Google OAuth 화면으로 돌아오고, server는 `APP_PASSWORD_RESET_URL`의 SMTP 복구 화면에 `#reset_token` fragment를 덧붙입니다. 예전 `APP_FRONTEND_URL`도 fallback으로 읽지만 기존 `.env`는 전용 키로 바꿔 callback URI와 결과 화면을 혼동하지 않습니다. 실제 Google 로그인과 Gmail 발송은 유효한 credential, callback URI, 발신 정책을 준비한 경우에만 별도로 확인합니다.
+`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. 실제 Gmail은 host `smtp.gmail.com`, port `587`, SMTP 인증·STARTTLS `true`, Gmail 계정과 앱 비밀번호를 한 묶음으로 바꿉니다. 복구 요청은 계정 조회 전에 이 연결·인증만 확인하므로 앱 비밀번호 누락·오류를 안전한 503으로 표시하지만, 발신자 허용이나 수신함 도착까지 증명하지는 않습니다. OAuth 성공·실패는 `APP_OAUTH_RESULT_URL`의 Google OAuth 화면으로 돌아오고, server는 `APP_PASSWORD_RESET_URL`의 SMTP 복구 화면에 `#reset_token` fragment를 덧붙입니다. 예전 `APP_FRONTEND_URL`도 fallback으로 읽지만 기존 `.env`는 전용 키로 바꿔 callback URI와 결과 화면을 혼동하지 않습니다.
 
 인증 실습 화면은 한 페이지가 한 trust boundary만 다루도록 분리합니다. 상단 버튼으로 이동할 수 있지만 access/reset token은 메모리에만 있으므로 페이지를 바꾸면 사라집니다.
 

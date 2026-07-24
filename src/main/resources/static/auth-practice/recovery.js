@@ -132,8 +132,11 @@ async function requestPasswordReset() {
 
   setBusy(true);
   evidence.setState("busy", "요청 중");
-  setStage("request", "active", "복구 요청 전송 중");
-  setNotice(elements.recoveryNotice, "계정 여부를 드러내지 않는 복구 요청을 접수하고 있습니다.");
+  setStage("request", "active", "SMTP 연결·인증 확인 중");
+  setNotice(
+    elements.recoveryNotice,
+    "계정 조회 전에 SMTP 연결과 앱 비밀번호를 확인하고 있습니다."
+  );
 
   try {
     const { response, data } = await evidence.requestJson({
@@ -152,13 +155,34 @@ async function requestPasswordReset() {
 
     if (response.status === 202) {
       elements.recoveryEmail.value = "";
-      setStage("request", "success", "202 요청 접수");
-      setStage("mail", "active", "Mailpit 확인");
+      evidence.setState("notice", "접수 응답");
+      setStage("request", "notice", "202 요청 접수");
+      setStage("mail", "active", "메일함에서 직접 확인");
       setProgress(1);
       setNotice(
         elements.recoveryNotice,
-        "202 Accepted: 계정 여부나 메일 발송 성공을 뜻하지 않습니다. LOCAL 계정이라면 Mailpit을 확인하세요.",
-        "success"
+        "202 Accepted: SMTP 사전검사는 통과했지만 계정 존재나 실제 메일 발송 성공을 뜻하지 않습니다.",
+        "notice"
+      );
+      return;
+    }
+
+    if (
+      response.status === 503 &&
+      ["RECOVERY_MAIL_AUTHENTICATION_FAILED", "RECOVERY_MAIL_UNAVAILABLE"].includes(data?.code)
+    ) {
+      const authenticationFailed = data.code === "RECOVERY_MAIL_AUTHENTICATION_FAILED";
+      setStage("request", "error", "503 요청 미접수");
+      setStage("mail", "error", authenticationFailed ? "앱 비밀번호 확인" : "SMTP 연결 확인");
+      setProgress(0);
+      elements.recoveryError.textContent = authenticationFailed
+        ? "Gmail 앱 비밀번호가 없거나 올바르지 않습니다. .env의 SMTP 계정과 앱 비밀번호를 확인하고 애플리케이션을 재시작하세요."
+        : "SMTP 서버에 연결할 수 없습니다. host·port와 인증·STARTTLS 설정을 확인한 뒤 다시 시도하세요.";
+      elements.recoveryError.hidden = false;
+      setNotice(
+        elements.recoveryNotice,
+        "메일 전송 서비스를 사용할 수 없어 복구 요청을 접수하지 않았습니다.",
+        "error"
       );
       return;
     }

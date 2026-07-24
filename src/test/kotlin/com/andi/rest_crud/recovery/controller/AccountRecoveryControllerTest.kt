@@ -2,12 +2,17 @@ package com.andi.rest_crud.recovery.controller
 
 import com.andi.rest_crud.recovery.dto.PasswordResetConfirmRequest
 import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
+import com.andi.rest_crud.recovery.exception.RecoveryMailAuthenticationException
+import com.andi.rest_crud.recovery.exception.RecoveryMailUnavailableException
+import com.andi.rest_crud.recovery.mail.RecoveryMailReadiness
 import com.andi.rest_crud.recovery.service.AccountRecoveryService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.any
 import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
@@ -31,6 +36,9 @@ class AccountRecoveryControllerTest @Autowired constructor(
     @MockitoBean
     private lateinit var accountRecoveryService: AccountRecoveryService
 
+    @MockitoBean
+    private lateinit var recoveryMailReadiness: RecoveryMailReadiness
+
     @Test
     fun `존재 여부와 무관하게 유효한 요청은 같은 202를 반환한다`() {
         listOf("known@example.com", "missing@example.com").forEach { email ->
@@ -41,9 +49,57 @@ class AccountRecoveryControllerTest @Autowired constructor(
             )
                 .andExpect(status().isAccepted)
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-
-            verify(accountRecoveryService).requestPasswordReset(email)
         }
+
+        val order = inOrder(recoveryMailReadiness, accountRecoveryService)
+        order.verify(recoveryMailReadiness).ensureReady()
+        order.verify(accountRecoveryService).requestPasswordReset("known@example.com")
+        order.verify(recoveryMailReadiness).ensureReady()
+        order.verify(accountRecoveryService).requestPasswordReset("missing@example.com")
+    }
+
+    @Test
+    fun `SMTP 인증 실패는 계정 조회 전에 모든 email에 같은 503을 반환한다`() {
+        doThrow(RecoveryMailAuthenticationException())
+            .`when`(recoveryMailReadiness)
+            .ensureReady()
+
+        listOf("known@example.com", "missing@example.com").forEach { email ->
+            mockMvc.perform(
+                post("/account-recovery/password-reset")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"email":"$email"}""")
+            )
+                .andExpect(status().isServiceUnavailable)
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+                .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_AUTHENTICATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Gmail 앱 비밀번호가 올바르지 않거나 사용할 수 없습니다."))
+                .andExpect(jsonPath("$.errors").isEmpty)
+        }
+
+        verify(recoveryMailReadiness, times(2)).ensureReady()
+        verifyNoInteractions(accountRecoveryService)
+    }
+
+    @Test
+    fun `SMTP 연결 실패는 계정 조회 전에 안전한 503을 반환한다`() {
+        doThrow(RecoveryMailUnavailableException())
+            .`when`(recoveryMailReadiness)
+            .ensureReady()
+
+        mockMvc.perform(
+            post("/account-recovery/password-reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"email":"student@example.com"}""")
+        )
+            .andExpect(status().isServiceUnavailable)
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_UNAVAILABLE"))
+            .andExpect(jsonPath("$.message").value("메일 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."))
+            .andExpect(jsonPath("$.errors").isEmpty)
+
+        verify(recoveryMailReadiness).ensureReady()
+        verifyNoInteractions(accountRecoveryService)
     }
 
     @Test
@@ -62,7 +118,7 @@ class AccountRecoveryControllerTest @Autowired constructor(
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         }
 
-        verifyNoInteractions(accountRecoveryService)
+        verifyNoInteractions(recoveryMailReadiness, accountRecoveryService)
     }
 
     @Test
