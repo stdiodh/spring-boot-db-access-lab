@@ -3,23 +3,29 @@ package com.andi.rest_crud.recovery.controller
 import com.andi.rest_crud.recovery.dto.PasswordResetConfirmRequest
 import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
 import com.andi.rest_crud.recovery.exception.RecoveryMailAuthenticationException
-import com.andi.rest_crud.recovery.exception.RecoveryMailUnavailableException
-import com.andi.rest_crud.recovery.mail.RecoveryMailReadiness
+import com.andi.rest_crud.recovery.exception.RecoveryMailCooldownException
+import com.andi.rest_crud.recovery.exception.RecoveryMailNotSentException
+import com.andi.rest_crud.recovery.mail.PasswordResetMailCommand
+import com.andi.rest_crud.recovery.mail.RecoveryMailDeliveryException
+import com.andi.rest_crud.recovery.mail.RecoveryMailDispatcher
 import com.andi.rest_crud.recovery.service.AccountRecoveryService
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.any
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.inOrder
-import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
+import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.mail.MailAuthenticationException
+import org.springframework.mail.MailSendException
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -37,69 +43,106 @@ class AccountRecoveryControllerTest @Autowired constructor(
     private lateinit var accountRecoveryService: AccountRecoveryService
 
     @MockitoBean
-    private lateinit var recoveryMailReadiness: RecoveryMailReadiness
+    private lateinit var recoveryMailDispatcher: RecoveryMailDispatcher
 
     @Test
-    fun `존재 여부와 무관하게 유효한 요청은 같은 202를 반환한다`() {
-        listOf("known@example.com", "missing@example.com").forEach { email ->
-            mockMvc.perform(
-                post("/account-recovery/password-reset")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""{"email":"$email"}""")
-            )
-                .andExpect(status().isAccepted)
-                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-        }
+    fun `SMTP 발송이 정상 반환되면 no-store 200과 성공 코드를 반환한다`() {
+        val command = mailCommand()
+        `when`(accountRecoveryService.requestPasswordReset("student@example.com")).thenReturn(command)
 
-        val order = inOrder(recoveryMailReadiness, accountRecoveryService)
-        order.verify(recoveryMailReadiness).ensureReady()
-        order.verify(accountRecoveryService).requestPasswordReset("known@example.com")
-        order.verify(recoveryMailReadiness).ensureReady()
-        order.verify(accountRecoveryService).requestPasswordReset("missing@example.com")
-    }
-
-    @Test
-    fun `SMTP 인증 실패는 계정 조회 전에 모든 email에 같은 503을 반환한다`() {
-        doThrow(RecoveryMailAuthenticationException())
-            .`when`(recoveryMailReadiness)
-            .ensureReady()
-
-        listOf("known@example.com", "missing@example.com").forEach { email ->
-            mockMvc.perform(
-                post("/account-recovery/password-reset")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""{"email":"$email"}""")
-            )
-                .andExpect(status().isServiceUnavailable)
-                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-                .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_AUTHENTICATION_FAILED"))
-                .andExpect(jsonPath("$.message").value("Gmail 앱 비밀번호가 올바르지 않거나 사용할 수 없습니다."))
-                .andExpect(jsonPath("$.errors").isEmpty)
-        }
-
-        verify(recoveryMailReadiness, times(2)).ensureReady()
-        verifyNoInteractions(accountRecoveryService)
-    }
-
-    @Test
-    fun `SMTP 연결 실패는 계정 조회 전에 안전한 503을 반환한다`() {
-        doThrow(RecoveryMailUnavailableException())
-            .`when`(recoveryMailReadiness)
-            .ensureReady()
-
-        mockMvc.perform(
-            post("/account-recovery/password-reset")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"email":"student@example.com"}""")
-        )
-            .andExpect(status().isServiceUnavailable)
+        mockMvc.perform(passwordResetRequest("student@example.com"))
+            .andExpect(status().isOk)
             .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_UNAVAILABLE"))
-            .andExpect(jsonPath("$.message").value("메일 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."))
+            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_SENT"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value("SMTP 서버가 비밀번호 재설정 메일 요청을 수락했습니다.")
+            )
+
+        val order = inOrder(accountRecoveryService, recoveryMailDispatcher)
+        order.verify(accountRecoveryService).requestPasswordReset("student@example.com")
+        order.verify(recoveryMailDispatcher).dispatch(command)
+    }
+
+    @Test
+    fun `복구할 수 없는 계정은 no-store 422와 공통 미발송 코드를 반환한다`() {
+        doThrow(RecoveryMailNotSentException())
+            .`when`(accountRecoveryService)
+            .requestPasswordReset("student@example.com")
+
+        mockMvc.perform(passwordResetRequest("student@example.com"))
+            .andExpect(status().`is`(422))
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_NOT_SENT"))
+            .andExpect(jsonPath("$.message").value("비밀번호 재설정 메일을 보낼 수 없는 계정입니다."))
             .andExpect(jsonPath("$.errors").isEmpty)
 
-        verify(recoveryMailReadiness).ensureReady()
-        verifyNoInteractions(accountRecoveryService)
+        verifyNoInteractions(recoveryMailDispatcher)
+    }
+
+    @Test
+    fun `cooldown은 no-store 429와 Retry-After를 반환한다`() {
+        doThrow(RecoveryMailCooldownException(37))
+            .`when`(accountRecoveryService)
+            .requestPasswordReset("student@example.com")
+
+        mockMvc.perform(passwordResetRequest("student@example.com"))
+            .andExpect(status().isTooManyRequests)
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(header().string(HttpHeaders.RETRY_AFTER, "37"))
+            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_COOLDOWN"))
+            .andExpect(jsonPath("$.errors").isEmpty)
+
+        verifyNoInteractions(recoveryMailDispatcher)
+    }
+
+    @Test
+    fun `SMTP 인증 실패는 token을 정리하고 no-store 424를 반환한다`() {
+        val command = mailCommand()
+        `when`(accountRecoveryService.requestPasswordReset("student@example.com")).thenReturn(command)
+        doThrow(
+            RecoveryMailAuthenticationException(
+                MailAuthenticationException(
+                    "535 student@example.com ${command.tokenHash} ${command.resetLink}"
+                )
+            )
+        )
+            .`when`(recoveryMailDispatcher)
+            .dispatch(command)
+
+        val responseBody = mockMvc.perform(passwordResetRequest("student@example.com"))
+            .andExpect(status().`is`(424))
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_AUTHENTICATION_FAILED"))
+            .andExpect(jsonPath("$.message").value("Gmail 앱 비밀번호가 올바르지 않거나 사용할 수 없습니다."))
+            .andExpect(jsonPath("$.errors").isEmpty)
+            .andReturn()
+            .response
+            .contentAsString
+
+        listOf("535", "student@example.com", command.tokenHash, command.resetLink).forEach { sensitiveValue ->
+            assertFalse(responseBody.contains(sensitiveValue))
+        }
+
+        verify(accountRecoveryService).discardUndeliveredToken(command.tokenId, command.tokenHash)
+    }
+
+    @Test
+    fun `SMTP 전송 실패는 token을 정리하고 no-store 424를 반환한다`() {
+        val command = mailCommand()
+        val deliveryException = RecoveryMailDeliveryException(MailSendException("sensitive smtp cause"))
+        `when`(accountRecoveryService.requestPasswordReset("student@example.com")).thenReturn(command)
+        doThrow(deliveryException).`when`(recoveryMailDispatcher).dispatch(command)
+
+        mockMvc.perform(passwordResetRequest("student@example.com"))
+            .andExpect(status().`is`(424))
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(jsonPath("$.code").value("RECOVERY_MAIL_DELIVERY_FAILED"))
+            .andExpect(jsonPath("$.message").value("비밀번호 재설정 메일을 전송하지 못했습니다."))
+            .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("sensitive"))))
+            .andExpect(jsonPath("$.errors").isEmpty)
+
+        verify(accountRecoveryService).discardUndeliveredToken(command.tokenId, command.tokenHash)
     }
 
     @Test
@@ -118,7 +161,7 @@ class AccountRecoveryControllerTest @Autowired constructor(
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         }
 
-        verifyNoInteractions(recoveryMailReadiness, accountRecoveryService)
+        verifyNoInteractions(accountRecoveryService, recoveryMailDispatcher)
     }
 
     @Test
@@ -168,6 +211,18 @@ class AccountRecoveryControllerTest @Autowired constructor(
         post("/account-recovery/password-reset/confirm")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{"token":"$token","newPassword":"$newPassword"}""")
+
+    private fun passwordResetRequest(email: String) =
+        post("/account-recovery/password-reset")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"email":"$email"}""")
+
+    private fun mailCommand() = PasswordResetMailCommand(
+        tokenId = 7L,
+        tokenHash = "a".repeat(64),
+        recipientEmail = "student@example.com",
+        resetLink = "https://frontend.example/reset#reset_token=opaque-token"
+    )
 
     private fun anyConfirmRequest(): PasswordResetConfirmRequest {
         return any(PasswordResetConfirmRequest::class.java)

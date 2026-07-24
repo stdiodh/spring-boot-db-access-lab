@@ -35,8 +35,27 @@ class OAuthLoginSuccessHandler(
         response: HttpServletResponse,
         authentication: Authentication
     ) {
-        // TODO: 검증된 OAuth principal을 계정 처리에 연결하고 token은 성공 redirect의 fragment에만 담으세요.
-        TODO("OAuth 로그인 성공 redirect를 완성하세요.")
+        response.preventCaching()
+        val profile = authentication.toOAuthUserProfile()
+        if (profile == null) {
+            response.redirectWithStatus(frontendUrl, "failed")
+            return
+        }
+
+        val loginResponse = try {
+            oAuthAccountService.handleOAuthLogin(profile)
+        } catch (_: OAuthAccountLinkRequiredException) {
+            response.redirectWithStatus(frontendUrl, "link_required")
+            return
+        } catch (_: OAuthAccountCreationConflictException) {
+            response.redirectWithStatus(frontendUrl, "failed")
+            return
+        } catch (_: OAuthProfileRejectedException) {
+            response.redirectWithStatus(frontendUrl, "failed")
+            return
+        }
+
+        response.sendRedirect(successRedirectUrl(frontendUrl, loginResponse))
     }
 }
 

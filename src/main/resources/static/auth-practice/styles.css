@@ -920,11 +920,24 @@ h3 {
 }
 
 .recovery-contract li span {
-  color: var(--verified);
+  color: var(--ink-muted);
   font-family: var(--font-utility);
   font-size: 10px;
   font-weight: 850;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.recovery-contract li[data-tone="success"] span {
+  color: var(--verified);
+}
+
+.recovery-contract li[data-tone="notice"] span {
+  color: var(--credential);
+}
+
+.recovery-contract li[data-tone="error"] span {
+  color: var(--fault);
 }
 
 .button--oauth {

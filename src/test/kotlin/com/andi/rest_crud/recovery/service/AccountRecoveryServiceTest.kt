@@ -3,7 +3,8 @@ package com.andi.rest_crud.recovery.service
 import com.andi.rest_crud.recovery.domain.PasswordResetToken
 import com.andi.rest_crud.recovery.dto.PasswordResetConfirmRequest
 import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
-import com.andi.rest_crud.recovery.mail.PasswordResetMailRequestedEvent
+import com.andi.rest_crud.recovery.exception.RecoveryMailCooldownException
+import com.andi.rest_crud.recovery.exception.RecoveryMailNotSentException
 import com.andi.rest_crud.recovery.repository.PasswordResetTokenRepository
 import com.andi.rest_crud.recovery.security.PasswordResetTokenCodec
 import com.andi.rest_crud.user.domain.User
@@ -22,7 +23,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Clock
 import java.time.Duration
@@ -36,13 +36,11 @@ class AccountRecoveryServiceTest {
     private val tokenRepository = mock(PasswordResetTokenRepository::class.java)
     private val passwordEncoder = mock(PasswordEncoder::class.java)
     private val tokenCodec = PasswordResetTokenCodec()
-    private val eventPublisher = mock(ApplicationEventPublisher::class.java)
     private val service = AccountRecoveryService(
         userRepository = userRepository,
         passwordResetTokenRepository = tokenRepository,
         passwordEncoder = passwordEncoder,
         tokenCodec = tokenCodec,
-        eventPublisher = eventPublisher,
         clock = Clock.fixed(NOW, ZoneOffset.UTC),
         passwordResetUrl = "https://frontend.example/reset-password",
         tokenTtl = Duration.ofMinutes(15),
@@ -50,7 +48,7 @@ class AccountRecoveryServiceTest {
     )
 
     @Test
-    fun `LOCAL 요청은 사용자와 token 순서로 잠그고 hash만 저장한 fragment link event를 발행한다`() {
+    fun `LOCAL 요청은 사용자와 token 순서로 잠그고 hash만 저장한 fragment link command를 반환한다`() {
         val originalLocale = Locale.getDefault()
         Locale.setDefault(Locale.forLanguageTag("tr-TR"))
         try {
@@ -60,7 +58,7 @@ class AccountRecoveryServiceTest {
             `when`(tokenRepository.saveAndFlush(any(PasswordResetToken::class.java)))
                 .thenAnswer { it.getArgument<PasswordResetToken>(0) }
 
-            service.requestPasswordReset("IUSER@EXAMPLE.COM")
+            val command = service.requestPasswordReset("IUSER@EXAMPLE.COM")
 
             val order = inOrder(userRepository, tokenRepository)
             order.verify(userRepository).findByEmailForUpdate("iuser@example.com")
@@ -68,17 +66,16 @@ class AccountRecoveryServiceTest {
 
             val tokenCaptor = ArgumentCaptor.forClass(PasswordResetToken::class.java)
             verify(tokenRepository).saveAndFlush(tokenCaptor.capture())
-            val eventCaptor = ArgumentCaptor.forClass(PasswordResetMailRequestedEvent::class.java)
-            verify(eventPublisher).publishEvent(eventCaptor.capture())
 
-            val event = eventCaptor.value
-            val rawToken = event.resetLink.substringAfter("#reset_token=")
-            assertEquals("iuser@example.com", event.recipientEmail)
+            val rawToken = command.resetLink.substringAfter("#reset_token=")
+            assertEquals("iuser@example.com", command.recipientEmail)
             assertEquals(43, rawToken.length)
-            assertTrue(event.resetLink.endsWith("#reset_token=$rawToken"))
-            assertFalse(event.resetLink.contains("?"))
-            assertFalse(event.resetLink.contains("iuser@example.com"))
+            assertTrue(command.resetLink.endsWith("#reset_token=$rawToken"))
+            assertFalse(command.resetLink.contains("?"))
+            assertFalse(command.resetLink.contains("iuser@example.com"))
             assertEquals(tokenCodec.hash(rawToken), tokenCaptor.value.tokenHash)
+            assertEquals(tokenCaptor.value.id, command.tokenId)
+            assertEquals(tokenCaptor.value.tokenHash, command.tokenHash)
             assertFalse(tokenCaptor.value.tokenHash.contains(rawToken))
             assertEquals(NOW, tokenCaptor.value.createdAt)
             assertEquals(NOW.plus(Duration.ofMinutes(15)), tokenCaptor.value.expiresAt)
@@ -89,16 +86,18 @@ class AccountRecoveryServiceTest {
     }
 
     @Test
-    fun `최근 active token은 cooldown 동안 회전하거나 event를 발행하지 않는다`() {
+    fun `최근 active token은 cooldown 동안 429 판단을 반환하고 회전하지 않는다`() {
         val user = localUser("student@example.com")
         val token = resetToken(user, createdAt = NOW.minusSeconds(30), expiresAt = NOW.plusSeconds(600))
         `when`(userRepository.findByEmailForUpdate(user.email)).thenReturn(Optional.of(user))
         `when`(tokenRepository.findByUserIdForUpdate(user.id)).thenReturn(Optional.of(token))
 
-        service.requestPasswordReset(user.email)
+        val exception = assertThrows(RecoveryMailCooldownException::class.java) {
+            service.requestPasswordReset(user.email)
+        }
 
+        assertEquals(30, exception.retryAfterSeconds)
         verify(tokenRepository, never()).saveAndFlush(any(PasswordResetToken::class.java))
-        verifyNoInteractions(eventPublisher)
         assertEquals("a".repeat(64), token.tokenHash)
     }
 
@@ -115,10 +114,10 @@ class AccountRecoveryServiceTest {
         `when`(tokenRepository.saveAndFlush(any(PasswordResetToken::class.java)))
             .thenAnswer { it.getArgument<PasswordResetToken>(0) }
 
-        service.requestPasswordReset(user.email)
+        val command = service.requestPasswordReset(user.email)
 
         verify(tokenRepository).saveAndFlush(token)
-        verify(eventPublisher).publishEvent(any(PasswordResetMailRequestedEvent::class.java))
+        assertEquals(token.tokenHash, command.tokenHash)
         assertFalse(token.tokenHash == "a".repeat(64))
         assertEquals(NOW, token.createdAt)
         assertEquals(NOW.plusSeconds(900), token.expiresAt)
@@ -139,16 +138,16 @@ class AccountRecoveryServiceTest {
         `when`(tokenRepository.saveAndFlush(any(PasswordResetToken::class.java)))
             .thenAnswer { it.getArgument<PasswordResetToken>(0) }
 
-        service.requestPasswordReset(user.email)
+        val command = service.requestPasswordReset(user.email)
 
         verify(tokenRepository).saveAndFlush(token)
-        verify(eventPublisher).publishEvent(any(PasswordResetMailRequestedEvent::class.java))
+        assertEquals(token.tokenHash, command.tokenHash)
         assertNull(token.usedAt)
         assertEquals(NOW, token.createdAt)
     }
 
     @Test
-    fun `없는 계정과 OAuth 계정은 token이나 event를 만들지 않는다`() {
+    fun `없는 계정과 OAuth 계정은 같은 미발송 오류로 끝나고 token을 만들지 않는다`() {
         `when`(userRepository.findByEmailForUpdate("missing@example.com")).thenReturn(Optional.empty())
         val oauthUser = User(
             id = 2L,
@@ -159,10 +158,25 @@ class AccountRecoveryServiceTest {
         )
         `when`(userRepository.findByEmailForUpdate(oauthUser.email)).thenReturn(Optional.of(oauthUser))
 
-        service.requestPasswordReset("MISSING@EXAMPLE.COM")
-        service.requestPasswordReset(oauthUser.email)
+        val missing = assertThrows(RecoveryMailNotSentException::class.java) {
+            service.requestPasswordReset("MISSING@EXAMPLE.COM")
+        }
+        val oauth = assertThrows(RecoveryMailNotSentException::class.java) {
+            service.requestPasswordReset(oauthUser.email)
+        }
 
-        verifyNoInteractions(tokenRepository, eventPublisher, passwordEncoder)
+        assertEquals(missing.message, oauth.message)
+        verifyNoInteractions(tokenRepository, passwordEncoder)
+    }
+
+    @Test
+    fun `발송 실패 정리는 id와 hash가 모두 맞는 미사용 token만 repository에 위임한다`() {
+        `when`(tokenRepository.deleteUnusedByIdAndTokenHash(7L, "a".repeat(64))).thenReturn(1)
+
+        val deleted = service.discardUndeliveredToken(7L, "a".repeat(64))
+
+        assertTrue(deleted)
+        verify(tokenRepository).deleteUnusedByIdAndTokenHash(7L, "a".repeat(64))
     }
 
     @Test

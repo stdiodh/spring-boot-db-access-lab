@@ -55,6 +55,18 @@ function setNotice(element, message, tone = "default") {
   window.authPractice.setNotice(element, message, tone);
 }
 
+function setRecoveryNotice(message, tone = "default", announce = true) {
+  if (announce) {
+    elements.recoveryNotice.setAttribute("role", "status");
+    elements.recoveryNotice.setAttribute("aria-live", "polite");
+  } else {
+    // 상세 실패 원인은 바로 아래 role=alert가 한 번만 읽고, 이 문장은 시각적 요약으로만 갱신합니다.
+    elements.recoveryNotice.removeAttribute("role");
+    elements.recoveryNotice.setAttribute("aria-live", "off");
+  }
+  setNotice(elements.recoveryNotice, message, tone);
+}
+
 function setBusy(isBusy) {
   busy = isBusy;
   elements.recoveryRequestForm.setAttribute("aria-busy", String(isBusy));
@@ -132,10 +144,10 @@ async function requestPasswordReset() {
 
   setBusy(true);
   evidence.setState("busy", "요청 중");
-  setStage("request", "active", "SMTP 연결·인증 확인 중");
-  setNotice(
-    elements.recoveryNotice,
-    "계정 조회 전에 SMTP 연결과 앱 비밀번호를 확인하고 있습니다."
+  setStage("request", "active", "token 발급·commit 중");
+  setStage("mail", "active", "SMTP 결과 대기");
+  setRecoveryNotice(
+    "token commit 뒤 실제 SMTP 발송 결과가 돌아올 때까지 기다리고 있습니다."
   );
 
   try {
@@ -153,36 +165,67 @@ async function requestPasswordReset() {
       data
     });
 
-    if (response.status === 202) {
+    if (response.status === 200 && data?.code === "RECOVERY_MAIL_SENT") {
       elements.recoveryEmail.value = "";
-      evidence.setState("notice", "접수 응답");
-      setStage("request", "notice", "202 요청 접수");
-      setStage("mail", "active", "메일함에서 직접 확인");
+      evidence.setState("success", "SMTP 요청 수락");
+      setStage("request", "success", "token commit 완료");
+      setStage("mail", "success", "200 SMTP 요청 수락");
       setProgress(1);
-      setNotice(
-        elements.recoveryNotice,
-        "202 Accepted: SMTP 사전검사는 통과했지만 계정 존재나 실제 메일 발송 성공을 뜻하지 않습니다.",
-        "notice"
+      setRecoveryNotice(
+        "200 OK: SMTP 서버가 메일 요청을 수락했습니다. 받은 편지함 도착은 별도로 확인하세요.",
+        "success"
       );
       return;
     }
 
+    if (response.status === 422 && data?.code === "RECOVERY_MAIL_NOT_SENT") {
+      setStage("request", "error", "422 발송 대상 없음");
+      setStage("mail", "error", "SMTP 호출 안 함");
+      setProgress(0);
+      elements.recoveryError.textContent =
+        "비밀번호 재설정 메일을 보낼 수 없는 계정입니다. 가입 방식과 email을 확인하세요.";
+      elements.recoveryError.hidden = false;
+      setRecoveryNotice("재설정 메일을 보내지 않았습니다.", "error", false);
+      return;
+    }
+
+    if (response.status === 429 && data?.code === "RECOVERY_MAIL_COOLDOWN") {
+      const retryAfter = response.headers.get("Retry-After");
+      const retryMessage = retryAfter
+        ? `${retryAfter}초 뒤에 다시 요청할 수 있습니다.`
+        : "잠시 후 다시 요청할 수 있습니다.";
+      setStage("request", "notice", "429 재요청 대기");
+      setStage("mail", "notice", "기존 token 유지");
+      setProgress(0);
+      elements.recoveryError.textContent = retryMessage;
+      elements.recoveryError.hidden = false;
+      setRecoveryNotice("이미 유효한 재설정 요청이 있습니다.", "notice", false);
+      return;
+    }
+
     if (
-      response.status === 503 &&
-      ["RECOVERY_MAIL_AUTHENTICATION_FAILED", "RECOVERY_MAIL_UNAVAILABLE"].includes(data?.code)
+      response.status === 424 &&
+      [
+        "RECOVERY_MAIL_AUTHENTICATION_FAILED",
+        "RECOVERY_MAIL_DELIVERY_FAILED"
+      ].includes(data?.code)
     ) {
       const authenticationFailed = data.code === "RECOVERY_MAIL_AUTHENTICATION_FAILED";
-      setStage("request", "error", "503 요청 미접수");
-      setStage("mail", "error", authenticationFailed ? "앱 비밀번호 확인" : "SMTP 연결 확인");
-      setProgress(0);
+      setStage("request", "notice", "발송 실패 token 정리 요청");
+      setStage(
+        "mail",
+        "error",
+        authenticationFailed ? "앱 비밀번호 확인" : "SMTP 전송 확인"
+      );
+      setProgress(1);
       elements.recoveryError.textContent = authenticationFailed
         ? "Gmail 앱 비밀번호가 없거나 올바르지 않습니다. .env의 SMTP 계정과 앱 비밀번호를 확인하고 애플리케이션을 재시작하세요."
-        : "SMTP 서버에 연결할 수 없습니다. host·port와 인증·STARTTLS 설정을 확인한 뒤 다시 시도하세요.";
+        : "SMTP 서버가 발송을 완료하지 못했습니다. host·port·STARTTLS·발신자 설정과 애플리케이션 로그를 확인한 뒤 다시 시도하세요.";
       elements.recoveryError.hidden = false;
-      setNotice(
-        elements.recoveryNotice,
-        "메일 전송 서비스를 사용할 수 없어 복구 요청을 접수하지 않았습니다.",
-        "error"
+      setRecoveryNotice(
+        "메일 발송 완료를 확인하지 못해 이번 발급 건의 token 정리를 요청했습니다.",
+        "error",
+        false
       );
       return;
     }
@@ -198,13 +241,13 @@ async function requestPasswordReset() {
       "복구 요청 형식을 확인한 뒤 다시 시도하세요."
     );
     elements.recoveryError.hidden = false;
-    setNotice(elements.recoveryNotice, "복구 요청을 접수하지 못했습니다.", "error");
+    setRecoveryNotice("복구 요청을 접수하지 못했습니다.", "error", false);
   } catch (error) {
     evidence.renderNetworkError("POST", api.recoveryRequest, error);
     setStage("request", "error", "서버 연결 실패");
     elements.recoveryError.textContent = "서버에 연결할 수 없습니다. Spring Boot 실행 상태를 확인하세요.";
     elements.recoveryError.hidden = false;
-    setNotice(elements.recoveryNotice, "복구 요청을 완료하지 못했습니다.", "error");
+    setRecoveryNotice("복구 요청을 완료하지 못했습니다.", "error", false);
   } finally {
     setBusy(false);
   }

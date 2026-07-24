@@ -31,17 +31,17 @@
     <section class="intro" aria-labelledby="page-title">
       <div>
         <p class="eyebrow">SMTP · request → one-time link → confirm → password changed</p>
-        <h1 id="page-title">같은 202 응답 뒤에서,<br>일회용 복구가 진행됩니다.</h1>
+        <h1 id="page-title">실제 SMTP 결과까지 기다려<br>복구 상태를 확인합니다.</h1>
         <p class="intro__description">
-          계정 조회 전에 SMTP 연결과 앱 비밀번호를 공통 검사하고,
-          통과 뒤에는 계정 존재와 실제 발송 결과를 숨긴 채 일회용 링크로 LOCAL 계정 비밀번호를 변경합니다.
+          LOCAL 계정의 일회용 token을 먼저 commit하고 실제 SMTP 호출을 동기로 기다립니다.
+          성공은 200, 발송하지 못한 원인은 422·429·424로 확인합니다.
         </p>
       </div>
-      <div class="runtime-note" aria-label="SMTP 사전검사 정보">
+      <div class="runtime-note" aria-label="동기 SMTP 발송 정보">
         <span class="runtime-note__dot" aria-hidden="true"></span>
         <span>
-          <strong>SMTP preflight</strong>
-          <code>요청 시 연결·인증 확인</code>
+          <strong>Synchronous SMTP</strong>
+          <code>token commit → send → HTTP</code>
         </span>
       </div>
     </section>
@@ -57,7 +57,7 @@
           <span class="trace-step__marker" aria-hidden="true">1</span>
           <span class="trace-step__copy">
             <code>POST /password-reset</code>
-            <strong>SMTP 사전검사</strong>
+            <strong>token 발급·commit</strong>
             <span data-stage-label>email 입력 대기</span>
           </span>
         </li>
@@ -65,8 +65,8 @@
           <span class="trace-step__marker" aria-hidden="true">2</span>
           <span class="trace-step__copy">
             <code>SMTP #reset_token</code>
-            <strong>일회용 링크</strong>
-            <span data-stage-label>메일 링크 대기</span>
+            <strong>동기 SMTP 발송</strong>
+            <span data-stage-label>발송 요청 대기</span>
           </span>
         </li>
         <li class="trace-step" data-stage="confirm" data-state="waiting">
@@ -124,7 +124,7 @@
             <p class="eyebrow">Account recovery</p>
             <h2>LOCAL 계정 복구 메일 요청</h2>
           </div>
-          <span class="panel-heading__hint">SMTP preflight → 202</span>
+          <span class="panel-heading__hint">token commit → SMTP → 200/4xx</span>
         </div>
 
         <form id="recoveryRequestForm" class="recovery-form" novalidate>
@@ -143,7 +143,7 @@
               placeholder="student@example.com"
             >
             <p id="recoveryEmailHint" class="field__hint">
-              SMTP 사전검사는 계정 조회 전에 실행됩니다. 통과 뒤 계정 없음·OAuth·LOCAL 결과는 같은 202입니다.
+              200은 SMTP 서버가 요청을 수락했다는 뜻이며 받은 편지함 도착까지 보장하지는 않습니다.
             </p>
             <p id="recoveryEmailError" class="field__error"></p>
           </div>
@@ -152,7 +152,7 @@
           </button>
         </form>
         <p id="recoveryNotice" class="form-notice" role="status" aria-live="polite">
-          요청 전입니다. 응답만으로 계정 존재나 메일 발송 성공을 판단할 수 없습니다.
+          요청 전입니다. 실제 SMTP 호출 결과를 기다린 뒤 상태 코드가 표시됩니다.
         </p>
         <p id="recoveryError" class="form-error" role="alert" hidden></p>
 
@@ -252,14 +252,14 @@
     <section class="recovery-contract" aria-labelledby="recovery-contract-title">
       <div>
         <p class="eyebrow">Public response contract</p>
-        <h2 id="recovery-contract-title">503은 전역 설정 오류, 202는 요청 접수입니다.</h2>
+        <h2 id="recovery-contract-title">200은 SMTP 수락, 4xx는 처음 멈춘 경계입니다.</h2>
       </div>
       <ul>
-        <li><strong>SMTP 인증·연결 실패</strong><span>503 · 계정 조회 전</span></li>
-        <li><strong>계정 없음</strong><span>202 Accepted</span></li>
-        <li><strong>OAuth 계정</strong><span>202 Accepted</span></li>
-        <li><strong>LOCAL 계정</strong><span>202 Accepted</span></li>
-        <li><strong>비동기 발송 실패</strong><span>202 · 결과 비공개</span></li>
+        <li data-tone="success"><strong>SMTP 요청 수락</strong><span>200 RECOVERY_MAIL_SENT</span></li>
+        <li data-tone="error"><strong>계정 없음·OAuth 계정</strong><span>422 RECOVERY_MAIL_NOT_SENT</span></li>
+        <li data-tone="notice"><strong>재요청 cooldown</strong><span>429 RECOVERY_MAIL_COOLDOWN</span></li>
+        <li data-tone="error"><strong>앱 비밀번호 인증 실패</strong><span>424 RECOVERY_MAIL_AUTHENTICATION_FAILED</span></li>
+        <li data-tone="error"><strong>SMTP 연결·전송 실패</strong><span>424 RECOVERY_MAIL_DELIVERY_FAILED</span></li>
       </ul>
     </section>
 

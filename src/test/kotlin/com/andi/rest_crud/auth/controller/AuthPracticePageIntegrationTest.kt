@@ -82,6 +82,13 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(content().string(containsString("support.google.com/mail/answer/185833")))
             .andExpect(content().string(containsString("<script src=\"./redirect-bootstrap.js\"></script>")))
             .andExpect(content().string(containsString("href=\"./recovery.html\" aria-current=\"page\"")))
+            .andExpect(content().string(containsString("200 RECOVERY_MAIL_SENT")))
+            .andExpect(content().string(containsString("422 RECOVERY_MAIL_NOT_SENT")))
+            .andExpect(content().string(containsString("429 RECOVERY_MAIL_COOLDOWN")))
+            .andExpect(content().string(containsString("424 RECOVERY_MAIL_AUTHENTICATION_FAILED")))
+            .andExpect(content().string(containsString("424 RECOVERY_MAIL_DELIVERY_FAILED")))
+            .andExpect(content().string(not(containsString("202 Accepted"))))
+            .andExpect(content().string(not(containsString("SMTP preflight"))))
             .andExpect(content().string(not(containsString("id=\"authForm\""))))
             .andExpect(content().string(not(containsString("id=\"googleLoginLink\""))))
     }
@@ -130,7 +137,13 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(content().contentTypeCompatibleWith("text/javascript"))
             .andExpect(content().string(containsString("__authPracticeRedirect")))
             .andExpect(content().string(containsString("/account-recovery/password-reset/confirm")))
+            .andExpect(content().string(containsString("response.status === 200")))
+            .andExpect(content().string(containsString("RECOVERY_MAIL_SENT")))
+            .andExpect(content().string(containsString("RECOVERY_MAIL_NOT_SENT")))
+            .andExpect(content().string(containsString("RECOVERY_MAIL_COOLDOWN")))
             .andExpect(content().string(containsString("RECOVERY_MAIL_AUTHENTICATION_FAILED")))
-            .andExpect(content().string(containsString("evidence.setState(\"notice\"")))
+            .andExpect(content().string(containsString("RECOVERY_MAIL_DELIVERY_FAILED")))
+            .andExpect(content().string(containsString("evidence.setState(\"success\"")))
+            .andExpect(content().string(not(containsString("response.status === 202"))))
     }
 }

@@ -144,7 +144,7 @@
 
   function practiceErrorMessage(response, fallbackMessage) {
     if (response.status >= 500) {
-      return "HTTP 5xx 응답입니다. 05-implementation 브랜치라면 해당 Step TODO와 서버 로그를 확인하세요.";
+      return "HTTP 5xx 응답입니다. 관련 계약 테스트와 서버 로그를 확인하세요.";
     }
 
     return fallbackMessage;

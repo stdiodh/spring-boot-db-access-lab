@@ -2,7 +2,7 @@ package com.andi.rest_crud.recovery.service
 
 import com.andi.rest_crud.recovery.dto.PasswordResetConfirmRequest
 import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
-import com.andi.rest_crud.recovery.mail.RecoveryMailSender
+import com.andi.rest_crud.recovery.exception.RecoveryMailCooldownException
 import com.andi.rest_crud.recovery.repository.PasswordResetTokenRepository
 import com.andi.rest_crud.recovery.security.PasswordResetTokenCodec
 import com.andi.rest_crud.user.domain.User
@@ -10,18 +10,12 @@ import com.andi.rest_crud.user.repository.UserRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentCaptor
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.after
-import org.mockito.Mockito.reset
-import org.mockito.Mockito.timeout
-import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -35,18 +29,18 @@ class AccountRecoveryConcurrencyIntegrationTest @Autowired constructor(
     private val tokenCodec: PasswordResetTokenCodec
 ) {
 
-    @MockitoBean
-    private lateinit var recoveryMailSender: RecoveryMailSender
-
     @BeforeEach
     fun setUp() {
-        tokenRepository.deleteAll()
-        userRepository.deleteAll()
-        reset(recoveryMailSender)
+        clearDatabase()
+    }
+
+    @AfterEach
+    fun tearDown() {
+        clearDatabase()
     }
 
     @Test
-    fun `동시 재설정 요청은 한 token row와 한 mail event만 만든다`() {
+    fun `동시 재설정 요청은 한 command만 만들고 다른 요청은 cooldown으로 끝난다`() {
         userRepository.saveAndFlush(localUser())
 
         val results = runConcurrently(
@@ -54,22 +48,16 @@ class AccountRecoveryConcurrencyIntegrationTest @Autowired constructor(
             { accountRecoveryService.requestPasswordReset("STUDENT@EXAMPLE.COM") }
         )
 
-        assertTrue(results.all { it.isSuccess })
+        assertEquals(1, results.count { it.isSuccess })
+        assertTrue(results.single { it.isFailure }.exceptionOrNull() is RecoveryMailCooldownException)
         assertEquals(1, tokenRepository.count())
-        verify(recoveryMailSender, timeout(2_000).times(1))
-            .sendPasswordResetMail(eqString("student@example.com"), anyString())
-        verify(recoveryMailSender, after(300).times(1))
-            .sendPasswordResetMail(eqString("student@example.com"), anyString())
     }
 
     @Test
     fun `같은 token의 동시 confirm은 한 password 변경만 성공하고 replay는 공개 오류로 끝난다`() {
         val user = userRepository.saveAndFlush(localUser())
-        accountRecoveryService.requestPasswordReset(user.email)
-        val linkCaptor = ArgumentCaptor.forClass(String::class.java)
-        verify(recoveryMailSender, timeout(2_000))
-            .sendPasswordResetMail(eqString(user.email), captureString(linkCaptor))
-        val rawToken = linkCaptor.value.substringAfter("#reset_token=")
+        val command = accountRecoveryService.requestPasswordReset(user.email)
+        val rawToken = command.resetLink.substringAfter("#reset_token=")
         val firstPassword = "first-password123"
         val secondPassword = "second-password123"
 
@@ -98,16 +86,16 @@ class AccountRecoveryConcurrencyIntegrationTest @Autowired constructor(
         assertNotNull(token.usedAt)
     }
 
-    private fun runConcurrently(
-        first: () -> Unit,
-        second: () -> Unit
-    ): List<Result<Unit>> {
+    private fun <T> runConcurrently(
+        first: () -> T,
+        second: () -> T
+    ): List<Result<T>> {
         val executor = Executors.newFixedThreadPool(2)
         val ready = CountDownLatch(2)
         val start = CountDownLatch(1)
         return try {
             val futures = listOf(first, second).map { action ->
-                executor.submit<Result<Unit>> {
+                executor.submit<Result<T>> {
                     ready.countDown()
                     start.await(2, TimeUnit.SECONDS)
                     runCatching(action)
@@ -128,9 +116,9 @@ class AccountRecoveryConcurrencyIntegrationTest @Autowired constructor(
         )
     }
 
-    private fun anyString(): String = ArgumentMatchers.anyString() ?: ""
+    private fun clearDatabase() {
+        tokenRepository.deleteAllInBatch()
+        userRepository.deleteAllInBatch()
+    }
 
-    private fun eqString(value: String): String = ArgumentMatchers.eq(value) ?: value
-
-    private fun captureString(captor: ArgumentCaptor<String>): String = captor.capture() ?: ""
 }

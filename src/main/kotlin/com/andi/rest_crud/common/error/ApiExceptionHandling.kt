@@ -6,7 +6,9 @@ import com.andi.rest_crud.post.exception.ForbiddenPostAccessException
 import com.andi.rest_crud.post.exception.PostNotFoundException
 import com.andi.rest_crud.recovery.exception.InvalidPasswordResetTokenException
 import com.andi.rest_crud.recovery.exception.RecoveryMailAuthenticationException
-import com.andi.rest_crud.recovery.exception.RecoveryMailUnavailableException
+import com.andi.rest_crud.recovery.exception.RecoveryMailCooldownException
+import com.andi.rest_crud.recovery.exception.RecoveryMailNotSentException
+import com.andi.rest_crud.recovery.mail.RecoveryMailDeliveryException
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -123,11 +125,12 @@ class GlobalExceptionHandler {
             )
     }
 
+    // Sequence 05 실습에서는 실제로 멈춘 경계를 화면에서 추적할 수 있도록 SMTP 결과를 4xx로 구분합니다.
     @ExceptionHandler(RecoveryMailAuthenticationException::class)
     fun handleRecoveryMailAuthenticationException(
         exception: RecoveryMailAuthenticationException
     ): ResponseEntity<ErrorResponse> {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        return ResponseEntity.status(HttpStatus.FAILED_DEPENDENCY)
             .cacheControl(CacheControl.noStore())
             .body(
                 ErrorResponse(
@@ -137,16 +140,45 @@ class GlobalExceptionHandler {
             )
     }
 
-    @ExceptionHandler(RecoveryMailUnavailableException::class)
-    fun handleRecoveryMailUnavailableException(
-        exception: RecoveryMailUnavailableException
+    @ExceptionHandler(RecoveryMailDeliveryException::class)
+    fun handleRecoveryMailDeliveryException(
+        exception: RecoveryMailDeliveryException
     ): ResponseEntity<ErrorResponse> {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        return ResponseEntity.status(HttpStatus.FAILED_DEPENDENCY)
             .cacheControl(CacheControl.noStore())
             .body(
                 ErrorResponse(
-                    code = "RECOVERY_MAIL_UNAVAILABLE",
-                    message = exception.message ?: "메일 서버에 연결할 수 없습니다."
+                    code = "RECOVERY_MAIL_DELIVERY_FAILED",
+                    message = exception.message ?: "비밀번호 재설정 메일을 전송하지 못했습니다."
+                )
+            )
+    }
+
+    @ExceptionHandler(RecoveryMailNotSentException::class)
+    fun handleRecoveryMailNotSentException(
+        exception: RecoveryMailNotSentException
+    ): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+            .cacheControl(CacheControl.noStore())
+            .body(
+                ErrorResponse(
+                    code = "RECOVERY_MAIL_NOT_SENT",
+                    message = exception.message ?: "비밀번호 재설정 메일을 보낼 수 없는 계정입니다."
+                )
+            )
+    }
+
+    @ExceptionHandler(RecoveryMailCooldownException::class)
+    fun handleRecoveryMailCooldownException(
+        exception: RecoveryMailCooldownException
+    ): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header(HttpHeaders.RETRY_AFTER, exception.retryAfterSeconds.toString())
+            .cacheControl(CacheControl.noStore())
+            .body(
+                ErrorResponse(
+                    code = "RECOVERY_MAIL_COOLDOWN",
+                    message = exception.message ?: "잠시 후 다시 요청해 주세요."
                 )
             )
     }
