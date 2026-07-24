@@ -1063,7 +1063,7 @@ window.visualLabData = {
                   "payload": "authentication | delivery MailException",
                   "kind": "failure",
                   "effect": {
-                    "kind": "failure",
+                    "kind": "fanout",
                     "subject": "SMTP 호출",
                     "before": "외부 호출 결과 미확정",
                     "after": "sender가 typed exception으로 바꾸고 dispatcher가 그대로 받음"
@@ -1078,7 +1078,7 @@ window.visualLabData = {
                   "payload": "typed recovery mail exception",
                   "kind": "failure",
                   "effect": {
-                    "kind": "failure",
+                    "kind": "fanout",
                     "subject": "동기 dispatcher",
                     "before": "sender 예외를 받음",
                     "after": "예외를 삼키지 않고 Controller가 보상 처리"
