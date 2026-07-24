@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <title>Sequence 05 Google OAuth 실습 | Spring Boot DB Access Lab</title>
+  <script src="./redirect-bootstrap.js"></script>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./practice-common.js" defer></script>
+  <script src="./oauth.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Google OAuth 실습으로 건너뛰기</a>
+
+  <header class="lab-bar">
+    <a class="lab-brand" href="/auth-practice/index.html" aria-label="Sequence 05 인증 실습 처음으로">
+      <span class="lab-brand__mark" aria-hidden="true"></span>
+      <span>A&amp;I Backend · Auth Practice</span>
+    </a>
+    <nav class="practice-nav" aria-label="인증 실습 전환">
+      <a href="./index.html">자체 로그인</a>
+      <a href="./oauth.html" aria-current="page">Google OAuth</a>
+      <a href="./recovery.html">SMTP 계정 복구</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="page-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">GOOGLE · authorization → verified profile → internal account → JWT</p>
+        <h1 id="page-title">Google 신원이,<br>우리 서비스 계정이 되는 경계.</h1>
+        <p class="intro__description">
+          Google은 검증된 외부 신원을 제공하고 우리 서버는 별도의 내부 계정과 JWT를 만듭니다.
+          Google 비밀번호는 전달되지 않으며 자체 로그인 비밀번호로 저장할 수도 없습니다.
+        </p>
+      </div>
+      <div class="runtime-note" aria-label="OAuth 실행 환경 정보">
+        <span class="runtime-note__dot" aria-hidden="true"></span>
+        <span>
+          <strong>Callback URI</strong>
+          <code>/login/oauth2/code/google</code>
+        </span>
+      </div>
+    </section>
+
+    <section class="auth-trace" aria-labelledby="trace-title">
+      <div class="section-heading">
+        <p class="eyebrow">Authentication receipt</p>
+        <h2 id="trace-title">외부 credential을 내부 Principal로 바꾸는 세 지점</h2>
+      </div>
+
+      <ol id="traceList" class="trace-list" style="--progress: 0">
+        <li class="trace-step" data-stage="google" data-state="active">
+          <span class="trace-step__marker" aria-hidden="true">1</span>
+          <span class="trace-step__copy">
+            <code>Google OAuth2</code>
+            <strong>외부 신원 확인</strong>
+            <span data-stage-label>로그인 시작 대기</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="account" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">2</span>
+          <span class="trace-step__copy">
+            <code>provider + providerId</code>
+            <strong>내부 계정 판단</strong>
+            <span data-stage-label>callback 대기</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="principal" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">3</span>
+          <span class="trace-step__copy">
+            <code>JWT → GET /auth/me</code>
+            <strong>내부 신원 증명</strong>
+            <span data-stage-label>아직 Authentication 없음</span>
+          </span>
+        </li>
+      </ol>
+    </section>
+
+    <section id="secretAirlock" class="secret-airlock" data-state="waiting" aria-labelledby="secret-airlock-title">
+      <div class="secret-airlock__heading">
+        <div>
+          <p class="eyebrow">URL secret airlock</p>
+          <h2 id="secret-airlock-title">OAuth 결과는 주소에서 먼저 회수합니다.</h2>
+        </div>
+        <span id="urlScrubState" class="secret-airlock__state">callback 대기</span>
+      </div>
+
+      <ol class="airlock-steps">
+        <li data-secret-stage="fragment">
+          <span>1</span>
+          <div>
+            <code>#access_token</code>
+            <strong>자체 JWT 도착</strong>
+          </div>
+        </li>
+        <li data-secret-stage="memory">
+          <span>2</span>
+          <div>
+            <code>JavaScript memory</code>
+            <strong>한 번만 회수</strong>
+          </div>
+        </li>
+        <li data-secret-stage="cleared">
+          <span>3</span>
+          <div>
+            <code>history.replaceState</code>
+            <strong>query·fragment 제거</strong>
+          </div>
+        </li>
+      </ol>
+      <p id="urlScrubNotice" class="secret-airlock__notice" role="status" aria-live="polite">
+        callback 이후 공개 상태와 JWT를 읽고 주소를 즉시 정리합니다. JWT는 브라우저 저장소나 cookie에 넣지 않습니다.
+      </p>
+    </section>
+
+    <section class="workbench" aria-label="Google 로그인과 HTTP 증거">
+      <div class="credential-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">External identity</p>
+            <h2>Google 로그인으로 내부 계정 확인</h2>
+          </div>
+          <span class="panel-heading__hint">password 전달 없음</span>
+        </div>
+
+        <div class="boundary-note">
+          <strong>이 버튼이 넘기는 것은 Google 로그인 흐름의 시작점입니다.</strong>
+          <p>
+            callback에서 <code>sub</code>, 검증된 email을 받은 뒤 서버가
+            <code>provider + providerId</code>로 내부 계정을 찾거나 새 OAuth 계정을 만듭니다.
+          </p>
+        </div>
+
+        <a id="googleLoginLink" class="google-signin" href="/oauth2/authorization/google">
+          <img
+            src="./assets/google-g.svg"
+            width="18"
+            alt=""
+          >
+          <span>Google로 계속하기</span>
+        </a>
+
+        <p id="oauthNotice" class="form-notice" role="status" aria-live="polite">
+          Google 로그인 결과를 기다리고 있습니다.
+        </p>
+        <p id="oauthError" class="form-error" role="alert" hidden></p>
+
+        <section id="oauthReceipt" class="trust-receipt" data-state="waiting" aria-labelledby="oauth-receipt-title">
+          <div class="trust-receipt__heading">
+            <div>
+              <p class="eyebrow">Authentication receipt</p>
+              <h3 id="oauth-receipt-title">내부 계정 가입 영수증</h3>
+            </div>
+            <span id="receiptStatus">callback 대기</span>
+          </div>
+          <dl class="trust-receipt__grid">
+            <div>
+              <dt>Provider</dt>
+              <dd id="providerValue">—</dd>
+              <small>callback metadata</small>
+            </div>
+            <div>
+              <dt>Internal account</dt>
+              <dd id="accountStatus">—</dd>
+              <small>신규 생성 또는 기존 계정 재사용</small>
+            </div>
+            <div>
+              <dt>Login ID</dt>
+              <dd id="internalEmail">—</dd>
+              <small><code>GET /auth/me</code>가 확인한 email</small>
+            </div>
+            <div>
+              <dt>Google password</dt>
+              <dd id="passwordTransfer">전달되지 않음</dd>
+              <small>LOCAL 로그인 자격 정보가 아님</small>
+            </div>
+            <div>
+              <dt>Our API token</dt>
+              <dd id="jwtStatus">—</dd>
+              <small>우리 서버가 별도로 발급한 JWT</small>
+            </div>
+          </dl>
+          <p class="trust-receipt__footnote">
+            query의 provider·신규 여부는 화면 설명용 metadata입니다.
+            내부 로그인 ID의 최종 근거는 Bearer JWT로 호출한 <code>/auth/me</code> 응답입니다.
+          </p>
+        </section>
+
+        <div class="session-actions" aria-label="OAuth 로그인 이후 동작">
+          <button id="verifyButton" class="text-button" type="button" disabled>
+            현재 사용자 다시 확인
+          </button>
+          <button id="clearButton" class="text-button" type="button" disabled>
+            메모리 token 지우기
+          </button>
+        </div>
+      </div>
+
+      <aside class="evidence-panel" aria-labelledby="evidence-title">
+        <div class="evidence-panel__heading">
+          <div>
+            <p class="eyebrow eyebrow--inverse">HTTP evidence</p>
+            <h2 id="evidence-title">내부 신원 확인 응답</h2>
+          </div>
+          <span id="requestState" class="request-state" data-state="waiting">대기</span>
+        </div>
+
+        <dl class="exchange-meta">
+          <div>
+            <dt>Method</dt>
+            <dd id="requestMethod">—</dd>
+          </div>
+          <div>
+            <dt>Endpoint</dt>
+            <dd id="requestEndpoint">—</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd id="responseStatus">—</dd>
+          </div>
+        </dl>
+
+        <div class="exchange-body">
+          <span class="exchange-body__label">Response body</span>
+          <pre id="responseBody" tabindex="0">OAuth callback 이후 /auth/me 요청을 확인합니다.</pre>
+        </div>
+      </aside>
+    </section>
+
+    <section id="tokenLab" class="token-lab" aria-labelledby="token-lab-title" hidden>
+      <div class="token-lab__heading">
+        <div>
+          <p class="eyebrow">Our JWT · not a Google password</p>
+          <h2 id="token-lab-title">우리 서버가 발급한 Access Token</h2>
+          <p>Google callback의 결과를 내부 계정에 연결한 뒤 우리 API용 JWT를 별도로 발급했습니다.</p>
+        </div>
+        <dl class="token-meta" aria-label="발급된 토큰 정보">
+          <div>
+            <dt>Type</dt>
+            <dd id="tokenType">Bearer</dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd id="tokenSource">OAuth callback</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="token-value">
+        <label for="fullToken">회수한 <code>access_token</code></label>
+        <textarea
+          id="fullToken"
+          rows="5"
+          readonly
+          wrap="soft"
+          spellcheck="false"
+          aria-describedby="tokenSafetyNote"
+        ></textarea>
+        <div class="token-value__actions">
+          <button id="copyTokenButton" class="copy-token-button" type="button">
+            Access Token 복사
+          </button>
+          <span id="copyStatus" class="copy-status" role="status" aria-live="polite">
+            token은 브라우저 메모리에만 있습니다.
+          </span>
+        </div>
+      </div>
+
+      <p id="tokenSafetyNote" class="token-safety">
+        <strong>학습용 표시입니다.</strong>
+        운영 OAuth에서는 일회용 code 교환 또는 HttpOnly cookie와 CSRF 정책을 별도로 설계합니다.
+      </p>
+    </section>
+
+    <section id="identityProof" class="identity-proof" data-state="waiting" aria-labelledby="identity-title">
+      <div class="identity-proof__mark" aria-hidden="true">@</div>
+      <div>
+        <p class="eyebrow">SecurityContext가 전달한 내부 사용자</p>
+        <h2 id="identity-title">아직 내부 로그인 ID를 확인하지 않았습니다.</h2>
+        <p id="identityDescription">
+          OAuth 성공 뒤 우리 JWT로 <code>GET /auth/me</code>를 호출해야 내부 계정의 email을 확정할 수 있습니다.
+        </p>
+      </div>
+      <span id="identityStatus" class="identity-proof__status">확인 전</span>
+    </section>
+
+    <footer class="page-footer">
+      <p>자체 로그인 화면으로 이동하면 메모리의 OAuth JWT가 사라집니다. Google 비밀번호는 처음부터 전달되지 않습니다.</p>
+      <a href="/swagger">Swagger 열기</a>
+    </footer>
+  </main>
+</body>
+</html>

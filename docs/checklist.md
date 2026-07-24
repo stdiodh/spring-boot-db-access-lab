@@ -10,6 +10,8 @@
 - [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.
 - [ ] `docker compose up -d --wait --wait-timeout 120`으로 MySQL과 Mailpit 준비 상태를 확인했습니다.
 - [ ] Visual Lab의 verified·unverified·LOCAL 충돌·복구 생명주기 네 조건을 비교했습니다.
+- [ ] `index.html`, `oauth.html`, `recovery.html`이 LOCAL·Google OAuth·SMTP 복구 책임으로 분리되어 있습니다.
+- [ ] 세 화면의 상단 전환 링크와 현재 페이지 `aria-current`가 키보드와 모바일에서도 동작합니다.
 
 ## 2. OAuth profile과 계정 정책
 
@@ -22,13 +24,17 @@
 - [ ] 기존 OAuth 사용자의 내부 email을 provider 변경값으로 자동 갱신하지 않습니다.
 - [ ] 신규 저장과 DB unique 경쟁을 안전하게 처리합니다.
 - [ ] 성공 뒤 우리 서비스 JWT를 발급합니다.
+- [ ] Google 비밀번호가 전달되거나 LOCAL 비밀번호로 저장되지 않음을 설명합니다.
+- [ ] 공식 Google G 표시와 접근 가능한 `Google로 계속하기` 링크를 사용합니다.
+- [ ] OAuth 화면이 신규 내부 계정과 기존 OAuth 계정 재사용을 구분해 보여줍니다.
 
 ## 3. redirect와 session 경계
 
 - [ ] 성공 JWT는 query가 아니라 fragment의 `access_token`에만 있습니다.
-- [ ] HTML은 초기 script에서 OAuth/reset fragment를 메모리로 소비합니다.
+- [ ] 동기 `redirect-bootstrap.js`는 HTML 본문 파싱 전에 OAuth/reset fragment를 메모리로 소비합니다.
 - [ ] 소비 직후 `history.replaceState`로 query와 fragment를 제거합니다.
 - [ ] OAuth JWT로 `/auth/me`를 호출하고 서버 응답만 내부 신원 근거로 사용합니다.
+- [ ] provider와 신규 여부 query는 설명용 metadata이며 권한 근거로 사용하지 않습니다.
 - [ ] OAuth JWT와 reset token을 local/session storage나 cookie에 저장하지 않습니다.
 - [ ] reset token을 DOM이나 HTTP 교환 기록에 표시하지 않습니다.
 - [ ] OAuth JWT는 학습용 token receipt에 명시적으로 보일 수 있다는 경계를 설명합니다.
@@ -101,6 +107,7 @@
 
 - [ ] 기본 Mailpit(`http://localhost:8025`)에서 reset 메일과 fragment link를 확인했습니다.
 - [ ] Google callback URI를 `/login/oauth2/code/google`로 등록했습니다.
+- [ ] OAuth 결과는 `oauth.html`, reset link는 `recovery.html`로 돌아옵니다.
 - [ ] 실제 Google redirect 뒤 query·fragment가 즉시 지워지는지 확인했습니다.
 - [ ] `/auth/me`가 내부 신원을 표시하고 browser storage/cookie에 JWT가 없는지 확인했습니다.
 - [ ] 실제 SMTP credential은 로컬 secret으로만 주입했습니다.

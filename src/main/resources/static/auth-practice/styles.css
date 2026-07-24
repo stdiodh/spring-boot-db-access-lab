@@ -156,6 +156,38 @@ code {
   font-size: 12px;
 }
 
+.practice-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.practice-nav a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.practice-nav a:hover {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.practice-nav a[aria-current="page"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
 .page-shell {
   width: min(calc(100% - 48px), 1180px);
   margin: 0 auto;
@@ -667,6 +699,232 @@ h3 {
   margin: 10px 0 16px;
   color: var(--ink-muted);
   font-size: 13px;
+}
+
+.boundary-note {
+  margin: 24px 0 18px;
+  padding: 16px 18px;
+  border-left: 5px solid var(--signal);
+  background: var(--signal-soft);
+}
+
+.boundary-note strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.boundary-note p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.google-signin {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.google-signin:hover {
+  background: #f8faff;
+  box-shadow: 0 1px 2px rgba(31, 31, 31, 0.16);
+}
+
+.google-signin[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.64;
+}
+
+.google-signin img {
+  width: 18px;
+  height: auto;
+  flex: 0 0 18px;
+  object-fit: contain;
+}
+
+.trust-receipt {
+  position: relative;
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  border-top: 7px solid var(--evidence);
+  background: var(--surface);
+}
+
+.trust-receipt::before {
+  position: absolute;
+  top: -7px;
+  right: 0;
+  left: 0;
+  height: 7px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 12px,
+    rgba(255, 255, 255, 0.26) 12px 18px
+  );
+  content: "";
+}
+
+.trust-receipt__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.trust-receipt__heading h3 {
+  font-size: 20px;
+}
+
+.trust-receipt__heading > span {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink-muted);
+  font-family: var(--font-utility);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.trust-receipt__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 20px 0 0;
+  border-top: 1px dashed var(--line-strong);
+  border-left: 1px dashed var(--line-strong);
+}
+
+.trust-receipt__grid > div {
+  min-width: 0;
+  padding: 14px;
+  border-right: 1px dashed var(--line-strong);
+  border-bottom: 1px dashed var(--line-strong);
+}
+
+.trust-receipt__grid > div:last-child {
+  grid-column: 1 / -1;
+}
+
+.trust-receipt__grid dt {
+  color: var(--ink-muted);
+  font-family: var(--font-utility);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.trust-receipt__grid dd {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.trust-receipt__grid small {
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+.trust-receipt__footnote {
+  margin: 16px 0 0;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.trust-receipt[data-state="active"] {
+  border-top-color: var(--signal);
+}
+
+.trust-receipt[data-state="success"] {
+  border-top-color: var(--verified);
+  background: var(--verified-soft);
+}
+
+.trust-receipt[data-state="notice"] {
+  border-top-color: var(--credential);
+  background: var(--credential-soft);
+}
+
+.trust-receipt[data-state="error"] {
+  border-top-color: var(--fault);
+  background: var(--fault-soft);
+}
+
+.mailpit-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.mailpit-callout .eyebrow {
+  margin-bottom: 3px;
+}
+
+.mailpit-callout a,
+.runtime-note a {
+  color: var(--signal);
+  font-size: 13px;
+  font-weight: 800;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.recovery-contract {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 36px;
+  margin-top: 28px;
+  padding: 30px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+.recovery-contract ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  background: var(--line);
+  list-style: none;
+}
+
+.recovery-contract li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+  background: var(--surface-muted);
+  font-size: 12px;
+}
+
+.recovery-contract li span {
+  color: var(--verified);
+  font-family: var(--font-utility);
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .button--oauth {
@@ -1532,6 +1790,16 @@ h3 {
 }
 
 @media (max-width: 900px) {
+  .lab-bar {
+    flex-wrap: wrap;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .practice-nav {
+    margin-left: auto;
+  }
+
   .intro {
     grid-template-columns: 1fr;
     align-items: start;
@@ -1599,6 +1867,10 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .recovery-contract {
+    grid-template-columns: 1fr;
+  }
+
   .post-feed {
     border-top: 1px solid var(--line-strong);
     border-left: 0;
@@ -1607,12 +1879,42 @@ h3 {
 
 @media (max-width: 640px) {
   .lab-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
     min-height: 58px;
-    padding: 0 16px;
+    padding: 10px 14px;
   }
 
-  .lab-bar__context {
-    display: none;
+  .practice-nav {
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .practice-nav a {
+    flex: 1 0 auto;
+    justify-content: center;
+  }
+
+  .trust-receipt {
+    padding: 20px 16px;
+  }
+
+  .trust-receipt__heading,
+  .mailpit-callout {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .trust-receipt__grid,
+  .recovery-contract ul {
+    grid-template-columns: 1fr;
+  }
+
+  .trust-receipt__grid > div:last-child {
+    grid-column: auto;
   }
 
   .page-shell {
@@ -1821,9 +2123,12 @@ h3 {
   }
 
   .button,
+  .google-signin,
   .trace-step__marker,
   .identity-proof,
   .author-handoff,
+  .trust-receipt,
+  .recovery-contract,
   .post-card {
     border: 2px solid CanvasText;
   }

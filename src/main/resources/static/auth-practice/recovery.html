@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <title>Sequence 05 SMTP 계정 복구 실습 | Spring Boot DB Access Lab</title>
+  <script src="./redirect-bootstrap.js"></script>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./practice-common.js" defer></script>
+  <script src="./recovery.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">SMTP 계정 복구 실습으로 건너뛰기</a>
+
+  <header class="lab-bar">
+    <a class="lab-brand" href="/auth-practice/index.html" aria-label="Sequence 05 인증 실습 처음으로">
+      <span class="lab-brand__mark" aria-hidden="true"></span>
+      <span>A&amp;I Backend · Auth Practice</span>
+    </a>
+    <nav class="practice-nav" aria-label="인증 실습 전환">
+      <a href="./index.html">자체 로그인</a>
+      <a href="./oauth.html">Google OAuth</a>
+      <a href="./recovery.html" aria-current="page">SMTP 계정 복구</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="page-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">SMTP · request → one-time link → confirm → password changed</p>
+        <h1 id="page-title">같은 202 응답 뒤에서,<br>일회용 복구가 진행됩니다.</h1>
+        <p class="intro__description">
+          계정 존재와 메일 발송 결과를 공개 응답에서 숨기고,
+          Mailpit으로 받은 일회용 링크의 token을 주소에서 제거한 뒤 LOCAL 계정 비밀번호를 변경합니다.
+        </p>
+      </div>
+      <div class="runtime-note" aria-label="로컬 SMTP 실행 환경 정보">
+        <span class="runtime-note__dot" aria-hidden="true"></span>
+        <span>
+          <strong>Local Mailpit</strong>
+          <a href="http://localhost:8025" target="_blank" rel="noopener noreferrer">localhost:8025 ↗</a>
+        </span>
+      </div>
+    </section>
+
+    <section class="auth-trace" aria-labelledby="trace-title">
+      <div class="section-heading">
+        <p class="eyebrow">Recovery receipt</p>
+        <h2 id="trace-title">복구 요청부터 비밀번호 변경까지의 세 지점</h2>
+      </div>
+
+      <ol id="traceList" class="trace-list" style="--progress: 0">
+        <li class="trace-step" data-stage="request" data-state="active">
+          <span class="trace-step__marker" aria-hidden="true">1</span>
+          <span class="trace-step__copy">
+            <code>POST /password-reset</code>
+            <strong>같은 공개 응답</strong>
+            <span data-stage-label>email 입력 대기</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="mail" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">2</span>
+          <span class="trace-step__copy">
+            <code>Mailpit #reset_token</code>
+            <strong>일회용 링크</strong>
+            <span data-stage-label>메일 링크 대기</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="confirm" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">3</span>
+          <span class="trace-step__copy">
+            <code>POST /confirm</code>
+            <strong>비밀번호 변경</strong>
+            <span data-stage-label>유효한 token 없음</span>
+          </span>
+        </li>
+      </ol>
+    </section>
+
+    <section id="secretAirlock" class="secret-airlock" data-state="waiting" aria-labelledby="secret-airlock-title">
+      <div class="secret-airlock__heading">
+        <div>
+          <p class="eyebrow">URL secret airlock</p>
+          <h2 id="secret-airlock-title">메일 링크의 raw token을 주소에서 먼저 제거합니다.</h2>
+        </div>
+        <span id="urlScrubState" class="secret-airlock__state">메일 링크 대기</span>
+      </div>
+
+      <ol class="airlock-steps">
+        <li data-secret-stage="fragment">
+          <span>1</span>
+          <div>
+            <code>#reset_token</code>
+            <strong>일회용 secret 도착</strong>
+          </div>
+        </li>
+        <li data-secret-stage="memory">
+          <span>2</span>
+          <div>
+            <code>JavaScript memory</code>
+            <strong>확정 요청까지 보관</strong>
+          </div>
+        </li>
+        <li data-secret-stage="cleared">
+          <span>3</span>
+          <div>
+            <code>history.replaceState</code>
+            <strong>주소에서 제거</strong>
+          </div>
+        </li>
+      </ol>
+      <p id="urlScrubNotice" class="secret-airlock__notice" role="status" aria-live="polite">
+        raw token은 DOM·HTTP 증거·브라우저 저장소에 표시하지 않고 확정 요청 body에만 사용합니다.
+      </p>
+    </section>
+
+    <section class="workbench" aria-label="복구 요청과 HTTP 증거">
+      <div class="credential-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Account recovery</p>
+            <h2>LOCAL 계정 복구 메일 요청</h2>
+          </div>
+          <span class="panel-heading__hint">항상 202 공개 계약</span>
+        </div>
+
+        <form id="recoveryRequestForm" class="recovery-form" novalidate>
+          <div class="field">
+            <label for="recoveryEmail">복구할 LOCAL 계정 email</label>
+            <input
+              id="recoveryEmail"
+              name="email"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              autocapitalize="none"
+              spellcheck="false"
+              maxlength="254"
+              aria-describedby="recoveryEmailHint recoveryEmailError"
+              placeholder="student@example.com"
+            >
+            <p id="recoveryEmailHint" class="field__hint">
+              계정 없음·OAuth 계정·SMTP 실패도 유효한 요청이면 같은 202를 반환합니다.
+            </p>
+            <p id="recoveryEmailError" class="field__error"></p>
+          </div>
+          <button id="recoveryRequestButton" class="button button--credential" type="submit">
+            비밀번호 재설정 메일 요청
+          </button>
+        </form>
+        <p id="recoveryNotice" class="form-notice" role="status" aria-live="polite">
+          요청 전입니다. 응답만으로 계정 존재나 메일 발송 성공을 판단할 수 없습니다.
+        </p>
+        <p id="recoveryError" class="form-error" role="alert" hidden></p>
+
+        <div class="mailpit-callout">
+          <div>
+            <p class="eyebrow">Local SMTP inbox</p>
+            <strong>요청 후 Mailpit에서 재설정 링크를 여세요.</strong>
+          </div>
+          <a href="http://localhost:8025" target="_blank" rel="noopener noreferrer">Mailpit 열기 ↗</a>
+        </div>
+
+        <section id="resetPanel" class="entry-option reset-panel" aria-labelledby="reset-panel-title" hidden>
+          <div class="entry-option__heading">
+            <div>
+              <p class="eyebrow">One-time credential</p>
+              <h3 id="reset-panel-title" tabindex="-1">새 LOCAL 비밀번호 설정</h3>
+            </div>
+            <code>204 No Content</code>
+          </div>
+          <p class="entry-option__description">
+            서버는 저장된 hash와 비교해 만료·회전·사용 여부를 확인하고,
+            비밀번호 변경과 token 폐기를 같은 transaction에서 처리합니다.
+          </p>
+          <form id="resetForm" class="recovery-form" novalidate>
+            <div class="field">
+              <label for="newPassword">새 비밀번호</label>
+              <input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="64"
+                aria-describedby="newPasswordHint newPasswordError"
+                placeholder="8자 이상 입력"
+              >
+              <p id="newPasswordHint" class="field__hint">앞뒤 공백도 원문의 일부이며 공백만으로 구성할 수 없습니다.</p>
+              <p id="newPasswordError" class="field__error"></p>
+            </div>
+            <div class="field">
+              <label for="confirmPassword">새 비밀번호 확인</label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                maxlength="64"
+                aria-describedby="confirmPasswordError"
+                placeholder="같은 비밀번호 다시 입력"
+              >
+              <p id="confirmPasswordError" class="field__error"></p>
+            </div>
+            <button id="resetPasswordButton" class="button button--signal" type="submit">
+              비밀번호 변경하고 token 폐기
+            </button>
+          </form>
+          <p id="resetNotice" class="entry-notice" role="status" aria-live="polite">
+            Mailpit의 유효한 재설정 링크를 열면 입력 영역이 활성화됩니다.
+          </p>
+          <p id="resetError" class="form-error" role="alert" hidden></p>
+        </section>
+      </div>
+
+      <aside class="evidence-panel" aria-labelledby="evidence-title">
+        <div class="evidence-panel__heading">
+          <div>
+            <p class="eyebrow eyebrow--inverse">HTTP evidence</p>
+            <h2 id="evidence-title">복구 요청과 확정 응답</h2>
+          </div>
+          <span id="requestState" class="request-state" data-state="waiting">대기</span>
+        </div>
+
+        <dl class="exchange-meta">
+          <div>
+            <dt>Method</dt>
+            <dd id="requestMethod">—</dd>
+          </div>
+          <div>
+            <dt>Endpoint</dt>
+            <dd id="requestEndpoint">—</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd id="responseStatus">—</dd>
+          </div>
+        </dl>
+
+        <div class="exchange-body">
+          <span class="exchange-body__label">Sanitized response</span>
+          <pre id="responseBody" tabindex="0">아직 요청하지 않았습니다. email·password·token은 여기 표시하지 않습니다.</pre>
+        </div>
+      </aside>
+    </section>
+
+    <section class="recovery-contract" aria-labelledby="recovery-contract-title">
+      <div>
+        <p class="eyebrow">Public response contract</p>
+        <h2 id="recovery-contract-title">202는 메일 발송 성공 영수증이 아닙니다.</h2>
+      </div>
+      <ul>
+        <li><strong>계정 없음</strong><span>202 Accepted</span></li>
+        <li><strong>OAuth 계정</strong><span>202 Accepted</span></li>
+        <li><strong>LOCAL 계정</strong><span>202 Accepted</span></li>
+        <li><strong>SMTP 실패</strong><span>202 Accepted</span></li>
+      </ul>
+    </section>
+
+    <footer class="page-footer">
+      <p>다른 실습 페이지로 이동하면 메모리의 reset token이 사라집니다. 필요하면 Mailpit 링크를 다시 여세요.</p>
+      <a href="/swagger">Swagger 열기</a>
+    </footer>
+  </main>
+</body>
+</html>

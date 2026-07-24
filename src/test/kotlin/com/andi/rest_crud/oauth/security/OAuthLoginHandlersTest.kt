@@ -22,7 +22,7 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import java.net.URI
 
 class OAuthLoginHandlersTest {
-    private val frontendUrl = "http://localhost:8080/auth-practice/index.html"
+    private val frontendUrl = "http://localhost:8080/auth-practice/oauth.html"
     private val accountService = mock(OAuthAccountService::class.java)
     private val profile = OAuthUserProfile("GOOGLE", "provider-1", "student@example.com", true)
 
