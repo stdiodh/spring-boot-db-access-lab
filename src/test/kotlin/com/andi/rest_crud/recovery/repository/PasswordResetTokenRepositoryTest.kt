@@ -23,8 +23,9 @@ class PasswordResetTokenRepositoryTest @Autowired constructor(
 
     @BeforeEach
     fun setUp() {
-        tokenRepository.deleteAll()
-        userRepository.deleteAll()
+        // 여러 Spring test context가 같은 H2 이름을 사용할 수 있어 delete를 즉시 실행합니다.
+        tokenRepository.deleteAllInBatch()
+        userRepository.deleteAllInBatch()
     }
 
     @Test
@@ -67,6 +68,51 @@ class PasswordResetTokenRepositoryTest @Autowired constructor(
 
         assertTrue(tokenRepository.findActiveByTokenHashForUpdate(expiredToken.tokenHash, now).isEmpty)
         assertTrue(tokenRepository.findActiveByTokenHashForUpdate(usedToken.tokenHash, now).isEmpty)
+    }
+
+    @Test
+    fun `발송 실패 정리는 id와 현재 hash가 같은 미사용 token만 삭제한다`() {
+        val user = userRepository.saveAndFlush(localUser("student@example.com"))
+        val token = tokenRepository.saveAndFlush(resetToken(user, "a".repeat(64)))
+
+        assertEquals(
+            0,
+            tokenRepository.deleteUnusedByIdAndTokenHash(token.id, "b".repeat(64))
+        )
+        assertEquals(1, tokenRepository.count())
+        assertEquals(
+            1,
+            tokenRepository.deleteUnusedByIdAndTokenHash(token.id, token.tokenHash)
+        )
+        assertEquals(0, tokenRepository.count())
+    }
+
+    @Test
+    fun `더 최신 hash로 회전됐거나 이미 사용된 token은 이전 발송 실패가 삭제하지 않는다`() {
+        val rotatedUser = userRepository.saveAndFlush(localUser("rotated@example.com"))
+        val rotatedToken = tokenRepository.saveAndFlush(resetToken(rotatedUser, "a".repeat(64)))
+        rotatedToken.rotate(
+            "b".repeat(64),
+            rotatedToken.createdAt.plusSeconds(60),
+            rotatedToken.expiresAt.plusSeconds(60)
+        )
+        tokenRepository.saveAndFlush(rotatedToken)
+
+        assertEquals(
+            0,
+            tokenRepository.deleteUnusedByIdAndTokenHash(rotatedToken.id, "a".repeat(64))
+        )
+
+        val usedUser = userRepository.saveAndFlush(localUser("used-cleanup@example.com"))
+        val usedToken = tokenRepository.saveAndFlush(resetToken(usedUser, "c".repeat(64)).apply {
+            markUsed(createdAt.plusSeconds(1))
+        })
+
+        assertEquals(
+            0,
+            tokenRepository.deleteUnusedByIdAndTokenHash(usedToken.id, usedToken.tokenHash)
+        )
+        assertEquals(2, tokenRepository.count())
     }
 
     private fun localUser(email: String): User {

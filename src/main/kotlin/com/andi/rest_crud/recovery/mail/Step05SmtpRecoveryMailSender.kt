@@ -1,12 +1,14 @@
 /*
  * 실습 순서 05 — SMTP 복구 메일 발송
- * 선행 단계: Step04가 token 저장 transaction을 commit하고 mail event를 발행합니다.
- * 이 단계의 판단: 발신자·수신자·reset link를 조립하고 SMTP 실패를 도메인 오류로 변환합니다.
- * 완료 상태: 외부 로그인과 LOCAL 계정 복구 흐름이 각각 검증 가능한 경계로 닫힙니다.
+ * 선행 단계: Step04의 token 저장 transaction이 끝난 뒤 mail command가 전달됩니다.
+ * 이 단계의 판단: 실제 JavaMailSender.send()가 반환해야 성공이며, 인증과 일반 전송 실패를 구분합니다.
+ * 완료 상태: 성공은 SMTP 서버의 요청 수락을 뜻하며 받은 편지함 도착까지 보장하지는 않습니다.
  */
 package com.andi.rest_crud.recovery.mail
 
+import com.andi.rest_crud.recovery.exception.RecoveryMailAuthenticationException
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.mail.MailAuthenticationException
 import org.springframework.mail.MailException
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
@@ -34,7 +36,10 @@ class SmtpRecoveryMailSender(
         }
 
         try {
+            // 이 호출이 정상 반환된 시점까지만 HTTP 200의 근거로 사용합니다.
             javaMailSender.send(message)
+        } catch (exception: MailAuthenticationException) {
+            throw RecoveryMailAuthenticationException(exception)
         } catch (exception: MailException) {
             throw RecoveryMailDeliveryException(exception)
         }

@@ -1,7 +1,9 @@
 package com.andi.rest_crud.recovery.mail
 
+import com.andi.rest_crud.recovery.exception.RecoveryMailAuthenticationException
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -11,6 +13,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.springframework.mail.MailAuthenticationException
 import org.springframework.mail.MailSendException
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
@@ -53,6 +56,23 @@ class SmtpRecoveryMailSenderTest {
         }
 
         assertEquals("비밀번호 재설정 메일을 전송하지 못했습니다.", exception.message)
+        assertSame(cause, exception.cause)
+    }
+
+    @Test
+    fun `SMTP 인증 실패는 앱 비밀번호 안내용 오류로 구분한다`() {
+        val cause = MailAuthenticationException("535 sensitive provider response")
+        doThrow(cause).`when`(javaMailSender).send(anySimpleMailMessage())
+
+        val exception = assertThrows(RecoveryMailAuthenticationException::class.java) {
+            sender.sendPasswordResetMail(
+                "student@example.com",
+                "https://frontend.example/reset#reset_token=opaque-token"
+            )
+        }
+
+        assertEquals("Gmail 앱 비밀번호가 올바르지 않거나 사용할 수 없습니다.", exception.message)
+        assertFalse(exception.message.orEmpty().contains("535"))
         assertSame(cause, exception.cause)
     }
 

@@ -10,3 +10,8 @@ data class PasswordResetMailRequest(
     @field:Size(max = 254, message = "email은 254자 이하여야 합니다.")
     val email: String
 )
+
+data class PasswordResetMailResponse(
+    val code: String,
+    val message: String
+)
