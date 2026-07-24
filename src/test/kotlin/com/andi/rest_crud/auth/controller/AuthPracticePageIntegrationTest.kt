@@ -122,6 +122,8 @@ class AuthPracticePageIntegrationTest @Autowired constructor(
             .andExpect(content().contentTypeCompatibleWith("text/javascript"))
             .andExpect(content().string(containsString("__authPracticeRedirect")))
             .andExpect(content().string(containsString("/auth/me")))
+            .andExpect(content().string(containsString("payload.isNewUser === \"true\"")))
+            .andExpect(content().string(containsString("payload.isNewUser === \"false\"")))
 
         mockMvc.perform(get("/auth-practice/recovery.js"))
             .andExpect(status().isOk)

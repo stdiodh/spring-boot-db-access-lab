@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.springframework.http.HttpHeaders
@@ -26,14 +28,15 @@ class OAuthLoginHandlersTest {
     private val accountService = mock(OAuthAccountService::class.java)
     private val profile = OAuthUserProfile("GOOGLE", "provider-1", "student@example.com", true)
 
-    @Test
-    fun `성공 redirect는 token을 query가 아닌 fragment에만 담고 no-store를 설정한다`() {
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `신규와 기존 OAuth 성공은 영수증 페이지로 redirect한다`(isNewUser: Boolean) {
         `when`(accountService.handleOAuthLogin(profile)).thenReturn(
             OAuthLoginResponse(
                 email = "student@example.com",
                 accessToken = "header.payload.signature",
                 provider = "GOOGLE",
-                isNewUser = true
+                isNewUser = isNewUser
             )
         )
         val response = MockHttpServletResponse()
@@ -48,7 +51,8 @@ class OAuthLoginHandlersTest {
         val uri = URI(location)
         assertEquals(302, response.status)
         assertEquals("no-store", response.getHeader(HttpHeaders.CACHE_CONTROL))
-        assertEquals("oauth=success&provider=GOOGLE&isNewUser=true", uri.rawQuery)
+        assertEquals("/auth-practice/oauth.html", uri.path)
+        assertEquals("oauth=success&provider=GOOGLE&isNewUser=$isNewUser", uri.rawQuery)
         assertFalse(uri.rawQuery.contains("header.payload.signature"))
         assertEquals("access_token=header.payload.signature", uri.rawFragment)
     }

@@ -107,6 +107,7 @@
 
 - [ ] 기본 Mailpit(`http://localhost:8025`)에서 reset 메일과 fragment link를 확인했습니다.
 - [ ] Google callback URI를 `/login/oauth2/code/google`로 등록했습니다.
+- [ ] `APP_OAUTH_RESULT_URL`은 callback URI가 아니라 `oauth.html` 영수증 화면을 가리킵니다.
 - [ ] OAuth 결과는 `oauth.html`, reset link는 `recovery.html`로 돌아옵니다.
 - [ ] 실제 Google redirect 뒤 query·fragment가 즉시 지워지는지 확인했습니다.
 - [ ] `/auth/me`가 내부 신원을 표시하고 browser storage/cookie에 JWT가 없는지 확인했습니다.

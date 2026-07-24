@@ -42,6 +42,9 @@ const stages = {
 const evidence = window.authPractice.createHttpEvidence();
 let authSession = null;
 let busy = false;
+let receiptActiveStatus = "내부 계정 확인 중";
+let receiptSuccessStatus = "내부 계정 확인 완료";
+let receiptSuccessNotice = "Google 신원을 내부 계정에 연결했고 /auth/me가 로그인 ID를 확인했습니다.";
 
 function setStage(name, state, label) {
   const stage = stages[name];
@@ -178,9 +181,9 @@ async function verifyCurrentUser() {
       elements.jwtStatus.textContent = "발급·검증 완료";
       setStage("principal", "success", "200 내부 email 확인");
       setProgress(2);
-      setReceipt("success", "가입 확인 완료");
+      setReceipt("success", receiptSuccessStatus);
       showIdentity(data.email);
-      setNotice("Google 신원을 내부 계정에 연결했고 /auth/me가 로그인 ID를 확인했습니다.", "success");
+      setNotice(receiptSuccessNotice, "success");
       return true;
     }
 
@@ -247,18 +250,26 @@ function initializeOAuthResult(payload) {
 
   authSession = { accessToken };
   elements.providerValue.textContent = payload.provider || "미제공";
-  elements.accountStatus.textContent = payload.isNewUser === "true"
-    ? "새 내부 OAuth 계정 생성"
-    : payload.isNewUser === "false"
-      ? "기존 내부 OAuth 계정 재사용"
-      : "callback metadata 미제공";
+  if (payload.isNewUser === "true") {
+    elements.accountStatus.textContent = "새 내부 OAuth 계정 생성";
+    receiptActiveStatus = "신규 계정 확인 중";
+    receiptSuccessStatus = "신규 가입 완료";
+    receiptSuccessNotice = "Google 신원으로 새 내부 계정을 만들고 /auth/me가 로그인 ID를 확인했습니다.";
+  } else if (payload.isNewUser === "false") {
+    elements.accountStatus.textContent = "기존 내부 OAuth 계정 재사용";
+    receiptActiveStatus = "기존 계정 확인 중";
+    receiptSuccessStatus = "기존 가입자 로그인 완료";
+    receiptSuccessNotice = "기존 내부 OAuth 계정을 다시 사용하고 /auth/me가 로그인 ID를 확인했습니다.";
+  } else {
+    elements.accountStatus.textContent = "callback metadata 미제공";
+  }
   elements.jwtStatus.textContent = "메모리로 회수";
 
   setStage("google", "success", "Google 신원 확인");
   setStage("account", "success", elements.accountStatus.textContent);
   setStage("principal", "active", "/auth/me 확인 중");
   setProgress(2);
-  setReceipt("active", "내부 신원 확인 중");
+  setReceipt("active", receiptActiveStatus);
   showTokenReceipt();
   setBusy(true);
 

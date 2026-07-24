@@ -139,12 +139,12 @@ docker compose ps
 주요 환경변수:
 
 - OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-- redirect/recovery: `APP_FRONTEND_URL=http://localhost:8080/auth-practice/oauth.html`, `APP_PASSWORD_RESET_URL=http://localhost:8080/auth-practice/recovery.html`, `APP_RECOVERY_MAIL_FROM`
+- redirect/recovery: `APP_OAUTH_RESULT_URL=http://localhost:8080/auth-practice/oauth.html`, `APP_PASSWORD_RESET_URL=http://localhost:8080/auth-practice/recovery.html`, `APP_RECOVERY_MAIL_FROM`
 - reset 정책: `APP_PASSWORD_RESET_TOKEN_TTL=PT15M`, `APP_PASSWORD_RESET_RESEND_COOLDOWN=PT1M`
 - SMTP: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`
 - 기존 계약: `DB_*`, `JWT_*`
 
-`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. OAuth 성공·실패는 `APP_FRONTEND_URL`의 Google OAuth 화면으로 돌아오고, server는 `APP_PASSWORD_RESET_URL`의 SMTP 복구 화면에 `#reset_token` fragment를 덧붙입니다. 실제 Google 로그인과 Gmail 발송은 유효한 credential, callback URI, 발신 정책을 준비한 경우에만 별도로 확인합니다.
+`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. OAuth 성공·실패는 `APP_OAUTH_RESULT_URL`의 Google OAuth 화면으로 돌아오고, server는 `APP_PASSWORD_RESET_URL`의 SMTP 복구 화면에 `#reset_token` fragment를 덧붙입니다. 예전 `APP_FRONTEND_URL`도 fallback으로 읽지만 기존 `.env`는 전용 키로 바꿔 callback URI와 결과 화면을 혼동하지 않습니다. 실제 Google 로그인과 Gmail 발송은 유효한 credential, callback URI, 발신 정책을 준비한 경우에만 별도로 확인합니다.
 
 인증 실습 화면은 한 페이지가 한 trust boundary만 다루도록 분리합니다. 상단 버튼으로 이동할 수 있지만 access/reset token은 메모리에만 있으므로 페이지를 바꾸면 사라집니다.
 
