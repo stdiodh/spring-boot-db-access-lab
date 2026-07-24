@@ -50,6 +50,8 @@ override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
 
 Google 비밀번호는 OAuth profile에 포함되지 않으며 우리 서버로 전달되지 않습니다. 신규 OAuth 사용자를 저장할 때 DB의 NOT NULL 계약을 만족하려고 서버가 만든 무작위 값의 BCrypt hash를 둘 수는 있지만, 그 값은 사용자가 아는 LOCAL 비밀번호가 아니며 자체 로그인에 사용할 수 없습니다. OAuth 계정에 LOCAL 비밀번호를 추가하려면 재인증과 명시적 계정 연결 절차를 별도로 설계해야 합니다.
 
+OAuth 컬럼을 추가하기 전에 만들어진 자체 가입 계정은 MySQL schema update 과정에서 `auth_provider`가 빈 문자열로 남을 수 있습니다. 시작 시 실행되는 `data.sql`은 `auth_provider = ''`이고 `provider_id`도 없는 행만 `LOCAL`로 바꿉니다. 외부 식별자가 있는 행까지 추측해 바꾸면 OAuth 계정을 LOCAL로 오인할 수 있으므로 자동 보정 범위를 넓히지 않습니다.
+
 ## 3. OAuth 흐름
 
 ```mermaid
@@ -174,6 +176,7 @@ reset token, 복구 대상 email, reset link, credential, SMTP 내부 오류는 
 
 - OAuth 필수 값과 verified email
 - provider identity, email 충돌, 내부 email 안정성
+- 외부 식별자 없는 레거시 빈 provider의 LOCAL 보정
 - unique 저장 경쟁과 자체 JWT
 - redirect의 fragment/no-store와 HTML 정적 진입점의 URL 제거 코드 연결
 - 임시 OAuth session과 보호 API 경계

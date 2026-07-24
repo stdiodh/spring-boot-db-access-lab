@@ -8,6 +8,7 @@
 - [ ] README와 구현 문서의 경로가 실제 파일과 일치합니다.
 - [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개입니다.
 - [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.
+- [ ] 빈 provider와 외부 식별자 없음 조건을 모두 만족하는 레거시 계정만 LOCAL로 보정합니다.
 - [ ] `docker compose up -d --wait --wait-timeout 120`으로 MySQL과 Mailpit 준비 상태를 확인했습니다.
 - [ ] Visual Lab의 verified·unverified·LOCAL 충돌·복구 생명주기 네 조건을 비교했습니다.
 - [ ] `index.html`, `oauth.html`, `recovery.html`이 LOCAL·Google OAuth·SMTP 복구 책임으로 분리되어 있습니다.
@@ -96,6 +97,7 @@
 
 - [ ] OAuth 필수 값·verified email 테스트가 있습니다.
 - [ ] provider identity·email 충돌·내부 email 안정성 테스트가 있습니다.
+- [ ] 레거시 빈 provider 보정이 Google·외부 식별자 계정을 변경하지 않는 테스트가 있습니다.
 - [ ] unique 저장 경쟁과 redirect 비노출 테스트가 있습니다.
 - [ ] 임시 OAuth session과 보호 API 경계 테스트가 있습니다.
 - [ ] HTML 정적 진입점에 fragment 소비·URL 제거·memory-only 코드가 연결되어 있습니다.
