@@ -38,5 +38,9 @@ class User(
     var authProvider: String = "LOCAL",
 
     @Column(name = "provider_id", length = 255)
-    var providerId: String? = null
+    var providerId: String? = null,
+
+    // 외부 provider identity와 사용자가 직접 설정한 LOCAL 비밀번호 사용 가능 여부는 별도 상태입니다.
+    @Column(name = "local_password_enabled", nullable = false)
+    var localPasswordEnabled: Boolean = authProvider == "LOCAL"
 )

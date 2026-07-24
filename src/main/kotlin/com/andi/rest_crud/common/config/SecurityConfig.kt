@@ -137,6 +137,7 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/posts").authenticated()
                     .requestMatchers(HttpMethod.PUT, "/posts/**").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/posts/**").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/auth/local-password").authenticated()
                     .requestMatchers("/auth/me").authenticated()
                     .anyRequest().authenticated()
             }

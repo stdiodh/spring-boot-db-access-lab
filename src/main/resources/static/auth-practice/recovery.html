@@ -33,7 +33,7 @@
         <p class="eyebrow">SMTP · request → one-time link → confirm → password changed</p>
         <h1 id="page-title">실제 SMTP 결과까지 기다려<br>복구 상태를 확인합니다.</h1>
         <p class="intro__description">
-          LOCAL 계정의 일회용 token을 먼저 commit하고 실제 SMTP 호출을 동기로 기다립니다.
+          LOCAL 비밀번호를 가진 계정의 일회용 token을 먼저 commit하고 실제 SMTP 호출을 동기로 기다립니다.
           성공은 200, 발송하지 못한 원인은 422·429·424로 확인합니다.
         </p>
       </div>
@@ -122,14 +122,14 @@
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Account recovery</p>
-            <h2>LOCAL 계정 복구 메일 요청</h2>
+            <h2>LOCAL 비밀번호 복구 메일 요청</h2>
           </div>
           <span class="panel-heading__hint">token commit → SMTP → 200/4xx</span>
         </div>
 
         <form id="recoveryRequestForm" class="recovery-form" novalidate>
           <div class="field">
-            <label for="recoveryEmail">복구할 LOCAL 계정 email</label>
+            <label for="recoveryEmail">LOCAL 비밀번호를 복구할 계정 email</label>
             <input
               id="recoveryEmail"
               name="email"
@@ -159,12 +159,36 @@
         <div class="mailpit-callout">
           <div>
             <p class="eyebrow">Gmail SMTP checklist</p>
-            <strong>일반 비밀번호가 아닌 Google 앱 비밀번호를 사용하세요.</strong>
+            <strong>인증 계정과 From을 같게 맞추고 Google 앱 비밀번호를 사용하세요.</strong>
           </div>
           <a href="https://support.google.com/mail/answer/185833?hl=ko" target="_blank" rel="noopener noreferrer">
             앱 비밀번호 안내 ↗
           </a>
         </div>
+
+        <section
+          id="deliveryChecklist"
+          class="entry-option delivery-checklist"
+          aria-labelledby="delivery-checklist-title"
+          hidden
+        >
+          <div class="entry-option__heading">
+            <div>
+              <p class="eyebrow">Receiver-side evidence</p>
+              <h3 id="delivery-checklist-title">200 다음은 수신자 쪽에서 확인합니다.</h3>
+            </div>
+            <code>SMTP accepted ≠ inbox</code>
+          </div>
+          <p class="entry-option__description">
+            서버는 SMTP 요청 수락까지만 알 수 있습니다. 받은편지함 배치와 스팸 판정은 아래 증거를 직접 확인하세요.
+          </p>
+          <ol class="delivery-checklist__items">
+            <li>받은편지함·프로모션·스팸함에서 제목과 발신자를 검색합니다.</li>
+            <li>Gmail의 <strong>원본 보기</strong>에서 SPF·DKIM·DMARC 결과를 확인합니다.</li>
+            <li>From·Return-Path·mailed-by·signed-by가 인증한 발신자와 정렬되는지 비교합니다.</li>
+            <li>로컬 링크 검증은 Mailpit으로, 실제 전달성 검증은 공개 HTTPS reset URL로 분리합니다.</li>
+          </ol>
+        </section>
 
         <section id="resetPanel" class="entry-option reset-panel" aria-labelledby="reset-panel-title" hidden>
           <div class="entry-option__heading">
@@ -256,7 +280,7 @@
       </div>
       <ul>
         <li data-tone="success"><strong>SMTP 요청 수락</strong><span>200 RECOVERY_MAIL_SENT</span></li>
-        <li data-tone="error"><strong>계정 없음·OAuth 계정</strong><span>422 RECOVERY_MAIL_NOT_SENT</span></li>
+        <li data-tone="error"><strong>계정 없음·LOCAL 비밀번호 없음</strong><span>422 RECOVERY_MAIL_NOT_SENT</span></li>
         <li data-tone="notice"><strong>재요청 cooldown</strong><span>429 RECOVERY_MAIL_COOLDOWN</span></li>
         <li data-tone="error"><strong>앱 비밀번호 인증 실패</strong><span>424 RECOVERY_MAIL_AUTHENTICATION_FAILED</span></li>
         <li data-tone="error"><strong>SMTP 연결·전송 실패</strong><span>424 RECOVERY_MAIL_DELIVERY_FAILED</span></li>

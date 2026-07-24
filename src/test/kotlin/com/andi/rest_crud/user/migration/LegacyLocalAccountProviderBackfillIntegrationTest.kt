@@ -54,6 +54,9 @@ class LegacyLocalAccountProviderBackfillIntegrationTest @Autowired constructor(
         assertEquals("LOCAL", authProviderOf(legacyLocal.id))
         assertEquals("GOOGLE", authProviderOf(google.id))
         assertEquals("", authProviderOf(ambiguousExternal.id))
+        assertEquals(true, localPasswordEnabledOf(legacyLocal.id))
+        assertEquals(false, localPasswordEnabledOf(google.id))
+        assertEquals(false, localPasswordEnabledOf(ambiguousExternal.id))
     }
 
     private fun authProviderOf(userId: Long): String {
@@ -61,6 +64,16 @@ class LegacyLocalAccountProviderBackfillIntegrationTest @Autowired constructor(
             jdbcTemplate.queryForObject(
                 "select auth_provider from users where id = ?",
                 String::class.java,
+                userId
+            )
+        )
+    }
+
+    private fun localPasswordEnabledOf(userId: Long): Boolean {
+        return requireNotNull(
+            jdbcTemplate.queryForObject(
+                "select local_password_enabled from users where id = ?",
+                Boolean::class.java,
                 userId
             )
         )

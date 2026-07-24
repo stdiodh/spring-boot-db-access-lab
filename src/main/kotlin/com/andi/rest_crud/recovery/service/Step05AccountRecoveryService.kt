@@ -1,7 +1,7 @@
 /*
- * 실습 순서 04 — reset token 발급과 확정
- * 선행 단계: Step03까지 OAuth 로그인과 내부 JWT 전달 경계를 완성합니다.
- * 요청 단계: LOCAL 계정과 cooldown을 확인하고 token을 commit한 뒤 동기 발송용 command를 반환합니다.
+ * 실습 순서 05 — reset token 발급과 확정
+ * 선행 단계: Step04에서 선택적 LOCAL 비밀번호 등록 경계를 완성합니다.
+ * 요청 단계: LOCAL 비밀번호가 활성화된 계정과 cooldown을 확인하고 token을 commit한 뒤 mail command를 반환합니다.
  * 실패 보상: SMTP가 실패하면 id·hash·미사용 조건이 모두 맞는 이번 token만 별도 transaction에서 삭제합니다.
  * 확정 단계: 비밀번호 변경과 token 단일 사용 처리를 한 transaction에서 함께 commit합니다.
  */
@@ -55,7 +55,7 @@ class AccountRecoveryService(
         val user = userRepository.findByEmailForUpdate(normalizedEmail)
             .orElseThrow(::RecoveryMailNotSentException)
 
-        if (user.authProvider != LOCAL_PROVIDER) {
+        if (!user.localPasswordEnabled) {
             throw RecoveryMailNotSentException()
         }
 
@@ -109,7 +109,7 @@ class AccountRecoveryService(
 
         if (
             lockedToken.user.id != user.id ||
-            user.authProvider != LOCAL_PROVIDER ||
+            !user.localPasswordEnabled ||
             lockedToken.usedAt != null ||
             !lockedToken.expiresAt.isAfter(now)
         ) {
@@ -134,9 +134,5 @@ class AccountRecoveryService(
         val remaining = Duration.between(now, cooldownEndsAt)
         val roundedUpSeconds = remaining.seconds + if (remaining.nano > 0) 1 else 0
         return roundedUpSeconds.coerceAtLeast(1)
-    }
-
-    private companion object {
-        const val LOCAL_PROVIDER = "LOCAL"
     }
 }

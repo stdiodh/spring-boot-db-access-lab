@@ -1,10 +1,12 @@
 package com.andi.rest_crud.auth.controller
 
 import com.andi.rest_crud.auth.dto.CurrentUserResponse
+import com.andi.rest_crud.auth.dto.LocalPasswordEnrollmentRequest
 import com.andi.rest_crud.auth.dto.LoginRequest
 import com.andi.rest_crud.auth.dto.TokenResponse
 import com.andi.rest_crud.auth.dto.UserSignUpRequest
 import com.andi.rest_crud.auth.service.AuthService
+import com.andi.rest_crud.auth.service.LocalPasswordEnrollmentService
 import jakarta.validation.Valid
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
@@ -21,7 +23,8 @@ import java.security.Principal
 @RestController
 @RequestMapping("/auth")
 class AuthController(
-    private val authService: AuthService
+    private val authService: AuthService,
+    private val localPasswordEnrollmentService: LocalPasswordEnrollmentService
 ) {
 
     @PostMapping("/signup")
@@ -43,6 +46,17 @@ class AuthController(
     fun me(authentication: Principal): CurrentUserResponse {
         // 필터가 검증해 둔 Principal만 넘기면 Controller가 JWT를 다시 해석하지 않아도 됩니다.
         return authService.getCurrentUser(authentication.name)
+    }
+
+    @PostMapping("/local-password")
+    fun enrollLocalPassword(
+        authentication: Principal,
+        @Valid @RequestBody request: LocalPasswordEnrollmentRequest
+    ): ResponseEntity<Void> {
+        localPasswordEnrollmentService.enroll(authentication.name, request)
+        return ResponseEntity.noContent()
+            .cacheControl(CacheControl.noStore())
+            .build()
     }
 }
 

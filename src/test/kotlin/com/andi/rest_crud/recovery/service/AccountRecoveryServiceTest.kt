@@ -154,7 +154,8 @@ class AccountRecoveryServiceTest {
             email = "oauth@example.com",
             password = "encoded-random-password",
             authProvider = "GOOGLE",
-            providerId = "google-subject"
+            providerId = "google-subject",
+            localPasswordEnabled = false
         )
         `when`(userRepository.findByEmailForUpdate(oauthUser.email)).thenReturn(Optional.of(oauthUser))
 
@@ -167,6 +168,29 @@ class AccountRecoveryServiceTest {
 
         assertEquals(missing.message, oauth.message)
         verifyNoInteractions(tokenRepository, passwordEncoder)
+    }
+
+    @Test
+    fun `LOCAL 비밀번호를 등록한 OAuth 계정은 provider를 유지한 채 reset mail을 요청한다`() {
+        val oauthUser = User(
+            id = 2L,
+            email = "oauth@example.com",
+            password = "encoded-local-password",
+            authProvider = "GOOGLE",
+            providerId = "google-subject",
+            localPasswordEnabled = true
+        )
+        `when`(userRepository.findByEmailForUpdate(oauthUser.email)).thenReturn(Optional.of(oauthUser))
+        `when`(tokenRepository.findByUserIdForUpdate(oauthUser.id)).thenReturn(Optional.empty())
+        `when`(tokenRepository.saveAndFlush(any(PasswordResetToken::class.java)))
+            .thenAnswer { it.getArgument<PasswordResetToken>(0) }
+
+        val command = service.requestPasswordReset(oauthUser.email)
+
+        assertEquals(oauthUser.email, command.recipientEmail)
+        assertEquals("GOOGLE", oauthUser.authProvider)
+        assertEquals("google-subject", oauthUser.providerId)
+        verify(tokenRepository).saveAndFlush(any(PasswordResetToken::class.java))
     }
 
     @Test
@@ -203,6 +227,58 @@ class AccountRecoveryServiceTest {
         assertEquals(NOW, token.usedAt)
         verify(tokenRepository).save(token)
         verify(userRepository).saveAndFlush(user)
+    }
+
+    @Test
+    fun `LOCAL 비밀번호가 활성화된 OAuth 계정도 reset token으로 비밀번호를 변경한다`() {
+        val rawToken = tokenCodec.generateRawToken()
+        val hash = tokenCodec.hash(rawToken)
+        val user = User(
+            id = 2L,
+            email = "oauth@example.com",
+            password = "encoded-local-password",
+            authProvider = "GOOGLE",
+            providerId = "google-subject",
+            localPasswordEnabled = true
+        )
+        val token = resetToken(user, tokenHash = hash, expiresAt = NOW.plusSeconds(60))
+        `when`(tokenRepository.findByTokenHash(hash)).thenReturn(Optional.of(token))
+        `when`(userRepository.findByIdForUpdate(user.id)).thenReturn(Optional.of(user))
+        `when`(tokenRepository.findActiveByTokenHashForUpdate(hash, NOW)).thenReturn(Optional.of(token))
+        `when`(passwordEncoder.encode("new-password123")).thenReturn("encoded-new-password")
+        `when`(tokenRepository.save(token)).thenReturn(token)
+        `when`(userRepository.saveAndFlush(user)).thenReturn(user)
+
+        service.confirmPasswordReset(PasswordResetConfirmRequest(rawToken, "new-password123"))
+
+        assertEquals("encoded-new-password", user.password)
+        assertEquals("GOOGLE", user.authProvider)
+        assertEquals("google-subject", user.providerId)
+        assertEquals(NOW, token.usedAt)
+    }
+
+    @Test
+    fun `LOCAL 비밀번호 미등록 OAuth 계정의 reset token은 활성 상태여도 거부한다`() {
+        val rawToken = tokenCodec.generateRawToken()
+        val hash = tokenCodec.hash(rawToken)
+        val user = User(
+            id = 2L,
+            email = "oauth@example.com",
+            password = "encoded-random-password",
+            authProvider = "GOOGLE",
+            providerId = "google-subject",
+            localPasswordEnabled = false
+        )
+        val token = resetToken(user, tokenHash = hash, expiresAt = NOW.plusSeconds(60))
+        `when`(tokenRepository.findByTokenHash(hash)).thenReturn(Optional.of(token))
+        `when`(userRepository.findByIdForUpdate(user.id)).thenReturn(Optional.of(user))
+        `when`(tokenRepository.findActiveByTokenHashForUpdate(hash, NOW)).thenReturn(Optional.of(token))
+
+        assertThrows(InvalidPasswordResetTokenException::class.java) {
+            service.confirmPasswordReset(PasswordResetConfirmRequest(rawToken, "new-password123"))
+        }
+
+        verifyNoInteractions(passwordEncoder)
     }
 
     @Test

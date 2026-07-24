@@ -20,7 +20,57 @@ import org.springframework.mail.javamail.JavaMailSender
 
 class SmtpRecoveryMailSenderTest {
     private val javaMailSender = mock(JavaMailSender::class.java)
-    private val sender = SmtpRecoveryMailSender(javaMailSender, "no-reply@test.local")
+    private val sender = SmtpRecoveryMailSender(
+        javaMailSender,
+        "no-reply@test.local",
+        "localhost",
+        ""
+    )
+
+    @Test
+    fun `Gmail SMTP 발신자와 인증 계정이 다르면 설정 값을 숨기고 시작을 거부한다`() {
+        val recoveryMailFrom = "visible-sender@gmail.com"
+        val smtpUsername = "authenticated-sender@gmail.com"
+
+        val exception = assertThrows(IllegalStateException::class.java) {
+            SmtpRecoveryMailSender(
+                javaMailSender,
+                recoveryMailFrom,
+                "smtp.gmail.com",
+                smtpUsername
+            )
+        }
+
+        assertEquals(
+            "Gmail SMTP 설정 오류: APP_RECOVERY_MAIL_FROM과 " +
+                "SPRING_MAIL_USERNAME은 정확히 일치해야 합니다.",
+            exception.message
+        )
+        assertFalse(exception.message.orEmpty().contains(recoveryMailFrom))
+        assertFalse(exception.message.orEmpty().contains(smtpUsername))
+    }
+
+    @Test
+    fun `Gmail SMTP 발신자와 인증 계정이 정확히 같으면 시작할 수 있다`() {
+        val senderAddress = "authorized-sender@gmail.com"
+
+        SmtpRecoveryMailSender(
+            javaMailSender,
+            senderAddress,
+            "smtp.gmail.com",
+            senderAddress
+        )
+    }
+
+    @Test
+    fun `로컬 Mailpit은 인증 계정이 없어도 시작할 수 있다`() {
+        SmtpRecoveryMailSender(
+            javaMailSender,
+            "no-reply@aandi.test",
+            "localhost",
+            ""
+        )
+    }
 
     @Test
     fun `SMTP message는 설정된 발신자와 복구 안내를 담는다`() {

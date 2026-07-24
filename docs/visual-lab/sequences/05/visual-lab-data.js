@@ -3,8 +3,8 @@ window.visualLabData = {
   "sequence": "05",
   "title": "OAuth2 + SMTP",
   "subtitle": "External authentication and secure account recovery",
-  "goal": "외부 identity를 내부 계정으로 받아들이는 기준과 hash 기반 reset token의 발급·메일·확정 수명 주기를 구분합니다.",
-  "problem": "Provider 인증 성공, 메일 발송 요청, 비밀번호 변경은 서로 다른 증거입니다. 우리 서비스는 verified profile, 저장된 token hash, 잠긴 사용자 상태를 각각 다시 확인해야 합니다.",
+  "goal": "외부 identity를 내부 계정으로 받아들이고 선택적 LOCAL 자격을 더하는 기준과 hash 기반 reset token의 발급·메일·확정 수명 주기를 구분합니다.",
+  "problem": "Provider 인증 성공, LOCAL 비밀번호 등록, SMTP 수락, 받은편지함 배치와 비밀번호 변경은 서로 다른 증거입니다. 우리 서비스는 verified profile, 로그인 수단, 저장된 token hash와 잠긴 사용자 상태를 각각 다시 확인해야 합니다.",
   "repo": {
     "name": "spring-boot-db-access-lab",
     "path": "spring-boot-db-access-lab"
@@ -34,22 +34,26 @@ window.visualLabData = {
       },
       {
         "term": "TTL / cooldown",
-        "meaning": "token은 기본 15분만 유효하고, LOCAL 사용자별 재요청은 기본 1분 동안 제한합니다."
+        "meaning": "token은 기본 15분만 유효하고, LOCAL 비밀번호를 가진 사용자별 재요청은 기본 1분 동안 제한합니다."
       },
       {
         "term": "SMTP acceptance",
         "meaning": "token row commit 뒤 동기 send가 정상 반환된 상태이며 받은 편지함 도착까지 뜻하지는 않습니다."
+      },
+      {
+        "term": "login methods",
+        "meaning": "GOOGLE provider identity와 LOCAL 비밀번호 사용 가능 여부를 분리해 한 내부 계정의 로그인 수단을 표현합니다."
       }
     ],
     "comparison": {
       "label": "외부 값과 내부 신뢰 근거",
       "left": {
         "title": "외부에서 받은 값",
-        "body": "Provider profile과 raw reset token은 다음 판단의 입력일 뿐 내부 계정이나 비밀번호 변경을 스스로 증명하지 않습니다."
+        "body": "Provider profile과 raw reset token은 다음 판단의 입력일 뿐 LOCAL 자격, 내부 계정이나 비밀번호 변경을 스스로 증명하지 않습니다."
       },
       "right": {
         "title": "내부에서 확인한 상태",
-        "body": "provider identity·계정 충돌과 DB hash·만료·usedAt을 확인한 뒤에만 JWT 또는 비밀번호 변경이 확정됩니다."
+        "body": "provider identity·계정 충돌·loginMethods와 DB hash·만료·usedAt을 확인한 뒤에만 JWT, LOCAL 자격 또는 비밀번호 변경이 확정됩니다."
       }
     },
     "nodes": {
@@ -104,11 +108,20 @@ window.visualLabData = {
         "boundary": "계정 연결 정책",
         "codePointIds": ["oauth-account-target"]
       },
+      "localPasswordEnrollmentService": {
+        "label": "LOCAL Password Service",
+        "icon": "security",
+        "kind": "credential policy",
+        "role": "인증된 Google 계정에 LOCAL 비밀번호를 한 번 등록하되 provider identity는 그대로 유지합니다.",
+        "systemLayer": "application",
+        "boundary": "LOCAL 자격 등록",
+        "codePointIds": ["local-password-enrollment-target"]
+      },
       "userRepository": {
         "label": "User Repo",
         "icon": "repository",
         "kind": "user storage",
-        "role": "provider identity와 email을 조회하고 복구 대상 LOCAL 사용자를 잠급니다.",
+        "role": "provider identity와 email을 조회하고 LOCAL 비밀번호 등록·복구 대상 사용자를 잠급니다.",
         "systemLayer": "resource",
         "boundary": "사용자 영속성"
       },
@@ -148,7 +161,7 @@ window.visualLabData = {
         "label": "Recovery Service",
         "icon": "service",
         "kind": "recovery policy",
-        "role": "LOCAL 사용자, cooldown, token 회전과 confirm transaction을 조정합니다.",
+        "role": "LOCAL 비밀번호 사용 가능 여부, cooldown, token 회전과 confirm transaction을 조정합니다.",
         "systemLayer": "application",
         "boundary": "계정 복구 정책",
         "codePointIds": ["recovery-service-target"]
@@ -197,6 +210,14 @@ window.visualLabData = {
         "boundary": "외부 메일 서버",
         "codePointIds": ["smtp-adapter-target"]
       },
+      "mailboxEvidence": {
+        "label": "Mailbox Evidence",
+        "icon": "mail",
+        "kind": "receiver evidence",
+        "role": "받은편지함·스팸함과 원본 헤더의 SPF·DKIM·DMARC 정렬을 사람이 확인합니다.",
+        "systemLayer": "outside",
+        "boundary": "수신자 측 수동 검증"
+      },
       "passwordEncoder": {
         "label": "Password Encoder",
         "icon": "security",
@@ -222,7 +243,7 @@ window.visualLabData = {
         "flowId": "oauth-login",
         "tone": "recovered",
         "prompt": "Provider가 sub, email, email_verified=true를 포함한 profile을 반환합니다.",
-        "observationTitle": "외부 profile이 내부 JWT가 되는 조건",
+        "observationTitle": "외부 profile이 내부 JWT와 선택적 LOCAL 자격이 되는 조건",
         "theoryRef": "../../../theory.md#seq-05",
         "prediction": {
           "prompt": "Provider 인증 성공 직후 우리 API용 JWT를 발급해도 될까요?",
@@ -244,7 +265,7 @@ window.visualLabData = {
           "hint": "verified 상태와 provider identity·email 충돌을 나누어 봅니다."
         },
         "diagram": {
-          "caption": "OAuth callback의 state와 verified profile을 확인하고 내부 계정 정책을 통과한 경우에만 JWT fragment redirect를 만듭니다.",
+          "caption": "OAuth callback의 state와 verified profile을 확인해 JWT를 만들고, /auth/me의 로그인 수단을 근거로 LOCAL 비밀번호를 선택적으로 한 번 등록합니다.",
           "participants": [
             "browser",
             "springSecurity",
@@ -253,7 +274,9 @@ window.visualLabData = {
             "oauthSuccessHandler",
             "oauthAccountService",
             "userRepository",
-            "jwtTokenProvider"
+            "jwtTokenProvider",
+            "localPasswordEnrollmentService",
+            "passwordEncoder"
           ],
           "lanes": [
             {
@@ -345,6 +368,7 @@ window.visualLabData = {
               "label": "내부 계정 + JWT",
               "description": "외부 identity를 내부 사용자와 연결하고 공개 redirect를 만드는 책임입니다.",
               "participants": ["oauthSuccessHandler", "oauthAccountService", "userRepository", "jwtTokenProvider", "browser"],
+              "nextLaneIds": ["local-password-enrollment"],
               "steps": [
                 {
                   "from": "oauthSuccessHandler",
@@ -438,6 +462,90 @@ window.visualLabData = {
                   "check": "fragment는 데모 전달 방식이며 화면이 즉시 메모리로 옮기고 URL을 지우는지 별도로 확인합니다."
                 }
               ]
+            },
+            {
+              "id": "local-password-enrollment",
+              "label": "선택적 LOCAL 자격 등록",
+              "description": "Google 로그인을 유지한 채 인증된 내부 계정에 사용자가 아는 LOCAL 비밀번호를 한 번 추가합니다.",
+              "participants": ["browser", "localPasswordEnrollmentService", "userRepository", "passwordEncoder"],
+              "steps": [
+                {
+                  "from": "browser",
+                  "to": "localPasswordEnrollmentService",
+                  "verb": "로그인 수단 확인 · 등록 요청",
+                  "payload": "GET /auth/me → POST /auth/local-password + Bearer JWT",
+                  "kind": "request",
+                  "effect": {
+                    "kind": "transfer",
+                    "subject": "인증된 내부 사용자",
+                    "before": "loginMethods=[GOOGLE] · 사용자가 아는 LOCAL 비밀번호 없음",
+                    "after": "request email 없이 JWT Principal과 새 비밀번호만 등록 정책에 도착"
+                  },
+                  "evidenceScope": "runtime",
+                  "codePointIds": ["local-password-enrollment-target"]
+                },
+                {
+                  "from": "localPasswordEnrollmentService",
+                  "to": "userRepository",
+                  "verb": "사용자 잠금 · 상태 확인",
+                  "payload": "principal email → GOOGLE + localPasswordEnabled=false",
+                  "kind": "call",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "LOCAL 자격 등록 상태",
+                    "before": "provider와 기존 등록 여부 미확정",
+                    "after": "Google 계정의 최초 등록만 허용 · 반복 등록은 409"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["local-password-enrollment-target"]
+                },
+                {
+                  "from": "localPasswordEnrollmentService",
+                  "to": "passwordEncoder",
+                  "verb": "새 비밀번호 encode",
+                  "payload": "newPassword → BCrypt hash",
+                  "kind": "transform",
+                  "effect": {
+                    "kind": "transform",
+                    "subject": "LOCAL credential",
+                    "before": "검증된 8~64자 원문",
+                    "after": "저장 가능한 BCrypt hash"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["local-password-enrollment-target"]
+                },
+                {
+                  "from": "localPasswordEnrollmentService",
+                  "to": "userRepository",
+                  "verb": "LOCAL 자격 commit",
+                  "payload": "password=BCrypt + localPasswordEnabled=true",
+                  "kind": "persist",
+                  "effect": {
+                    "kind": "persist",
+                    "subject": "User login methods",
+                    "before": "GOOGLE · providerId 유지",
+                    "after": "GOOGLE + LOCAL · providerId 유지"
+                  },
+                  "evidenceScope": "test",
+                  "codePointIds": ["local-password-enrollment-target"],
+                  "check": "authProvider와 providerId를 LOCAL로 덮어쓰지 않아 Google 재로그인이 계속되는지 확인합니다."
+                },
+                {
+                  "from": "localPasswordEnrollmentService",
+                  "to": "browser",
+                  "verb": "등록 완료",
+                  "payload": "204 No Content → /auth/me loginMethods=[GOOGLE, LOCAL]",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "가입 영수증",
+                    "before": "Google 로그인만 가능",
+                    "after": "Google 로그인과 자체 로그인을 모두 선택 가능"
+                  },
+                  "evidenceScope": "runtime",
+                  "codePointIds": ["local-password-enrollment-target"]
+                }
+              ]
             }
           ]
         },
@@ -449,15 +557,17 @@ window.visualLabData = {
           "OAuthAccountService",
           "UserRepository",
           "JwtTokenProvider",
+          "LocalPasswordEnrollmentService",
           "Browser"
         ],
         "snapshot": [
           { "label": "Profile gate", "value": "email_verified=true" },
           { "label": "내부 식별", "value": "provider + providerId" },
-          { "label": "결과", "value": "내부 JWT fragment", "tone": "recovered" }
+          { "label": "기본 로그인", "value": "GOOGLE" },
+          { "label": "선택 등록 뒤", "value": "GOOGLE + LOCAL", "tone": "recovered" }
         ],
-        "evidence": "제공된 profile·redirect scaffold와 OAuth 단위 테스트는 내부 정책을 확인합니다. 실제 Google consent와 callback 성공은 credential을 넣은 수동 검증 범위입니다.",
-        "outcome": "외부 인증 성공에 verified profile과 내부 계정 정책을 더 통과해야 우리 API용 JWT가 생깁니다."
+        "evidence": "profile·redirect와 LOCAL 자격 등록 테스트는 내부 정책, 1회 등록과 provider identity 보존을 확인합니다. 실제 Google consent와 callback 성공은 credential을 넣은 수동 검증 범위입니다.",
+        "outcome": "외부 인증 성공에 verified profile과 내부 계정 정책을 더 통과해야 JWT가 생기며, LOCAL 비밀번호는 그 뒤 사용자가 선택해 추가하는 별도 자격입니다."
       },
       {
         "id": "unverified-email",
@@ -727,10 +837,10 @@ window.visualLabData = {
       },
       {
         "id": "recovery-lifecycle",
-        "label": "LOCAL 계정 복구",
+        "label": "LOCAL 비밀번호 복구",
         "flowId": "account-recovery",
         "tone": "recovered",
-        "prompt": "LOCAL 사용자가 복구를 요청하고 메일의 raw token으로 새 password를 확정합니다.",
+        "prompt": "LOCAL 비밀번호를 등록한 사용자가 복구를 요청하고 메일의 raw token으로 새 password를 확정합니다.",
         "observationTitle": "발급·메일·확정에서 달라지는 상태",
         "theoryRef": "../../../theory.md#seq-05",
         "visual": {
@@ -754,11 +864,11 @@ window.visualLabData = {
           "explanation": "confirm 요청의 raw token을 다시 hash하면 원문을 DB에 남기지 않고도 같은 token인지 확인할 수 있습니다."
         },
         "reflection": {
-          "prompt": "발급, mail, confirm 세 경계에서 각각 남는 상태를 한 줄씩 적어 보세요.",
-          "hint": "DB hash row, SMTP 수락 또는 4xx, BCrypt password와 usedAt을 봅니다."
+          "prompt": "발급, SMTP 수락, 수신자 확인, confirm 경계에서 각각 남는 상태를 한 줄씩 적어 보세요.",
+          "hint": "DB hash row, 200 또는 4xx, 원본 헤더, BCrypt password와 usedAt을 봅니다."
         },
         "diagram": {
-          "caption": "LOCAL 복구 요청은 raw/hash 분리와 token row commit 뒤 동기 SMTP로 이어지고, confirm은 hash·lock·만료·usedAt을 확인해 password와 사용 상태를 한 transaction에서 바꿉니다.",
+          "caption": "LOCAL 비밀번호 복구는 raw/hash 분리와 token row commit 뒤 동기 SMTP로 이어집니다. 200 이후 받은편지함 배치는 수동 증거이며, confirm은 hash·lock·만료·usedAt을 확인해 password와 사용 상태를 한 transaction에서 바꿉니다.",
           "participants": [
             "recoveryClient",
             "accountRecoveryController",
@@ -769,6 +879,7 @@ window.visualLabData = {
             "recoveryMailDispatcher",
             "recoveryMailSender",
             "smtpAdapter",
+            "mailboxEvidence",
             "globalExceptionHandler",
             "passwordEncoder",
             "recoveryTransaction"
@@ -777,7 +888,7 @@ window.visualLabData = {
             {
               "id": "issue-reset-token",
               "label": "1. 요청 · token 발급",
-              "description": "LOCAL 사용자와 cooldown을 확인한 뒤 raw token과 저장용 hash를 분리합니다.",
+              "description": "LOCAL 비밀번호 사용 가능 여부와 cooldown을 확인한 뒤 raw token과 저장용 hash를 분리합니다.",
               "participants": ["recoveryClient", "accountRecoveryController", "accountRecoveryService", "userRepository", "passwordResetTokenRepository", "passwordResetTokenCodec"],
               "nextLaneIds": ["after-commit-mail-success", "after-commit-mail-failure"],
               "steps": [
@@ -805,7 +916,7 @@ window.visualLabData = {
                   "effect": {
                     "kind": "transfer",
                     "subject": "정규화된 email",
-                    "before": "계정 존재와 provider 종류 미확정",
+                    "before": "계정 존재와 LOCAL 비밀번호 사용 가능 여부 미확정",
                     "after": "계정 복구 정책의 조회 입력이 됨"
                   },
                   "evidenceScope": "code",
@@ -814,14 +925,14 @@ window.visualLabData = {
                 {
                   "from": "accountRecoveryService",
                   "to": "userRepository",
-                  "verb": "LOCAL 사용자 잠금 조회",
+                  "verb": "LOCAL 자격 사용자 잠금 조회",
                   "payload": "normalized email",
                   "kind": "call",
                   "effect": {
                     "kind": "gate",
                     "subject": "복구 대상",
-                    "before": "계정 존재와 authProvider 미확정",
-                    "after": "LOCAL User를 write lock으로 확보"
+                    "before": "계정 존재와 localPasswordEnabled 상태 미확정",
+                    "after": "LOCAL 비밀번호를 가진 User를 write lock으로 확보"
                   },
                   "evidenceScope": "test",
                   "codePointIds": ["recovery-service-target"]
@@ -894,7 +1005,7 @@ window.visualLabData = {
               "label": "2-A. 동기 SMTP 성공 · 200",
               "description": "token transaction이 commit된 뒤 SMTP 호출이 정상 반환한 경우에만 200을 만듭니다.",
               "participants": ["accountRecoveryService", "accountRecoveryController", "recoveryMailDispatcher", "recoveryMailSender", "smtpAdapter", "recoveryClient"],
-              "nextLaneIds": ["confirm-reset"],
+              "nextLaneIds": ["receiver-evidence", "confirm-reset"],
               "steps": [
                 {
                   "from": "accountRecoveryService",
@@ -1001,6 +1112,45 @@ window.visualLabData = {
                   "evidenceScope": "test",
                   "codePointIds": ["mail-dispatch-scaffold"],
                   "check": "받은 편지함 도착과 최종 배달은 200만으로 증명하지 않습니다."
+                }
+              ]
+            },
+            {
+              "id": "receiver-evidence",
+              "label": "2-A-1. 수신자 측 전달성 확인",
+              "description": "200 이후 받은편지함 배치와 인증 정렬은 서버 응답이 아니라 수신자가 직접 확인하는 증거입니다.",
+              "participants": ["recoveryClient", "mailboxEvidence"],
+              "nextLaneIds": ["confirm-reset"],
+              "steps": [
+                {
+                  "from": "recoveryClient",
+                  "to": "mailboxEvidence",
+                  "verb": "받은편지함·스팸함 검색",
+                  "payload": "subject + expected sender · no token exposure",
+                  "kind": "call",
+                  "effect": {
+                    "kind": "gate",
+                    "subject": "Mailbox placement",
+                    "before": "200으로 SMTP 요청 수락만 확인",
+                    "after": "받은편지함·프로모션·스팸 배치를 사람이 관찰"
+                  },
+                  "evidenceScope": "manual",
+                  "check": "메일이 보이지 않아도 서버는 스팸 분류나 이후 반송을 HTTP 4xx로 소급할 수 없습니다."
+                },
+                {
+                  "from": "mailboxEvidence",
+                  "to": "recoveryClient",
+                  "verb": "원본 헤더 확인",
+                  "payload": "SPF + DKIM + DMARC · From/Return-Path/mailed-by/signed-by",
+                  "kind": "response",
+                  "effect": {
+                    "kind": "return",
+                    "subject": "발신자 인증 정렬",
+                    "before": "수신 위치만 확인하고 원인을 모름",
+                    "after": "인증 결과와 From 정렬을 근거로 스팸 원인을 좁힘"
+                  },
+                  "evidenceScope": "manual",
+                  "codePointIds": ["smtp-adapter-target"]
                 }
               ]
             },
@@ -1115,7 +1265,7 @@ window.visualLabData = {
                   },
                   "evidenceScope": "test",
                   "codePointIds": ["mail-dispatch-scaffold"],
-                  "check": "계정 없음·OAuth는 422, cooldown은 Retry-After가 있는 429로 SMTP 전에 끝납니다."
+                  "check": "계정 없음·LOCAL 비밀번호 없음은 422, cooldown은 Retry-After가 있는 429로 SMTP 전에 끝납니다."
                 }
               ]
             },
@@ -1189,7 +1339,7 @@ window.visualLabData = {
                   "from": "recoveryTransaction",
                   "to": "accountRecoveryService",
                   "verb": "수명 주기 판정",
-                  "payload": "LOCAL + same user + usedAt=null + expiresAt>now",
+                  "payload": "localPasswordEnabled=true + same user + usedAt=null + expiresAt>now",
                   "kind": "response",
                   "effect": {
                     "kind": "gate",
@@ -1245,6 +1395,7 @@ window.visualLabData = {
           "RecoveryMailDispatcher",
           "RecoveryMailSender",
           "SmtpRecoveryMailSender",
+          "Mailbox evidence",
           "GlobalExceptionHandler",
           "User + reset token transaction"
         ],
@@ -1252,10 +1403,11 @@ window.visualLabData = {
           { "label": "DB 저장", "value": "SHA-256 hash만 저장" },
           { "label": "정책", "value": "TTL 15분 · cooldown 1분 · 단일 사용" },
           { "label": "메일", "value": "commit 뒤 동기 send · 200/424" },
+          { "label": "수신함", "value": "원본 헤더 수동 확인" },
           { "label": "확정", "value": "204 또는 generic 400", "tone": "recovered" }
         ],
-        "evidence": "token codec·row·동기 dispatcher와 recovery 테스트가 hash·회전·만료·단일 사용·BCrypt·200/4xx 경계를 확인합니다. 실제 Gmail 수신은 별도 수동 증거입니다.",
-        "outcome": "200은 SMTP 요청 수락, 424는 발송 완료 확인 실패, 204는 password와 usedAt transaction commit을 각각 뜻합니다."
+        "evidence": "token codec·row·동기 dispatcher와 recovery 테스트가 hash·회전·만료·단일 사용·BCrypt·200/4xx 경계를 확인합니다. Gmail의 받은편지함 배치와 SPF·DKIM·DMARC 정렬은 별도 수동 증거입니다.",
+        "outcome": "200은 SMTP 요청 수락, 원본 헤더는 수신자 측 전달성, 424는 발송 완료 확인 실패, 204는 password와 usedAt transaction commit을 각각 뜻합니다."
       }
     ]
   },
@@ -1270,8 +1422,8 @@ window.visualLabData = {
   "flows": [
     {
       "id": "oauth-login",
-      "title": "OAuth profile과 내부 계정 판단",
-      "summary": "verified profile을 내부 identity와 email 충돌 정책에 연결한 뒤 JWT 또는 차단으로 끝냅니다.",
+      "title": "OAuth profile, 내부 계정과 LOCAL 자격",
+      "summary": "verified profile을 내부 identity와 email 충돌 정책에 연결해 JWT를 만들고 선택적으로 LOCAL 비밀번호를 한 번 추가합니다.",
       "steps": [
         {
           "id": "oauth-profile",
@@ -1311,6 +1463,25 @@ window.visualLabData = {
           "action": "JWT를 fragment에 넣고 no-store redirect를 만듭니다.",
           "check": "화면이 token을 메모리로 옮긴 직후 URL을 지우는지 확인합니다.",
           "codePointIds": ["oauth-redirect-scaffold"]
+        },
+        {
+          "id": "oauth-login-methods",
+          "from": "Browser",
+          "to": "GET /auth/me",
+          "problem": "redirect query metadata만으로 LOCAL 자격 등록 여부를 판단할 수 없습니다.",
+          "concept": "Authoritative login methods",
+          "action": "Bearer JWT로 내부 email과 loginMethods를 다시 확인합니다.",
+          "check": "신규·기존 Google 계정 모두 loginMethods=[GOOGLE]일 때만 등록 영역이 열리는지 확인합니다."
+        },
+        {
+          "id": "oauth-local-password",
+          "from": "Browser",
+          "to": "LocalPasswordEnrollmentService",
+          "problem": "Google 비밀번호는 전달되지 않아 자체 로그인 비밀번호로 사용할 수 없습니다.",
+          "concept": "Optional second credential",
+          "action": "JWT Principal로 사용자를 잠그고 BCrypt password와 localPasswordEnabled=true를 한 transaction에서 저장합니다.",
+          "check": "성공 204 뒤 GOOGLE+LOCAL이고 provider identity가 유지되며 반복 등록은 409인지 확인합니다.",
+          "codePointIds": ["local-password-enrollment-target"]
         }
       ]
     },
@@ -1325,7 +1496,7 @@ window.visualLabData = {
           "to": "AccountRecoveryService",
           "problem": "발송 결과를 한 상태로만 반환하면 SMTP가 어디에서 실패했는지 알 수 없습니다.",
           "concept": "Observable lab contract",
-          "action": "LOCAL 성공은 200, 계정 부적합은 422, cooldown은 429, SMTP 실패는 424로 구분합니다.",
+          "action": "LOCAL 비밀번호 사용 가능 계정은 200, 계정 부적합은 422, cooldown은 429, SMTP 실패는 424로 구분합니다.",
           "check": "모든 결과가 no-store이고 429에는 Retry-After가 있는지 확인합니다.",
           "codePointIds": ["recovery-service-target"]
         },
@@ -1348,6 +1519,16 @@ window.visualLabData = {
           "action": "service transaction이 끝난 command를 request thread에서 mail port로 전달합니다.",
           "check": "send 정상 반환 뒤에만 200이고 실패 token은 정확한 id와 hash로 정리되는지 확인합니다.",
           "codePointIds": ["mail-dispatch-scaffold"]
+        },
+        {
+          "id": "recovery-mailbox",
+          "from": "Recovery Client",
+          "to": "Mailbox Evidence",
+          "problem": "SMTP 정상 반환만으로 받은편지함 도착이나 스팸 분류를 알 수 없습니다.",
+          "concept": "Receiver-side deliverability evidence",
+          "action": "받은편지함·스팸함과 원본 보기의 SPF·DKIM·DMARC, From 정렬을 수동 확인합니다.",
+          "check": "200과 수신함 배치가 서로 다른 증거임을 설명할 수 있는지 확인합니다.",
+          "codePointIds": ["smtp-adapter-target"]
         },
         {
           "id": "recovery-confirm",
@@ -1401,6 +1582,15 @@ window.visualLabData = {
       "check": "query에는 공개 metadata만, JWT는 fragment에만 있는지 확인합니다."
     },
     {
+      "id": "local-password-enrollment-target",
+      "title": "Google identity를 유지한 채 LOCAL 자격을 추가합니다",
+      "file": "src/main/kotlin/com/andi/rest_crud/auth/service/Step04LocalPasswordEnrollmentService.kt",
+      "language": "kotlin",
+      "snippet": "val user = userRepository.findByEmailForUpdate(normalizedEmail)\n    .orElseThrow(::InvalidCredentialsException)\nif (user.authProvider != GOOGLE_PROVIDER || user.localPasswordEnabled) {\n    throw LocalPasswordEnrollmentConflictException()\n}\nuser.password = requireNotNull(passwordEncoder.encode(request.newPassword))\nuser.localPasswordEnabled = true",
+      "explanation": "요청 email 대신 JWT Principal로 사용자를 잠그고 최초 등록만 허용합니다. authProvider와 providerId를 유지하므로 Google 재로그인도 계속됩니다.",
+      "check": "204 뒤 GOOGLE+LOCAL, 반복 등록 409, Google provider identity 보존을 서비스·통합 테스트로 확인합니다."
+    },
+    {
       "id": "reset-token-codec",
       "title": "제공된 codec은 raw token과 저장 hash를 분리합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/recovery/security/PasswordResetTokenCodec.kt",
@@ -1430,7 +1620,7 @@ window.visualLabData = {
     {
       "id": "recovery-service-target",
       "title": "token commit 뒤 mail command를 반환합니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/Step04AccountRecoveryService.kt",
+      "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/Step05AccountRecoveryService.kt",
       "language": "kotlin",
       "snippet": "val savedToken = passwordResetTokenRepository.saveAndFlush(token)\n// service 반환 뒤 transaction이 commit되면 Controller가 SMTP를 호출합니다.\nreturn PasswordResetMailCommand(\n    tokenId = savedToken.id,\n    tokenHash = savedToken.tokenHash,\n    recipientEmail = user.email,\n    resetLink = createResetLink(rawToken)\n)",
       "explanation": "DB에는 hash를 commit하고 raw token이 든 link는 transaction 밖의 동기 SMTP 호출에 넘깁니다.",
@@ -1447,12 +1637,12 @@ window.visualLabData = {
     },
     {
       "id": "smtp-adapter-target",
-      "title": "SMTP 인증 실패와 일반 전송 실패를 구분합니다",
-      "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/Step05SmtpRecoveryMailSender.kt",
+      "title": "Gmail 발신자 정렬 뒤 SMTP 실패를 구분합니다",
+      "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/Step06SmtpRecoveryMailSender.kt",
       "language": "kotlin",
-      "snippet": "try {\n    // 정상 반환까지만 HTTP 200의 근거로 사용합니다.\n    javaMailSender.send(message)\n} catch (exception: MailAuthenticationException) {\n    throw RecoveryMailAuthenticationException(exception)\n} catch (exception: MailException) {\n    throw RecoveryMailDeliveryException(exception)\n}",
-      "explanation": "발신자·수신자·제목·본문을 구성하고 앱 비밀번호 실패와 그 밖의 mail 실패를 구분합니다.",
-      "check": "mock JavaMailSender로 message와 예외 변환을 확인하며 실제 SMTP delivery와 구분합니다."
+      "snippet": "if (smtpHost.equals(GMAIL_SMTP_HOST, ignoreCase = true)) {\n    check(smtpUsername.isNotBlank() && recoveryMailFrom == smtpUsername) {\n        \"Gmail SMTP 설정 오류: 발신자와 인증 계정이 일치해야 합니다.\"\n    }\n}\n\ntry {\n    javaMailSender.send(message)\n} catch (exception: MailAuthenticationException) {\n    throw RecoveryMailAuthenticationException(exception)\n} catch (exception: MailException) {\n    throw RecoveryMailDeliveryException(exception)\n}",
+      "explanation": "Gmail에서는 From과 인증 계정을 시작 시점에 정렬하고, 앱 비밀번호 실패와 그 밖의 mail 실패를 구분합니다. 실제 주소와 secret은 오류에 넣지 않습니다.",
+      "check": "mock sender로 정렬 fail-fast·message·예외 변환을 확인하고, 받은편지함 배치는 원본 헤더로 수동 확인합니다."
     }
   ],
   "concepts": [
@@ -1467,6 +1657,10 @@ window.visualLabData = {
     {
       "title": "메일과 비밀번호 변경은 별도 증거입니다",
       "body": "200은 SMTP 요청 수락일 뿐 password 변경을 뜻하지 않으며 confirm transaction의 204가 별도 완료 신호입니다."
+    },
+    {
+      "title": "Google 로그인과 LOCAL 자격은 함께 존재할 수 있습니다",
+      "body": "provider identity는 유지하고 localPasswordEnabled만 바꿔 같은 내부 계정에 두 로그인 수단을 둡니다."
     }
   ],
   "responsibilities": [
@@ -1476,8 +1670,13 @@ window.visualLabData = {
       "caution": "동일 email의 LOCAL 계정을 자동 연결하지 않습니다."
     },
     {
+      "name": "LocalPasswordEnrollmentService",
+      "role": "JWT Principal의 Google 계정에 LOCAL 비밀번호를 한 번 추가합니다.",
+      "caution": "authProvider와 providerId를 LOCAL로 덮어쓰지 않습니다."
+    },
+    {
       "name": "AccountRecoveryService",
-      "role": "LOCAL-only 발급, cooldown, hash row rotation과 confirm transaction을 조정합니다.",
+      "role": "LOCAL 비밀번호 사용 가능 여부, cooldown, hash row rotation과 confirm transaction을 조정합니다.",
       "caution": "raw token을 DB나 로그에 남기지 않습니다."
     },
     {
@@ -1505,15 +1704,17 @@ window.visualLabData = {
   ],
   "practice": [
     "Provider 인증 성공과 내부 계정 연결 성공의 차이를 설명할 수 있나요?",
+    "GOOGLE provider identity를 유지하면서 LOCAL 비밀번호를 추가하는 이유를 설명할 수 있나요?",
     "raw token과 DB hash가 각각 어디에 존재하는지 설명할 수 있나요?",
-    "200, SMTP 수락, confirm 204가 증명하는 범위를 구분할 수 있나요?",
+    "200, 수신자 원본 헤더, confirm 204가 증명하는 범위를 구분할 수 있나요?",
     "만료·회전·재사용 token이 왜 같은 400으로 끝나는지 설명할 수 있나요?"
   ],
   "checks": [
     "verified email과 providerId의 역할을 구분할 수 있나요?",
+    "신규·기존 Google 계정의 LOCAL 비밀번호 등록과 GOOGLE 재로그인을 함께 설명할 수 있나요?",
     "LOCAL email 충돌에서 JWT가 발급되지 않는 이유를 설명할 수 있나요?",
     "32-byte raw token, SHA-256 hash, 15분 TTL, 1분 cooldown을 연결할 수 있나요?",
-    "commit 뒤 동기 SMTP 수락과 실제 수신함 delivery 증거를 구분할 수 있나요?",
+    "SMTP 200과 Gmail 원본 보기의 SPF·DKIM·DMARC 증거를 구분할 수 있나요?",
     "BCrypt password와 usedAt이 같은 transaction에서 바뀌는 이유를 설명할 수 있나요?"
   ],
   "relatedDocs": [
@@ -1527,7 +1728,7 @@ window.visualLabData = {
     { "label": "체크리스트", "href": "../../../checklist.md" }
   ],
   "topic": "External authentication and secure account recovery",
-  "question": "외부 identity와 reset token을 우리 서비스는 어느 경계에서 다시 검증할까?",
+  "question": "외부 identity·LOCAL 자격·SMTP 수신 증거를 우리 서비스는 어느 경계에서 다시 검증할까?",
   "next": {
     "id": "06",
     "title": "Testing",

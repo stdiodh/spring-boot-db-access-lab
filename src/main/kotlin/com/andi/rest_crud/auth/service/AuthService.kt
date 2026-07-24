@@ -45,7 +45,8 @@ class AuthService(
             userRepository.saveAndFlush(
                 User(
                     email = email,
-                    password = encodedPassword
+                    password = encodedPassword,
+                    localPasswordEnabled = true
                 )
             )
         } catch (exception: DataIntegrityViolationException) {
@@ -66,7 +67,7 @@ class AuthService(
             .orElseThrow { InvalidCredentialsException() }
 
         // BCrypt 결과는 매번 달라질 수 있으므로 문자열 동등 비교 대신 encoder를 사용합니다.
-        if (!passwordEncoder.matches(rawPassword, requireNotNull(user.password))) {
+        if (!user.localPasswordEnabled || !passwordEncoder.matches(rawPassword, requireNotNull(user.password))) {
             throw InvalidCredentialsException()
         }
 
@@ -82,7 +83,18 @@ class AuthService(
         val user = userRepository.findByEmail(normalizeEmail(email))
             .orElseThrow { InvalidCredentialsException() }
 
-        return CurrentUserResponse(email = requireNotNull(user.email))
+        val loginMethods = linkedSetOf<String>()
+        if (user.authProvider.isNotBlank()) {
+            loginMethods += user.authProvider
+        }
+        if (user.localPasswordEnabled) {
+            loginMethods += LOCAL_LOGIN_METHOD
+        }
+
+        return CurrentUserResponse(
+            email = requireNotNull(user.email),
+            loginMethods = loginMethods.toList()
+        )
     }
 
     // Locale.ROOT를 사용해야 서버 언어 설정과 무관하게 같은 email 정규화 결과를 얻습니다.
@@ -92,5 +104,9 @@ class AuthService(
         return generateSequence(cause) { it.cause }
             .filterIsInstance<ConstraintViolationException>()
             .any { it.kind == ConstraintViolationException.ConstraintKind.UNIQUE }
+    }
+
+    private companion object {
+        const val LOCAL_LOGIN_METHOD = "LOCAL"
     }
 }

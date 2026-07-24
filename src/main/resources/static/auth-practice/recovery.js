@@ -19,6 +19,7 @@ const elements = {
   recoveryRequestButton: document.querySelector("#recoveryRequestButton"),
   recoveryNotice: document.querySelector("#recoveryNotice"),
   recoveryError: document.querySelector("#recoveryError"),
+  deliveryChecklist: document.querySelector("#deliveryChecklist"),
   resetPanel: document.querySelector("#resetPanel"),
   resetPanelTitle: document.querySelector("#reset-panel-title"),
   resetForm: document.querySelector("#resetForm"),
@@ -133,6 +134,7 @@ function validateNewPassword() {
 
 async function requestPasswordReset() {
   clearRecoveryErrors();
+  elements.deliveryChecklist.hidden = true;
 
   const email = elements.recoveryEmail.value;
   if (!email || !elements.recoveryEmail.validity.valid) {
@@ -172,9 +174,10 @@ async function requestPasswordReset() {
       setStage("mail", "success", "200 SMTP 요청 수락");
       setProgress(1);
       setRecoveryNotice(
-        "200 OK: SMTP 서버가 메일 요청을 수락했습니다. 받은 편지함 도착은 별도로 확인하세요.",
+        "200 OK: SMTP 서버가 메일 요청을 수락했습니다. 아래 수신자 측 체크리스트로 받은편지함과 스팸 분류를 확인하세요.",
         "success"
       );
+      elements.deliveryChecklist.hidden = false;
       return;
     }
 
@@ -183,7 +186,7 @@ async function requestPasswordReset() {
       setStage("mail", "error", "SMTP 호출 안 함");
       setProgress(0);
       elements.recoveryError.textContent =
-        "비밀번호 재설정 메일을 보낼 수 없는 계정입니다. 가입 방식과 email을 확인하세요.";
+        "비밀번호 재설정 메일을 보낼 수 없는 계정입니다. email과 LOCAL 비밀번호 등록 여부를 확인하세요.";
       elements.recoveryError.hidden = false;
       setRecoveryNotice("재설정 메일을 보내지 않았습니다.", "error", false);
       return;

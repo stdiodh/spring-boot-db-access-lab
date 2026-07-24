@@ -52,6 +52,7 @@ class OAuthAccountServiceTest {
         assertEquals("provider-1", captor.value.providerId)
         assertEquals("student@example.com", captor.value.email)
         assertEquals("encoded-random-password", captor.value.password)
+        assertFalse(captor.value.localPasswordEnabled)
         assertEquals("issued-token", result.accessToken)
         assertEquals("GOOGLE", result.provider)
         assertEquals(true, result.isNewUser)

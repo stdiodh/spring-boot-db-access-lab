@@ -30,11 +30,12 @@
   <main id="main-content" class="page-shell">
     <section class="intro" aria-labelledby="page-title">
       <div>
-        <p class="eyebrow">GOOGLE · authorization → verified profile → internal account → JWT</p>
+        <p class="eyebrow">GOOGLE · authorization → internal account → JWT → optional LOCAL credential</p>
         <h1 id="page-title">Google 신원이,<br>우리 서비스 계정이 되는 경계.</h1>
         <p class="intro__description">
           Google은 검증된 외부 신원을 제공하고 우리 서버는 별도의 내부 계정과 JWT를 만듭니다.
-          Google 비밀번호는 전달되지 않으며 자체 로그인 비밀번호로 저장할 수도 없습니다.
+          Google 비밀번호는 전달되지 않습니다. Google 로그인은 그대로 사용할 수 있고,
+          원하면 새 LOCAL 비밀번호를 직접 정해 자체 로그인 수단을 추가할 수 있습니다.
         </p>
       </div>
       <div class="runtime-note" aria-label="OAuth 실행 환경 정보">
@@ -49,10 +50,10 @@
     <section class="auth-trace" aria-labelledby="trace-title">
       <div class="section-heading">
         <p class="eyebrow">Authentication receipt</p>
-        <h2 id="trace-title">외부 credential을 내부 Principal로 바꾸는 세 지점</h2>
+        <h2 id="trace-title">외부 신원에서 선택 가능한 LOCAL 자격까지 네 지점</h2>
       </div>
 
-      <ol id="traceList" class="trace-list" style="--progress: 0">
+      <ol id="traceList" class="trace-list trace-list--four" style="--progress: 0">
         <li class="trace-step" data-stage="google" data-state="active">
           <span class="trace-step__marker" aria-hidden="true">1</span>
           <span class="trace-step__copy">
@@ -75,6 +76,14 @@
             <code>JWT → GET /auth/me</code>
             <strong>내부 신원 증명</strong>
             <span data-stage-label>아직 Authentication 없음</span>
+          </span>
+        </li>
+        <li class="trace-step" data-stage="credential" data-state="waiting">
+          <span class="trace-step__marker" aria-hidden="true">4</span>
+          <span class="trace-step__copy">
+            <code>POST /auth/local-password</code>
+            <strong>LOCAL 자격 선택</strong>
+            <span data-stage-label>loginMethods 확인 대기</span>
           </span>
         </li>
       </ol>
@@ -183,10 +192,15 @@
               <dd id="jwtStatus">—</dd>
               <small>우리 서버가 별도로 발급한 JWT</small>
             </div>
+            <div>
+              <dt>Login methods</dt>
+              <dd id="loginMethodsValue">—</dd>
+              <small><code>GET /auth/me</code>가 확인한 사용 가능한 로그인 방식</small>
+            </div>
           </dl>
           <p class="trust-receipt__footnote">
             query의 provider·신규 여부는 화면 설명용 metadata입니다.
-            내부 로그인 ID의 최종 근거는 Bearer JWT로 호출한 <code>/auth/me</code> 응답입니다.
+            내부 로그인 ID와 로그인 방식의 최종 근거는 Bearer JWT로 호출한 <code>/auth/me</code> 응답입니다.
           </p>
         </section>
 
@@ -288,8 +302,86 @@
       <span id="identityStatus" class="identity-proof__status">확인 전</span>
     </section>
 
+    <section
+      id="localPasswordPanel"
+      class="local-password-panel"
+      data-state="waiting"
+      aria-labelledby="local-password-title"
+      hidden
+    >
+      <div class="local-password-panel__heading">
+        <div>
+          <p class="eyebrow">Optional LOCAL credential</p>
+          <h2 id="local-password-title" tabindex="-1">자체 로그인 비밀번호를 추가할 수 있습니다.</h2>
+        </div>
+        <span id="localPasswordState" class="local-password-panel__status">LOCAL 미설정</span>
+      </div>
+
+      <p class="local-password-panel__description">
+        이 비밀번호는 Google 비밀번호를 복사하거나 바꾸지 않습니다.
+        방금 확인한 내부 계정에 자체 로그인 방법 하나를 더하며, 건너뛰어도 Google 로그인으로 계정을 계속 사용할 수 있습니다.
+      </p>
+
+      <form id="localPasswordForm" class="local-password-form" novalidate>
+        <div class="field">
+          <label for="localPassword">새 LOCAL 비밀번호</label>
+          <input
+            id="localPassword"
+            name="localPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            maxlength="64"
+            required
+            aria-describedby="localPasswordHint localPasswordError"
+            placeholder="8~64자"
+          >
+          <p id="localPasswordHint" class="field__hint">
+            앞뒤 공백도 원문의 일부이며 공백만으로 구성할 수 없습니다.
+          </p>
+          <p id="localPasswordError" class="field__error"></p>
+        </div>
+
+        <div class="field">
+          <label for="localPasswordConfirm">새 LOCAL 비밀번호 확인</label>
+          <input
+            id="localPasswordConfirm"
+            name="localPasswordConfirm"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            maxlength="64"
+            required
+            aria-describedby="localPasswordConfirmError"
+            placeholder="같은 비밀번호 다시 입력"
+          >
+          <p id="localPasswordConfirmError" class="field__error"></p>
+        </div>
+
+        <div class="local-password-actions">
+          <button id="localPasswordButton" class="button button--signal" type="submit">
+            자체 로그인 비밀번호 설정
+          </button>
+          <button id="skipLocalPasswordButton" class="text-button" type="button">
+            이번에는 건너뛰기
+          </button>
+        </div>
+      </form>
+
+      <p id="localPasswordNotice" class="form-notice" role="status" aria-live="polite">
+        비밀번호 원문은 응답 증거, URL, 브라우저 저장소에 남기지 않습니다.
+      </p>
+      <p id="localPasswordRequestError" class="form-error" role="alert" hidden></p>
+      <a id="localLoginLink" class="local-login-link" href="./index.html" hidden>
+        자체 로그인 화면에서 확인
+      </a>
+    </section>
+
     <footer class="page-footer">
-      <p>자체 로그인 화면으로 이동하면 메모리의 OAuth JWT가 사라집니다. Google 비밀번호는 처음부터 전달되지 않습니다.</p>
+      <p>
+        자체 로그인 화면으로 이동하면 메모리의 OAuth JWT가 사라집니다.
+        설정을 완료한 경우에도 비밀번호 원문이나 Google 비밀번호는 페이지 사이로 전달되지 않습니다.
+      </p>
       <a href="/swagger">Swagger 열기</a>
     </footer>
   </main>
