@@ -5,6 +5,7 @@
 - [ ] 최신 `04-answer`의 JWT·인가·오류·UI·Swagger 회귀를 보존했습니다.
 - [ ] package가 `common/user/auth/oauth/recovery/post`로 나뉩니다.
 - [ ] 직접 구현하는 production 파일 6개만 `Step01`부터 `Step06`까지 표시되고 class·package 이름은 유지됩니다.
+- [ ] `05-implementation`의 수정 범위는 지정된 6개 파일의 TODO 7개뿐이며 제공된 연결 코드와 테스트는 바꾸지 않습니다.
 - [ ] README와 구현 문서의 경로가 실제 파일과 일치합니다.
 - [ ] 표준 문서는 `README.md`, `docs/theory.md`, `docs/implementation.md`, `docs/checklist.md` 네 개입니다.
 - [ ] 실제 secret을 소스·문서·로그에 넣지 않았습니다.
@@ -129,7 +130,7 @@
 - [ ] token commit 이후 동기 dispatch와 SMTP 실패 token 정리 테스트가 있습니다.
 - [ ] reset link fragment와 SMTP 메시지 조립 테스트가 있습니다.
 - [ ] Gmail 인증 계정의 From 적용과 빈 username fail-fast·설정 값 비노출 테스트가 있습니다.
-- [ ] `05-implementation`과 `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
+- [ ] `05-implementation`의 TODO 7개를 모두 완성한 뒤 `05-answer`와 동일하게 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
 - [ ] `git diff --check`가 통과합니다.
 
 ## 9. 외부 수동 검증

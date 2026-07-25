@@ -69,12 +69,12 @@ src/main/kotlin/com/andi/rest_crud/
 
 ## 구현 순서
 
-`05-implementation`과 `05-answer`는 이번 계약 변경에서 같은 실행 코드와 설명 주석을 사용합니다.
-각 단계에서는 테스트와 파일 상단 주석을 먼저 읽고, 실제 호출 순서와 HTTP 결과를 확인합니다.
+`05-implementation`에서 직접 수정할 범위는 **6개 파일의 TODO 7개**입니다. `05-answer`는 같은 계약의 완성 코드를 제공합니다.
+각 단계에서는 테스트와 파일 상단 주석을 먼저 읽고, 지정된 TODO만 구현한 뒤 대상 테스트가 통과하면 다음 단계로 이동합니다.
 
 직접 구현하는 production 파일 6개만 `Step01`부터 `Step06`까지 표시합니다. 파일명의 Step은 탐색 순서이며 Kotlin class 이름과 package는 그대로 유지합니다.
 
-| Step | 확인할 파일 | 책임 |
+| Step | 직접 수정할 파일 | TODO |
 |---:|---|---|
 | 01 | `oauth/security/Step01CustomOAuthUserService.kt` | 외부 profile 검증·정규화 |
 | 02 | `oauth/service/Step02OAuthAccountService.kt` | 내부 계정 연결과 JWT 발급 |
@@ -84,7 +84,7 @@ src/main/kotlin/com/andi/rest_crud/
 | 05-B | `recovery/service/Step05AccountRecoveryService.kt` | token 확정·비밀번호 변경 |
 | 06 | `recovery/mail/Step06SmtpRecoveryMailSender.kt` | Gmail 인증 계정 발신자 선택·SMTP 메시지 조립·동기 발송 |
 
-`PasswordResetTokenCodec`, `PasswordResetToken`, repository, controller, `RecoveryMailDispatch`, Security 설정과 정적 화면을 함께 읽으면 commit 이후에만 SMTP를 호출하는 이유를 확인할 수 있습니다.
+`PasswordResetTokenCodec`, `PasswordResetToken`, repository, controller, `RecoveryMailDispatch`, Security 설정과 정적 화면은 제공된 연결 계약입니다. 처음부터 고치지 말고 TODO를 구현할 때 호출 순서와 기대 결과를 확인하는 용도로 읽습니다.
 
 환경 설정을 포함한 파일별 테스트와 세부 완료 조건은 [구현 가이드](./docs/implementation.md)의 Step 0부터 순서대로 따릅니다.
 
@@ -138,7 +138,8 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 
 ## 브랜치와 검증
 
-- `05-implementation`과 `05-answer`: 외부 Google·SMTP 연결 없이 `./gradlew test` 전체가 통과해야 합니다.
+- `05-implementation`: TODO를 호출하는 테스트는 구현 전 실패하는 것이 정상이며, 7개 TODO를 모두 완성하면 전체 테스트가 통과해야 합니다.
+- `05-answer`: 외부 Google·SMTP 연결 없이 `./gradlew test` 전체가 통과해야 합니다.
 - 자동 테스트는 내부 정책과 04 회귀를 확인합니다.
 - 자동 테스트는 LOCAL 자격 1회 등록, provider identity 보존, 복구 자격 전환과 Gmail 인증 계정의 From 적용도 확인합니다.
 - 실제 Google callback과 SMTP 수신은 credential을 준비한 경우에만 별도 수동 검증합니다.
@@ -209,6 +210,6 @@ http://localhost:8081/sequences/05/
 - hash 저장·만료·단일 사용과 commit 이후 동기 SMTP 경계를 설명하게 합니다.
 - Gmail 인증 계정의 From 적용과 200 이후 원본 헤더 수동 증거를 구분하게 합니다.
 - 기존 JWT 미폐기, IP/distributed rate limiter 부재, `ddl-auto=update` 한계를 운영 보안 완성으로 표현하지 않게 합니다.
-- 계약 테스트 실패와 실제 provider 설정·연결 실패를 구분합니다.
+- starter의 TODO 실패와 실제 provider 설정·연결 실패를 구분합니다.
 
 </details>

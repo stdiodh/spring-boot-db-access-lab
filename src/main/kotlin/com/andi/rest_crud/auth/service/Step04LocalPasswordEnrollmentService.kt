@@ -24,18 +24,7 @@ class LocalPasswordEnrollmentService(
 
     @Transactional
     fun enroll(principalEmail: String, request: LocalPasswordEnrollmentRequest) {
-        val normalizedEmail = principalEmail.lowercase(Locale.ROOT)
-        val user = userRepository.findByEmailForUpdate(normalizedEmail)
-            .orElseThrow(::InvalidCredentialsException)
-
-        // provider identity를 LOCAL로 덮어쓰면 다음 Google callback에서 기존 계정을 다시 찾을 수 없습니다.
-        if (user.authProvider != GOOGLE_PROVIDER || user.localPasswordEnabled) {
-            throw LocalPasswordEnrollmentConflictException()
-        }
-
-        user.password = requireNotNull(passwordEncoder.encode(request.newPassword))
-        user.localPasswordEnabled = true
-        userRepository.saveAndFlush(user)
+        TODO("Step 04: OAuth 계정의 LOCAL 비밀번호 등록을 구현하세요.")
     }
 
     private companion object {

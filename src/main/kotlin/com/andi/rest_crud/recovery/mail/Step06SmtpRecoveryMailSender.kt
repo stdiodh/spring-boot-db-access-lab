@@ -31,32 +31,7 @@ class SmtpRecoveryMailSender(
     }
 
     override fun sendPasswordResetMail(recipientEmail: String, resetLink: String) {
-        val message = SimpleMailMessage().apply {
-            from = if (smtpHost.equals(GMAIL_SMTP_HOST, ignoreCase = true)) {
-                smtpUsername
-            } else {
-                recoveryMailFrom
-            }
-            setTo(recipientEmail)
-            subject = "[A&I] 비밀번호 재설정 안내"
-            text = """
-                비밀번호 재설정 요청을 받았습니다.
-
-                $resetLink
-
-                이 링크는 제한된 시간 동안 한 번만 사용할 수 있습니다.
-                요청하지 않았다면 이 메일을 무시하세요.
-            """.trimIndent()
-        }
-
-        try {
-            // 이 호출이 정상 반환된 시점까지만 HTTP 200의 근거로 사용합니다.
-            javaMailSender.send(message)
-        } catch (exception: MailAuthenticationException) {
-            throw RecoveryMailAuthenticationException(exception)
-        } catch (exception: MailException) {
-            throw RecoveryMailDeliveryException(exception)
-        }
+        TODO("Step 06: SMTP 메시지 조립과 동기 발송을 구현하세요.")
     }
 
     private companion object {

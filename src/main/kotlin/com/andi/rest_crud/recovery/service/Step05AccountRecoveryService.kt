@@ -51,43 +51,7 @@ class AccountRecoveryService(
 
     @Transactional
     fun requestPasswordReset(email: String): PasswordResetMailCommand {
-        val normalizedEmail = email.lowercase(Locale.ROOT)
-        val user = userRepository.findByEmailForUpdate(normalizedEmail)
-            .orElseThrow(::RecoveryMailNotSentException)
-
-        if (!user.localPasswordEnabled) {
-            throw RecoveryMailNotSentException()
-        }
-
-        val now = clock.instant()
-        val existingToken = passwordResetTokenRepository.findByUserIdForUpdate(user.id).orElse(null)
-        val cooldownEndsAt = existingToken?.createdAt?.plus(resendCooldown)
-        if (existingToken != null && cooldownEndsAt != null &&
-            existingToken.isRecentlyIssuedAndActive(now, cooldownEndsAt)
-        ) {
-            throw RecoveryMailCooldownException(retryAfterSeconds(now, cooldownEndsAt))
-        }
-
-        val rawToken = tokenCodec.generateRawToken()
-        val tokenHash = tokenCodec.hash(rawToken)
-        val expiresAt = now.plus(tokenTtl)
-        val token = existingToken?.apply {
-            rotate(tokenHash, now, expiresAt)
-        } ?: PasswordResetToken(
-            user = user,
-            tokenHash = tokenHash,
-            createdAt = now,
-            expiresAt = expiresAt
-        )
-
-        val savedToken = passwordResetTokenRepository.saveAndFlush(token)
-        // 메서드가 반환되면 Spring proxy가 이 transaction을 commit한 뒤 Controller가 SMTP를 호출합니다.
-        return PasswordResetMailCommand(
-            tokenId = savedToken.id,
-            tokenHash = savedToken.tokenHash,
-            recipientEmail = user.email,
-            resetLink = createResetLink(rawToken)
-        )
+        TODO("Step 05-A: reset token 발급과 mail command 반환을 구현하세요.")
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -98,28 +62,7 @@ class AccountRecoveryService(
 
     @Transactional
     fun confirmPasswordReset(request: PasswordResetConfirmRequest) {
-        val now = clock.instant()
-        val tokenHash = tokenCodec.hash(request.token)
-        val initialToken = passwordResetTokenRepository.findByTokenHash(tokenHash)
-            .orElseThrow(::InvalidPasswordResetTokenException)
-        val user = userRepository.findByIdForUpdate(initialToken.user.id)
-            .orElseThrow(::InvalidPasswordResetTokenException)
-        val lockedToken = passwordResetTokenRepository.findActiveByTokenHashForUpdate(tokenHash, now)
-            .orElseThrow(::InvalidPasswordResetTokenException)
-
-        if (
-            lockedToken.user.id != user.id ||
-            !user.localPasswordEnabled ||
-            lockedToken.usedAt != null ||
-            !lockedToken.expiresAt.isAfter(now)
-        ) {
-            throw InvalidPasswordResetTokenException()
-        }
-
-        user.password = requireNotNull(passwordEncoder.encode(request.newPassword))
-        lockedToken.markUsed(now)
-        passwordResetTokenRepository.save(lockedToken)
-        userRepository.saveAndFlush(user)
+        TODO("Step 05-B: reset token 확정과 비밀번호 변경을 구현하세요.")
     }
 
     private fun createResetLink(rawToken: String): String {
