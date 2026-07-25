@@ -35,27 +35,7 @@ class OAuthLoginSuccessHandler(
         response: HttpServletResponse,
         authentication: Authentication
     ) {
-        response.preventCaching()
-        val profile = authentication.toOAuthUserProfile()
-        if (profile == null) {
-            response.redirectWithStatus(frontendUrl, "failed")
-            return
-        }
-
-        val loginResponse = try {
-            oAuthAccountService.handleOAuthLogin(profile)
-        } catch (_: OAuthAccountLinkRequiredException) {
-            response.redirectWithStatus(frontendUrl, "link_required")
-            return
-        } catch (_: OAuthAccountCreationConflictException) {
-            response.redirectWithStatus(frontendUrl, "failed")
-            return
-        } catch (_: OAuthProfileRejectedException) {
-            response.redirectWithStatus(frontendUrl, "failed")
-            return
-        }
-
-        response.sendRedirect(successRedirectUrl(frontendUrl, loginResponse))
+        TODO("Step 03: OAuth 성공 redirect를 구현하세요.")
     }
 }
 
