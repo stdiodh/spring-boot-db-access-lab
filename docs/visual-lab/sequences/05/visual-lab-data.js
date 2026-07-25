@@ -1565,11 +1565,11 @@ window.visualLabData = {
     },
     {
       "id": "oauth-account-target",
-      "title": "provider identity를 먼저 확인합니다",
+      "title": "완성 뒤 provider identity를 먼저 확인합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/oauth/service/Step02OAuthAccountService.kt",
       "language": "kotlin",
       "snippet": "val existingOAuthUser = userRepository.findByAuthProviderAndProviderId(\n    normalizedProfile.provider,\n    normalizedProfile.providerId\n).orElse(null)\n\nif (existingOAuthUser != null) {\n    return createSuccessResponse(existingOAuthUser, isNewUser = false)\n}\nif (userRepository.existsByEmail(normalizedProfile.email)) {\n    throw OAuthAccountLinkRequiredException()\n}",
-      "explanation": "기존 외부 identity를 먼저 재사용하고 같은 email의 다른 계정은 명시적인 연결 확인 없이 합치지 않습니다.",
+      "explanation": "`handleOAuthLogin`의 구현 목표는 기존 외부 identity를 먼저 재사용하고 같은 email의 다른 계정은 명시적인 연결 확인 없이 합치지 않는 것입니다.",
       "check": "계정 정책 테스트의 existing, collision, new user 분기가 모두 통과하는지 확인합니다."
     },
     {
@@ -1583,11 +1583,11 @@ window.visualLabData = {
     },
     {
       "id": "local-password-enrollment-target",
-      "title": "Google identity를 유지한 채 LOCAL 자격을 추가합니다",
+      "title": "완성 뒤 Google identity를 유지한 채 LOCAL 자격을 추가합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/auth/service/Step04LocalPasswordEnrollmentService.kt",
       "language": "kotlin",
       "snippet": "val user = userRepository.findByEmailForUpdate(normalizedEmail)\n    .orElseThrow(::InvalidCredentialsException)\nif (user.authProvider != GOOGLE_PROVIDER || user.localPasswordEnabled) {\n    throw LocalPasswordEnrollmentConflictException()\n}\nuser.password = requireNotNull(passwordEncoder.encode(request.newPassword))\nuser.localPasswordEnabled = true",
-      "explanation": "요청 email 대신 JWT Principal로 사용자를 잠그고 최초 등록만 허용합니다. authProvider와 providerId를 유지하므로 Google 재로그인도 계속됩니다.",
+      "explanation": "`enroll`의 구현 목표는 요청 email 대신 JWT Principal로 사용자를 잠그고 최초 등록만 허용하는 것입니다. authProvider와 providerId를 유지하므로 Google 재로그인도 계속됩니다.",
       "check": "204 뒤 GOOGLE+LOCAL, 반복 등록 409, Google provider identity 보존을 서비스·통합 테스트로 확인합니다."
     },
     {
@@ -1619,11 +1619,11 @@ window.visualLabData = {
     },
     {
       "id": "recovery-service-target",
-      "title": "token commit 뒤 mail command를 반환합니다",
+      "title": "완성 뒤 token을 commit하고 mail command를 반환합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/recovery/service/Step05AccountRecoveryService.kt",
       "language": "kotlin",
       "snippet": "val savedToken = passwordResetTokenRepository.saveAndFlush(token)\n// service 반환 뒤 transaction이 commit되면 Controller가 SMTP를 호출합니다.\nreturn PasswordResetMailCommand(\n    tokenId = savedToken.id,\n    tokenHash = savedToken.tokenHash,\n    recipientEmail = user.email,\n    resetLink = createResetLink(rawToken)\n)",
-      "explanation": "DB에는 hash를 commit하고 raw token이 든 link는 transaction 밖의 동기 SMTP 호출에 넘깁니다.",
+      "explanation": "`requestPasswordReset`의 구현 목표는 DB에 hash를 commit하고 raw token이 든 link를 transaction 밖의 동기 SMTP 호출에 넘기는 것입니다.",
       "check": "recovery service·controller·concurrency 테스트를 함께 실행해 transaction 경계를 확인합니다."
     },
     {
@@ -1637,11 +1637,11 @@ window.visualLabData = {
     },
     {
       "id": "smtp-adapter-target",
-      "title": "Gmail 인증 계정을 발신자로 사용합니다",
+      "title": "완성 뒤 Gmail 인증 계정을 발신자로 사용합니다",
       "file": "src/main/kotlin/com/andi/rest_crud/recovery/mail/Step06SmtpRecoveryMailSender.kt",
       "language": "kotlin",
       "snippet": "if (smtpHost.equals(GMAIL_SMTP_HOST, ignoreCase = true)) {\n    check(smtpUsername.isNotBlank()) {\n        \"Gmail SMTP 설정 오류: SPRING_MAIL_USERNAME이 필요합니다.\"\n    }\n}\nfrom = if (smtpHost.equals(GMAIL_SMTP_HOST, ignoreCase = true)) {\n    smtpUsername\n} else {\n    recoveryMailFrom\n}",
-      "explanation": "Gmail에서는 인증 username을 From으로 사용하고, Mailpit 등 다른 SMTP에서는 별도 발신자 설정을 사용합니다. 빈 Gmail username 오류에는 실제 주소와 secret을 넣지 않습니다.",
+      "explanation": "`sendPasswordResetMail`의 구현 목표는 Gmail에서 인증 username을 From으로 사용하고, Mailpit 등 다른 SMTP에서는 별도 발신자 설정을 사용하는 것입니다. 빈 Gmail username 오류에는 실제 주소와 secret을 넣지 않습니다.",
       "check": "mock sender로 Gmail username 우선·비 Gmail 발신자·빈 username fail-fast를 확인하고, 받은편지함 배치는 원본 헤더로 수동 확인합니다."
     }
   ],
