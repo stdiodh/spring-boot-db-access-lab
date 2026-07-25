@@ -28,38 +28,43 @@ class SmtpRecoveryMailSenderTest {
     )
 
     @Test
-    fun `Gmail SMTP 발신자와 인증 계정이 다르면 설정 값을 숨기고 시작을 거부한다`() {
-        val recoveryMailFrom = "visible-sender@gmail.com"
+    fun `Gmail SMTP는 인증 계정을 발신자로 사용한다`() {
         val smtpUsername = "authenticated-sender@gmail.com"
+        val gmailSender = SmtpRecoveryMailSender(
+            javaMailSender,
+            "ignored-sender@example.com",
+            "smtp.gmail.com",
+            smtpUsername
+        )
+
+        gmailSender.sendPasswordResetMail(
+            "student@example.com",
+            "https://frontend.example/reset#reset_token=opaque-token"
+        )
+
+        val messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage::class.java)
+        verify(javaMailSender).send(messageCaptor.capture())
+        assertEquals(smtpUsername, messageCaptor.value.from)
+    }
+
+    @Test
+    fun `Gmail SMTP 인증 계정이 비어 있으면 설정 값을 숨기고 시작을 거부한다`() {
+        val recoveryMailFrom = "visible-sender@gmail.com"
 
         val exception = assertThrows(IllegalStateException::class.java) {
             SmtpRecoveryMailSender(
                 javaMailSender,
                 recoveryMailFrom,
                 "smtp.gmail.com",
-                smtpUsername
+                ""
             )
         }
 
         assertEquals(
-            "Gmail SMTP 설정 오류: APP_RECOVERY_MAIL_FROM과 " +
-                "SPRING_MAIL_USERNAME은 정확히 일치해야 합니다.",
+            "Gmail SMTP 설정 오류: SPRING_MAIL_USERNAME이 필요합니다.",
             exception.message
         )
         assertFalse(exception.message.orEmpty().contains(recoveryMailFrom))
-        assertFalse(exception.message.orEmpty().contains(smtpUsername))
-    }
-
-    @Test
-    fun `Gmail SMTP 발신자와 인증 계정이 정확히 같으면 시작할 수 있다`() {
-        val senderAddress = "authorized-sender@gmail.com"
-
-        SmtpRecoveryMailSender(
-            javaMailSender,
-            senderAddress,
-            "smtp.gmail.com",
-            senderAddress
-        )
     }
 
     @Test

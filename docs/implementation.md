@@ -31,7 +31,7 @@ Reset confirm -> hash lookup + lock -> BCrypt update + single-use mark
 | 04 | `LocalPasswordEnrollmentServiceTest`, `AuthIntegrationTest` | `auth/service/Step04LocalPasswordEnrollmentService.kt`의 `enroll` | 최초 등록·반복 409·provider 보존 통과 |
 | 05-A | `AccountRecoveryServiceTest`의 요청 관련 테스트 | `recovery/service/Step05AccountRecoveryService.kt`의 `requestPasswordReset` | 요청·cooldown 계약 충족 |
 | 05-B | `AccountRecoveryServiceTest`의 확정 관련 테스트 | 같은 파일의 `confirmPasswordReset` | service·동시성 테스트 통과 |
-| 06 | `SmtpRecoveryMailSenderTest` | `recovery/mail/Step06SmtpRecoveryMailSender.kt`의 초기 설정 검사와 `sendPasswordResetMail` | mail 테스트 통과 |
+| 06 | `SmtpRecoveryMailSenderTest` | `recovery/mail/Step06SmtpRecoveryMailSender.kt`의 Gmail 발신자 선택과 `sendPasswordResetMail` | mail 테스트 통과 |
 
 ### Step 파일명 규칙
 
@@ -97,12 +97,11 @@ SPRING_MAIL_PASSWORD=<app-password>
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED=true
-APP_RECOVERY_MAIL_FROM=<same-gmail-account>
 ```
 
 </details>
 
-Gmail에서는 `APP_RECOVERY_MAIL_FROM`과 `SPRING_MAIL_USERNAME`을 정확히 같게 둡니다. 이 실습은 send-as 별칭을 별도 검증하지 않으므로 두 값이 다르거나 username이 비어 있으면 주소·secret을 출력하지 않고 시작 단계에서 중단합니다. 복구 요청은 token을 commit한 뒤 실제 SMTP 호출을 기다립니다. Gmail 인증 값이 없거나 거부되면 no-store 424 `RECOVERY_MAIL_AUTHENTICATION_FAILED`, 그 밖의 전송 실패는 424 `RECOVERY_MAIL_DELIVERY_FAILED`입니다. 정상 200은 SMTP 서버가 요청을 수락한 범위이며 실제 수신함 도착까지 보장하지 않습니다.
+Gmail에서는 `SPRING_MAIL_USERNAME`을 From으로 사용하고 username이 비어 있으면 주소·secret을 출력하지 않고 시작 단계에서 중단합니다. `APP_RECOVERY_MAIL_FROM`은 Mailpit 등 Gmail이 아닌 SMTP의 From입니다. 복구 요청은 token을 commit한 뒤 실제 SMTP 호출을 기다립니다. Gmail 인증 값이 없거나 거부되면 no-store 424 `RECOVERY_MAIL_AUTHENTICATION_FAILED`, 그 밖의 전송 실패는 424 `RECOVERY_MAIL_DELIVERY_FAILED`입니다. 정상 200은 SMTP 서버가 요청을 수락한 범위이며 실제 수신함 도착까지 보장하지 않습니다.
 
 Security 확인:
 
@@ -235,9 +234,9 @@ Content-Type: application/json
 `Step06SmtpRecoveryMailSender.kt`:
 
 - `RecoveryMailSender`를 구현합니다.
-- Gmail host이면 `APP_RECOVERY_MAIL_FROM`과 `SPRING_MAIL_USERNAME`의 정확한 일치를 시작 시 검사합니다.
+- Gmail host이면 `SPRING_MAIL_USERNAME`이 비어 있지 않은지 시작 시 검사합니다.
 - 설정 오류에는 실제 주소와 secret을 넣지 않습니다. Mailpit·localhost는 이 Gmail 전용 검사 대상이 아닙니다.
-- `APP_RECOVERY_MAIL_FROM`을 발신자로 사용합니다.
+- Gmail은 `SPRING_MAIL_USERNAME`, 그 밖의 SMTP는 `APP_RECOVERY_MAIL_FROM`을 발신자로 사용합니다.
 - 수신자, 제목, 본문, reset link를 구성합니다.
 - `JavaMailSender`로 보내고 인증 실패와 일반 mail 실패를 서로 다른 recovery 오류로 바꿉니다.
 - 연결·읽기·쓰기 timeout은 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`으로 유한하게 둡니다.
@@ -305,7 +304,7 @@ git diff --check
 
 두 브랜치에서 전체 테스트와 JavaScript 검사가 모두 통과해야 합니다.
 
-자동 테스트는 OAuth 검증·계정 정책·redirect·session 경계, LOCAL 자격 최초 등록·반복 409·provider 보존, HTML 정적 진입점과 URL 처리 코드 연결, LOCAL 비밀번호 recovery의 200/422/429/424, token hash·회전·만료·단일 사용, Gmail 발신자 정렬, commit 이후 동기 SMTP, 실패 token 정리와 최신 04 회귀를 확인합니다. 실제 URL 제거와 조건부 등록 panel 동작은 브라우저에서도 확인합니다.
+자동 테스트는 OAuth 검증·계정 정책·redirect·session 경계, LOCAL 자격 최초 등록·반복 409·provider 보존, HTML 정적 진입점과 URL 처리 코드 연결, LOCAL 비밀번호 recovery의 200/422/429/424, token hash·회전·만료·단일 사용, Gmail 인증 계정의 From 적용, commit 이후 동기 SMTP, 실패 token 정리와 최신 04 회귀를 확인합니다. 실제 URL 제거와 조건부 등록 panel 동작은 브라우저에서도 확인합니다.
 
 ## 12. 외부 수동 검증
 
@@ -325,7 +324,7 @@ Google:
 SMTP:
 
 1. `http://localhost:8080/auth-practice/recovery.html`을 열고 LOCAL 비밀번호가 있는 테스트 계정을 준비합니다.
-2. `SPRING_MAIL_*`과 `APP_RECOVERY_MAIL_FROM`을 로컬 secret으로 주입하고 Gmail에서는 From과 username을 정확히 같게 둡니다.
+2. Gmail 계정과 앱 비밀번호를 `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`에 로컬 secret으로 주입합니다. Mailpit 등 Gmail이 아닌 SMTP는 `APP_RECOVERY_MAIL_FROM`도 설정합니다.
 3. 올바른 SMTP 연결·인증이면 실제 `send()` 반환 뒤 복구 endpoint가 200을 반환하는지 확인합니다.
 4. reset link를 열자마자 fragment가 URL에서 제거되고 실제 password가 변경되는지 확인합니다.
 5. 같은 token의 재사용, 만료 token, 재발급 전 token이 같은 400으로 거부되는지 확인합니다.
@@ -347,7 +346,7 @@ SMTP:
 - STATELESS API와 임시 OAuth state session을 구분합니다.
 - fragment를 즉시 지우고 token을 메모리에만 유지하며 receipt 노출 경계를 설명합니다.
 - recovery 200/422/429/424, LOCAL 비밀번호 자격, 1분 cooldown, commit 이후 동기 SMTP와 실패 token 정리 경계를 지킵니다.
-- Gmail From·인증 계정 정렬과 SMTP 200·수신자 원본 헤더의 증거 범위를 구분합니다.
+- Gmail 인증 계정의 From 적용과 SMTP 200·수신자 원본 헤더의 증거 범위를 구분합니다.
 - raw token/hash 분리, 15분 만료, 회전, 단일 사용, BCrypt 변경을 확인합니다.
 - 기존 JWT 미폐기, IP/distributed rate limiter 부재, JPA `ddl-auto=update`와 Flyway 부재를 한계로 남깁니다.
 - 실제 Google·Gmail E2E를 credential이 필요한 수동 검증으로 구분합니다.

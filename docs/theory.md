@@ -138,7 +138,7 @@ JWT는 local storage, session storage, cookie에 저장하지 않습니다. 다�
 
 200은 `JavaMailSender.send()`가 예외 없이 반환되어 SMTP 서버가 요청을 수락한 범위입니다. 받은 편지함 도착, 스팸 분류, 이후 반송 여부는 이 응답만으로 증명할 수 없습니다.
 
-Gmail SMTP를 사용할 때는 From인 `APP_RECOVERY_MAIL_FROM`과 인증 계정인 `SPRING_MAIL_USERNAME`을 정확히 같게 둡니다. 검증된 send-as 별칭까지 다루지 않는 이 실습은 두 값이 다르면 실제 주소나 secret을 출력하지 않고 시작 단계에서 중단합니다. 200 이후 전달성은 받은편지함·프로모션·스팸함을 검색하고 Gmail 원본 보기에서 SPF·DKIM·DMARC, From·Return-Path·mailed-by·signed-by 정렬을 직접 확인합니다. 서버는 이 사후 분류를 4xx로 소급해 알 수 없습니다.
+Gmail SMTP를 사용할 때는 인증 계정인 `SPRING_MAIL_USERNAME`을 From으로 사용합니다. 값이 비어 있으면 실제 주소나 secret을 출력하지 않고 시작 단계에서 중단하며, `APP_RECOVERY_MAIL_FROM`은 Mailpit 등 Gmail이 아닌 SMTP의 From입니다. 200 이후 전달성은 받은편지함·프로모션·스팸함을 검색하고 Gmail 원본 보기에서 SPF·DKIM·DMARC, From·Return-Path·mailed-by·signed-by 정렬을 직접 확인합니다. 서버는 이 사후 분류를 4xx로 소급해 알 수 없습니다.
 
 ```mermaid
 flowchart LR
@@ -206,7 +206,7 @@ reset token, 복구 대상 email, reset link, credential, SMTP 내부 오류는 
 - LOCAL 비밀번호 사용 가능 여부, 1분 cooldown과 실패 token 조건부 정리
 - token 난수·hash·회전·만료 경계·단일 사용·BCrypt 변경
 - token commit 이후 동기 dispatch와 SMTP 예외 전파
-- Gmail From·인증 계정 정렬, sender 메시지와 최신 04 회귀
+- Gmail 인증 계정의 From 적용, sender 메시지와 최신 04 회귀
 
 외부 수동 검증:
 
