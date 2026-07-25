@@ -104,9 +104,9 @@
 - [ ] service 반환과 token commit 뒤에만 dispatcher를 호출합니다.
 - [ ] dispatcher는 예외를 삼키지 않고 Controller에 전달합니다.
 - [ ] command `toString`에 id·hash·email·link가 없습니다.
-- [ ] 발신자는 `APP_RECOVERY_MAIL_FROM`으로 설정합니다.
-- [ ] Gmail host에서는 `APP_RECOVERY_MAIL_FROM`과 `SPRING_MAIL_USERNAME`이 정확히 일치하지 않으면 secret 없는 시작 오류로 중단합니다.
-- [ ] Mailpit·localhost는 Gmail 전용 발신자 정렬 검사 없이 사용할 수 있습니다.
+- [ ] Gmail host에서는 `SPRING_MAIL_USERNAME`, 그 밖의 SMTP에서는 `APP_RECOVERY_MAIL_FROM`을 발신자로 사용합니다.
+- [ ] Gmail host에서 `SPRING_MAIL_USERNAME`이 비어 있으면 secret 없는 시작 오류로 중단합니다.
+- [ ] Mailpit·localhost는 Gmail 전용 username 검사 없이 사용할 수 있습니다.
 - [ ] SMTP 설정은 `SPRING_MAIL_*`과 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`을 사용합니다.
 - [ ] 연결·읽기·쓰기 timeout이 유한합니다.
 - [ ] 자동 테스트는 실제 SMTP에 연결하지 않습니다.
@@ -128,8 +128,10 @@
 - [ ] token 회전·15분 만료 경계·단일 사용·BCrypt 변경 테스트가 있습니다.
 - [ ] token commit 이후 동기 dispatch와 SMTP 실패 token 정리 테스트가 있습니다.
 - [ ] reset link fragment와 SMTP 메시지 조립 테스트가 있습니다.
-- [ ] Gmail From·인증 계정 불일치 fail-fast와 secret 비노출 테스트가 있습니다.
-- [ ] `05-implementation`과 `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
+- [ ] Gmail 인증 계정의 From 적용과 빈 username fail-fast·설정 값 비노출 테스트가 있습니다.
+- [ ] `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
+- [ ] `05-implementation`에는 메서드 본문 7개만 `TODO()`로 남고, 구현 전 대응 Step 테스트가 실패합니다.
+- [ ] TODO 본문을 제외한 production 로직과 테스트 자산은 두 브랜치에서 정렬되어 있습니다.
 - [ ] `git diff --check`가 통과합니다.
 
 ## 9. 외부 수동 검증
@@ -143,7 +145,7 @@
 - [ ] 신규·기존 Google 계정에 같은 LOCAL 비밀번호 등록 form이 열립니다.
 - [ ] 등록 204 뒤 `GOOGLE + LOCAL`, 자체 로그인과 Google 재로그인이 모두 성공합니다.
 - [ ] 실제 SMTP credential은 로컬 secret으로만 주입했습니다.
-- [ ] Gmail의 `APP_RECOVERY_MAIL_FROM`과 `SPRING_MAIL_USERNAME`을 정확히 같게 맞췄습니다.
+- [ ] Gmail의 `SPRING_MAIL_USERNAME`이 From으로 사용되는지 확인했습니다.
 - [ ] 앱 비밀번호 누락·오류가 424 인증 오류로 표시되는지 확인했습니다.
 - [ ] 일반 SMTP 실패가 424 전송 오류이고 실패 token이 정리되는지 확인했습니다.
 - [ ] LOCAL 비밀번호 계정의 메일 수신, reset 성공과 token 재사용 거부를 확인했습니다.

@@ -69,7 +69,8 @@ src/main/kotlin/com/andi/rest_crud/
 
 ## 구현 순서
 
-`05-implementation`과 `05-answer`는 이번 계약 변경에서 같은 실행 코드와 설명 주석을 사용합니다.
+`05-implementation`은 아래 6개 Step 파일의 메서드 본문 7개를 `TODO()`로 제공하고, `05-answer`는 그 본문까지 완성합니다.
+이 7개 본문을 제외한 production 로직과 테스트 자산은 두 브랜치에서 같은 계약을 사용합니다.
 각 단계에서는 테스트와 파일 상단 주석을 먼저 읽고, 실제 호출 순서와 HTTP 결과를 확인합니다.
 
 직접 구현하는 production 파일 6개만 `Step01`부터 `Step06`까지 표시합니다. 파일명의 Step은 탐색 순서이며 Kotlin class 이름과 package는 그대로 유지합니다.
@@ -82,7 +83,7 @@ src/main/kotlin/com/andi/rest_crud/
 | 04 | `auth/service/Step04LocalPasswordEnrollmentService.kt` | OAuth 계정의 선택적 LOCAL 비밀번호 등록 |
 | 05-A | `recovery/service/Step05AccountRecoveryService.kt` | reset token 발급·cooldown·실패 정리 |
 | 05-B | `recovery/service/Step05AccountRecoveryService.kt` | token 확정·비밀번호 변경 |
-| 06 | `recovery/mail/Step06SmtpRecoveryMailSender.kt` | Gmail 발신자 정렬·SMTP 메시지 조립·동기 발송 |
+| 06 | `recovery/mail/Step06SmtpRecoveryMailSender.kt` | Gmail 인증 계정 발신자 선택·SMTP 메시지 조립·동기 발송 |
 
 `PasswordResetTokenCodec`, `PasswordResetToken`, repository, controller, `RecoveryMailDispatch`, Security 설정과 정적 화면을 함께 읽으면 commit 이후에만 SMTP를 호출하는 이유를 확인할 수 있습니다.
 
@@ -123,7 +124,7 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 - 확정 요청 `{ "token": "...", "newPassword": "..." }`은 BCrypt password 변경과 사용 처리를 같은 트랜잭션에서 수행하고 성공 시 204를 반환합니다.
 - LOCAL 비밀번호를 가진 사용자별 1분 재요청 제한을 적용합니다. 정확히 1분이 되면 새 요청을 허용합니다.
 - Service는 commit할 token과 동기 발송 command를 만들고, dispatcher는 transaction 밖에서 `RecoveryMailSender`를 호출합니다. SMTP 메시지 조립은 adapter가 담당합니다.
-- Gmail SMTP에서는 `APP_RECOVERY_MAIL_FROM`과 `SPRING_MAIL_USERNAME`이 정확히 같아야 합니다. 다르면 실제 주소나 secret을 출력하지 않고 애플리케이션 시작 단계에서 설정 오류로 중단합니다.
+- Gmail SMTP에서는 `SPRING_MAIL_USERNAME`을 From으로 사용하며 값이 비어 있으면 실제 주소나 secret을 출력하지 않고 애플리케이션 시작 단계에서 중단합니다. `APP_RECOVERY_MAIL_FROM`은 Mailpit 등 Gmail이 아닌 SMTP의 From입니다.
 
 ### 현재 범위와 한계
 
@@ -138,9 +139,11 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 
 ## 브랜치와 검증
 
-- `05-implementation`과 `05-answer`: 외부 Google·SMTP 연결 없이 `./gradlew test` 전체가 통과해야 합니다.
+- `05-answer`: 외부 Google·SMTP 연결 없이 `./gradlew test` 전체가 통과해야 합니다.
+- `05-implementation`: 메서드 본문 7개의 `TODO()`를 구현하기 전에는 대응 Step 테스트가 실패하는 것이 정상입니다.
+- 두 브랜치는 TODO 본문을 제외한 production 로직과 테스트 자산이 정렬되어 있어야 합니다.
 - 자동 테스트는 내부 정책과 04 회귀를 확인합니다.
-- 자동 테스트는 LOCAL 자격 1회 등록, provider identity 보존, 복구 자격 전환과 Gmail 발신자 정렬도 확인합니다.
+- 자동 테스트는 LOCAL 자격 1회 등록, provider identity 보존, 복구 자격 전환과 Gmail 인증 계정의 From 적용도 확인합니다.
 - 실제 Google callback과 SMTP 수신은 credential을 준비한 경우에만 별도 수동 검증합니다.
 
 ## 로컬 설정과 실행
@@ -156,12 +159,12 @@ docker compose ps
 주요 환경변수:
 
 - OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-- redirect/recovery: `APP_OAUTH_RESULT_URL=http://localhost:8080/auth-practice/oauth.html`, `APP_PASSWORD_RESET_URL=http://localhost:8080/auth-practice/recovery.html`, `APP_RECOVERY_MAIL_FROM`
+- redirect/recovery: `APP_OAUTH_RESULT_URL=http://localhost:8080/auth-practice/oauth.html`, `APP_PASSWORD_RESET_URL=http://localhost:8080/auth-practice/recovery.html`
 - reset 정책: `APP_PASSWORD_RESET_TOKEN_TTL=PT15M`, `APP_PASSWORD_RESET_RESEND_COOLDOWN=PT1M`
-- SMTP: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`
+- SMTP: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `APP_RECOVERY_MAIL_FROM`(비 Gmail From), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_*`
 - 기존 계약: `DB_*`, `JWT_*`
 
-`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. 실제 Gmail은 host `smtp.gmail.com`, port `587`, SMTP 인증·STARTTLS `true`, 같은 Gmail 계정의 From·username과 앱 비밀번호를 한 묶음으로 바꿉니다. 복구 요청은 token commit 뒤 실제 SMTP 호출을 기다리며 앱 비밀번호 오류와 일반 전송 오류를 424로 구분합니다. 200은 발신자 허용이나 수신함 도착까지 증명하지 않습니다. 로컬 reset 링크와 메일 본문 확인은 Mailpit으로 하고, 실제 Gmail 전달성은 공개 HTTPS reset URL과 원본 헤더로 별도 검증합니다. OAuth 성공·실패는 `APP_OAUTH_RESULT_URL`의 Google OAuth 화면으로 돌아오고, server는 `APP_PASSWORD_RESET_URL`의 SMTP 복구 화면에 `#reset_token` fragment를 덧붙입니다. 예전 `APP_FRONTEND_URL`도 fallback으로 읽지만 기존 `.env`는 전용 키로 바꿔 callback URI와 결과 화면을 혼동하지 않습니다.
+`application.yaml`이 로컬 `.env`를 optional properties 파일로 읽습니다. 기본값은 로컬 Mailpit(`localhost:1025`, SMTP 인증·TLS 없음)을 사용하므로 Gmail credential 없이 계정 복구 메일을 확인할 수 있습니다. 실제 Gmail은 host `smtp.gmail.com`, port `587`, SMTP 인증·STARTTLS `true`, Gmail 계정의 username과 앱 비밀번호를 설정하면 username을 From으로 사용합니다. `APP_RECOVERY_MAIL_FROM`은 Mailpit 등 Gmail이 아닌 SMTP에서만 From으로 사용합니다. 복구 요청은 token commit 뒤 실제 SMTP 호출을 기다리며 앱 비밀번호 오류와 일반 전송 오류를 424로 구분합니다. 200은 발신자 허용이나 수신함 도착까지 증명하지 않습니다. 로컬 reset 링크와 메일 본문 확인은 Mailpit으로 하고, 실제 Gmail 전달성은 공개 HTTPS reset URL과 원본 헤더로 별도 검증합니다. OAuth 성공·실패는 `APP_OAUTH_RESULT_URL`의 Google OAuth 화면으로 돌아오고, server는 `APP_PASSWORD_RESET_URL`의 SMTP 복구 화면에 `#reset_token` fragment를 덧붙입니다. 예전 `APP_FRONTEND_URL`도 fallback으로 읽지만 기존 `.env`는 전용 키로 바꿔 callback URI와 결과 화면을 혼동하지 않습니다.
 
 인증 실습 화면은 한 페이지가 한 trust boundary만 다루도록 분리합니다. 상단 버튼으로 이동할 수 있지만 access/reset token은 메모리에만 있으므로 페이지를 바꾸면 사라집니다.
 
@@ -207,7 +210,7 @@ http://localhost:8081/sequences/05/
 - 임시 OAuth state session과 API session 인증을 구분하게 합니다.
 - URL 제거 시점, 메모리 보관, token receipt 노출 경계를 구분하게 합니다.
 - hash 저장·만료·단일 사용과 commit 이후 동기 SMTP 경계를 설명하게 합니다.
-- Gmail From·인증 계정 정렬과 200 이후 원본 헤더 수동 증거를 구분하게 합니다.
+- Gmail 인증 계정의 From 적용과 200 이후 원본 헤더 수동 증거를 구분하게 합니다.
 - 기존 JWT 미폐기, IP/distributed rate limiter 부재, `ddl-auto=update` 한계를 운영 보안 완성으로 표현하지 않게 합니다.
 - 계약 테스트 실패와 실제 provider 설정·연결 실패를 구분합니다.
 
