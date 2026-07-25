@@ -116,7 +116,7 @@ Sequence 04의 연관 코드는 책임별로 다음 파일에 모았습니다.
 
 ## 05 시퀀스 단계
 
-05는 하나의 브랜치 쌍을 사용하지만 내부 학습은 네 단계로 나눕니다. 현재 `05-implementation`과 `05-answer`는 같은 완성 코드와 설명 주석을 사용하므로 Step01부터 Step06까지 실행 경계를 읽고 검증합니다.
+05는 하나의 브랜치 쌍을 사용하지만 내부 학습은 네 단계로 나눕니다. `05-implementation`에는 아래 Step의 핵심 메서드 본문 7개가 `TODO(...)`로 남아 있고, `05-answer`에서 완성된 흐름을 비교할 수 있습니다.
 
 | 단계 | 주제 | 핵심 |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ Sequence 04의 연관 코드는 책임별로 다음 파일에 모았습니다.
 실제 Google client secret이나 SMTP password는 문서와 코드에 쓰지 않습니다.
 공식 05 브랜치의 기본 SMTP는 로컬 Mailpit이므로 Gmail credential 없이 메일과 reset link를 시연할 수 있습니다. OAuth 자동 테스트도 외부 네트워크를 사용하지 않지만 실제 Google callback은 유효한 client credential이 있어야 합니다.
 같은 email의 로컬 계정은 자동 연결하지 않으며, OAuth JWT와 reset token은 URL query가 아니라 fragment로 받은 뒤 실습 화면이 메모리로 옮기고 URL에서 제거합니다.
-Google 가입자는 provider identity를 바꾸지 않고 선택적으로 LOCAL 비밀번호를 추가할 수 있습니다. Gmail SMTP에서는 `APP_RECOVERY_MAIL_FROM`과 `SPRING_MAIL_USERNAME`을 같게 두고, `200` 뒤 받은편지함·스팸함과 원본 보기의 SPF·DKIM·DMARC 정렬을 별도로 확인합니다.
+Google 가입자는 provider identity를 바꾸지 않고 선택적으로 LOCAL 비밀번호를 추가할 수 있습니다. Gmail SMTP에서는 인증 계정인 `SPRING_MAIL_USERNAME`을 From으로 사용하고, `APP_RECOVERY_MAIL_FROM`은 Mailpit 등 Gmail이 아닌 SMTP에 사용합니다. `200` 뒤에는 받은편지함·스팸함과 원본 보기의 SPF·DKIM·DMARC 정렬을 별도로 확인합니다.
 
 [Visual Lab에서 OAuth와 복구 생명주기 비교하기](./docs/visual-lab/sequences/05/)
 
@@ -142,10 +142,10 @@ git fetch origin
 git diff 03-implementation..03-answer
 ```
 
-Sequence 05는 두 브랜치를 의도적으로 동기화했으므로 아래 명령의 출력이 없어야 합니다.
+Sequence 05는 6개 Step 파일의 7개 TODO 메서드 본문만 의도적으로 다릅니다. 그 밖의 production 로직과 테스트가 달라지지 않았는지 함께 확인합니다.
 
 ```bash
-git diff --exit-code 05-implementation..05-answer
+git diff --name-only 05-implementation..05-answer
 ```
 
 ## Visual Lab
