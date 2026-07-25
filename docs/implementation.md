@@ -14,7 +14,7 @@ Reset confirm -> hash lookup + lock -> BCrypt update + single-use mark
 
 ## 2. 시작 전에 수정 범위 좁히기
 
-`05-implementation`과 `05-answer`는 이번 계약 변경에서 같은 실행 코드와 설명 주석을 사용합니다. 아래 순서로 테스트와 파일 상단 주석을 읽어 실제 책임 경계를 확인합니다.
+`05-implementation`은 아래 6개 Step 파일의 메서드 본문 7개를 `TODO()`로 제공하고, `05-answer`는 그 본문까지 완성합니다. 이 7개 본문을 제외한 production 로직과 테스트 자산은 두 브랜치에서 같은 계약을 사용합니다. 아래 순서로 테스트와 파일 상단 주석을 읽어 실제 책임 경계를 확인합니다.
 
 각 번호 Step은 같은 순서로 진행합니다. Step 5-A와 5-B는 한 production 파일 안의 두 하위 작업입니다.
 
@@ -245,7 +245,7 @@ Service는 `JavaMailSender`를 직접 알지 않아야 합니다. 200은 `send()
 
 ## 11. 테스트
 
-두 브랜치는 같은 실행 코드를 제공하므로 외부 credential 없이 같은 자동 테스트가 통과해야 합니다.
+`05-answer`는 외부 credential 없이 전체 자동 테스트가 통과해야 합니다. `05-implementation`은 메서드 본문 7개의 `TODO()`를 구현하기 전에는 대응 Step 테스트가 실패하며, 구현을 마치면 같은 테스트 계약을 만족해야 합니다.
 
 Step 1, 2, 3, 4, 6을 끝낼 때마다 대응 gate만 실행합니다. Step 5는 5-A와 5-B를 모두 마친 뒤 service gate를 실행합니다.
 
@@ -302,7 +302,7 @@ node --check src/main/resources/static/auth-practice/recovery.js
 git diff --check
 ```
 
-두 브랜치에서 전체 테스트와 JavaScript 검사가 모두 통과해야 합니다.
+`05-answer`에서는 전체 테스트와 JavaScript 검사가 모두 통과해야 합니다. `05-implementation`의 JavaScript 검사는 시작 상태에서도 통과하지만, 전체 테스트는 7개 `TODO()`를 구현한 뒤 통과해야 합니다.
 
 자동 테스트는 OAuth 검증·계정 정책·redirect·session 경계, LOCAL 자격 최초 등록·반복 409·provider 보존, HTML 정적 진입점과 URL 처리 코드 연결, LOCAL 비밀번호 recovery의 200/422/429/424, token hash·회전·만료·단일 사용, Gmail 인증 계정의 From 적용, commit 이후 동기 SMTP, 실패 token 정리와 최신 04 회귀를 확인합니다. 실제 URL 제거와 조건부 등록 panel 동작은 브라우저에서도 확인합니다.
 

@@ -69,7 +69,8 @@ src/main/kotlin/com/andi/rest_crud/
 
 ## 구현 순서
 
-`05-implementation`과 `05-answer`는 이번 계약 변경에서 같은 실행 코드와 설명 주석을 사용합니다.
+`05-implementation`은 아래 6개 Step 파일의 메서드 본문 7개를 `TODO()`로 제공하고, `05-answer`는 그 본문까지 완성합니다.
+이 7개 본문을 제외한 production 로직과 테스트 자산은 두 브랜치에서 같은 계약을 사용합니다.
 각 단계에서는 테스트와 파일 상단 주석을 먼저 읽고, 실제 호출 순서와 HTTP 결과를 확인합니다.
 
 직접 구현하는 production 파일 6개만 `Step01`부터 `Step06`까지 표시합니다. 파일명의 Step은 탐색 순서이며 Kotlin class 이름과 package는 그대로 유지합니다.
@@ -138,7 +139,9 @@ OAuth client는 authorization request와 callback의 `state`를 확인하려고 
 
 ## 브랜치와 검증
 
-- `05-implementation`과 `05-answer`: 외부 Google·SMTP 연결 없이 `./gradlew test` 전체가 통과해야 합니다.
+- `05-answer`: 외부 Google·SMTP 연결 없이 `./gradlew test` 전체가 통과해야 합니다.
+- `05-implementation`: 메서드 본문 7개의 `TODO()`를 구현하기 전에는 대응 Step 테스트가 실패하는 것이 정상입니다.
+- 두 브랜치는 TODO 본문을 제외한 production 로직과 테스트 자산이 정렬되어 있어야 합니다.
 - 자동 테스트는 내부 정책과 04 회귀를 확인합니다.
 - 자동 테스트는 LOCAL 자격 1회 등록, provider identity 보존, 복구 자격 전환과 Gmail 인증 계정의 From 적용도 확인합니다.
 - 실제 Google callback과 SMTP 수신은 credential을 준비한 경우에만 별도 수동 검증합니다.

@@ -129,7 +129,9 @@
 - [ ] token commit 이후 동기 dispatch와 SMTP 실패 token 정리 테스트가 있습니다.
 - [ ] reset link fragment와 SMTP 메시지 조립 테스트가 있습니다.
 - [ ] Gmail 인증 계정의 From 적용과 빈 username fail-fast·설정 값 비노출 테스트가 있습니다.
-- [ ] `05-implementation`과 `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
+- [ ] `05-answer`에서 외부 credential 없이 `./gradlew test` 전체가 통과합니다.
+- [ ] `05-implementation`에는 메서드 본문 7개만 `TODO()`로 남고, 구현 전 대응 Step 테스트가 실패합니다.
+- [ ] TODO 본문을 제외한 production 로직과 테스트 자산은 두 브랜치에서 정렬되어 있습니다.
 - [ ] `git diff --check`가 통과합니다.
 
 ## 9. 외부 수동 검증
